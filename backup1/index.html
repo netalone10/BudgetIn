@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Budgetin — Atur keuanganmu dari nol, tanpa ribet. Catat pemasukan, pengeluaran, transfer, dan bandingin budget vs realisasi tiap bulan.">
+<title>Budgetin — Atur Keuanganmu dari Nol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* === RESET & BASE === */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sky-50:#f0f9ff;--sky-100:#e0f2fe;--sky-200:#bae6fd;--sky-500:#0ea5e9;--sky-600:#0EA5E9;--sky-700:#0284c7;--sky-800:#075985;--sky-900:#0c4a6e;
+  --green-50:#f0fdf4;--green-100:#dcfce7;--green-500:#22c55e;--green-600:#16a34a;--green-700:#15803d;
+  --red-50:#fef2f2;--red-100:#fee2e2;--red-500:#ef4444;--red-600:#dc2626;--red-700:#b91c1c;
+  --amber-50:#fffbeb;--amber-500:#f59e0b;--amber-600:#d97706;--amber-700:#b45309;
+  --blue-50:#eff6ff;--blue-500:#3b82f6;--blue-600:#2563eb;--blue-700:#1d4ed8;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;--gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;--gray-800:#1f2937;--gray-900:#111827;
+  --font:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+  --max-w:1120px;--radius:12px;--radius-sm:8px;
+}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;text-size-adjust:none}
+body{font-family:var(--font);color:var(--gray-800);background:#fff;line-height:1.6;font-size:16px}
+img,svg{display:block;max-width:100%}
+button{cursor:pointer;font:inherit;border:none;background:none}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{line-height:1.2;text-wrap:balance}
+p{text-wrap:pretty;max-width:65ch}
+
+/* === UTILITIES === */
+.container{max-width:var(--max-w);margin:0 auto;padding:0 24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 32px;border-radius:var(--radius);font-weight:700;font-size:16px;transition:all .2s ease}
+.btn-primary{background:var(--sky-600);color:#fff}
+.btn-primary:hover{background:var(--sky-700);transform:translateY(-1px);box-shadow:0 4px 12px rgba(14,165,233,.3)}
+.btn-outline{border:2px solid var(--sky-600);color:var(--sky-600)}
+.btn-outline:hover{background:var(--sky-50)}
+.section-label{font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--sky-600);margin-bottom:12px}
+.section-title{font-size:clamp(1.75rem,1.2rem+2vw,2.5rem);font-weight:800;color:var(--gray-900);margin-bottom:16px}
+.section-desc{font-size:17px;color:var(--gray-500);line-height:1.7}
+
+/* === NAV === */
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--gray-200)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;color:var(--sky-700)}
+.logo svg{flex-shrink:0}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-size:15px;font-weight:500;color:var(--gray-600);transition:color .15s}
+.nav-links a:hover{color:var(--sky-600)}
+.nav-cta{padding:10px 22px;font-size:14px;border-radius:var(--radius-sm);background:var(--sky-600);color:#fff;font-weight:600;transition:all .15s}
+.nav-cta:hover{background:var(--sky-700)}
+.mobile-toggle{display:none;flex-direction:column;gap:5px;padding:8px}
+.mobile-toggle span{width:22px;height:2px;background:var(--gray-700);border-radius:2px}
+
+/* === HERO === */
+.hero{padding:80px 0 60px;background:linear-gradient(160deg,#fff 40%,var(--sky-50) 100%)}
+.hero-inner{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+.hero h1{font-size:clamp(2rem,1.2rem+3.2vw,3.25rem);font-weight:800;color:var(--gray-900);margin-bottom:20px}
+.hero h1 span{color:var(--sky-600)}
+.hero-sub{font-size:18px;color:var(--gray-500);margin-bottom:32px;line-height:1.7;max-width:500px}
+.hero-ctas{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.hero-note{font-size:13px;color:var(--gray-400);margin-top:12px}
+.hero-visual{display:flex;justify-content:center;align-items:center}
+.hero-card{background:#fff;border-radius:16px;padding:28px;box-shadow:0 8px 40px rgba(0,0,0,.08);width:100%;max-width:420px}
+.hero-card h4{font-size:13px;color:var(--gray-400);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.hero-bar{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;height:160px;margin-bottom:16px;padding-top:16px}
+.hero-bar-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.hero-bar-item .bar{width:100%;border-radius:6px 6px 0 0;min-height:20px}
+.hero-bar-item span{font-size:11px;color:var(--gray-500);font-weight:600}
+.hero-summary{display:flex;justify-content:space-between;padding-top:16px;border-top:1px solid var(--gray-100)}
+.hero-summary div{text-align:center}
+.hero-summary .label{font-size:12px;color:var(--gray-400)}
+.hero-summary .val{font-size:18px;font-weight:700}
+.val-green{color:var(--green-600)}.val-red{color:var(--red-600)}
+
+/* === FEATURES === */
+.features{padding:80px 0;background:var(--gray-50)}
+.features-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-top:40px}
+.feature-card{background:#fff;border-radius:var(--radius);padding:32px;border:1px solid var(--gray-200);transition:all .2s ease}
+.feature-card:hover{border-color:var(--sky-200);box-shadow:0 4px 20px rgba(14,165,233,.08)}
+.feature-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;font-size:22px}
+.icon-expense{background:var(--red-50);color:var(--red-600)}
+.icon-income{background:var(--green-50);color:var(--green-600)}
+.icon-transfer{background:var(--blue-50);color:var(--blue-600)}
+.icon-budget{background:var(--amber-50);color:var(--amber-600)}
+.feature-card h3{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--gray-900)}
+.feature-card p{font-size:15px;color:var(--gray-500);line-height:1.65}
+
+/* === HOW IT WORKS === */
+.how{padding:80px 0}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:40px}
+.step{text-align:center;padding:32px 24px}
+.step-num{width:56px;height:56px;border-radius:50%;background:var(--sky-600);color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.step h3{font-size:18px;font-weight:700;margin-bottom:8px;color:var(--gray-900)}
+.step p{font-size:15px;color:var(--gray-500);margin:0 auto}
+
+/* === BUDGET WIDGET (DEMO) === */
+.budget-demo{padding:80px 0;background:var(--gray-50)}
+.budget-widget{background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.06);margin-top:40px;max-width:720px;margin-left:auto;margin-right:auto}
+.budget-widget h3{font-size:18px;font-weight:700;margin-bottom:4px;color:var(--gray-900)}
+.budget-widget .subtitle{font-size:14px;color:var(--gray-400);margin-bottom:24px}
+.budget-row{display:flex;align-items:center;gap:16px;padding:16px 0;border-bottom:1px solid var(--gray-100)}
+.budget-row:last-child{border-bottom:none}
+.budget-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.budget-info{flex:1;min-width:0}
+.budget-info .cat-name{font-size:15px;font-weight:600;color:var(--gray-800)}
+.budget-info .cat-amounts{font-size:13px;color:var(--gray-400);margin-top:2px}
+.budget-bar{height:8px;background:var(--gray-100);border-radius:99px;margin-top:8px;overflow:hidden}
+.budget-bar-fill{height:100%;border-radius:99px;transition:width .8s ease}
+.budget-meta{text-align:right;flex-shrink:0;min-width:80px}
+.budget-pct{font-size:15px;font-weight:700}
+.budget-status{font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;display:inline-block;margin-top:4px}
+.status-safe{background:var(--green-100);color:var(--green-700)}
+.status-warn{background:var(--amber-50);color:var(--amber-700)}
+.status-over{background:var(--red-100);color:var(--red-700)}
+.bar-safe{background:var(--green-500)}
+.bar-warn{background:var(--amber-500)}
+.bar-over{background:var(--red-500)}
+.pct-safe{color:var(--green-600)}.pct-warn{color:var(--amber-600)}.pct-over{color:var(--red-600)}
+
+/* === SOCIAL PROOF === */
+.proof{padding:80px 0}
+.testimonials{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:40px}
+.testimonial{background:var(--gray-50);border-radius:var(--radius);padding:28px;border:1px solid var(--gray-100)}
+.testimonial p{font-size:15px;color:var(--gray-600);font-style:italic;line-height:1.7;margin-bottom:16px}
+.testimonial .author{font-size:14px;font-weight:600;color:var(--gray-800)}
+.testimonial .role{font-size:13px;color:var(--gray-400)}
+.stats-row{display:flex;justify-content:center;gap:60px;margin-top:48px;flex-wrap:wrap}
+.stat{text-align:center}
+.stat .num{font-size:28px;font-weight:800;color:var(--sky-600)}
+.stat .label{font-size:14px;color:var(--gray-500);margin-top:4px}
+
+/* === EMAIL CAPTURE === */
+.email-cta{padding:80px 0;background:linear-gradient(160deg,var(--sky-700),var(--sky-900));color:#fff;text-align:center}
+.email-cta .section-label{color:var(--sky-200)}
+.email-cta .section-title{color:#fff}
+.email-cta .section-desc{color:rgba(255,255,255,.75);margin:0 auto 32px}
+.email-form{display:flex;gap:12px;max-width:480px;margin:0 auto}
+.email-form input{flex:1;padding:14px 20px;border:2px solid rgba(255,255,255,.2);border-radius:var(--radius-sm);background:rgba(255,255,255,.1);color:#fff;font-size:16px;outline:none;transition:border-color .2s}
+.email-form input::placeholder{color:rgba(255,255,255,.5)}
+.email-form input:focus{border-color:var(--sky-200)}
+.email-form button{padding:14px 28px;background:#fff;color:var(--sky-700);border-radius:var(--radius-sm);font-weight:700;font-size:15px;white-space:nowrap;transition:all .15s}
+.email-form button:hover{background:var(--sky-100);transform:translateY(-1px)}
+.email-note{font-size:13px;color:rgba(255,255,255,.5);margin-top:12px}
+
+/* === FOOTER === */
+footer{padding:48px 0 24px;background:var(--gray-900);color:var(--gray-400)}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
+.footer-brand .logo{color:#fff;margin-bottom:12px}
+.footer-brand p{font-size:14px;line-height:1.6;color:var(--gray-400)}
+.footer-col h4{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gray-300);margin-bottom:16px}
+.footer-col a{display:block;font-size:14px;color:var(--gray-400);padding:4px 0;transition:color .15s}
+.footer-col a:hover{color:#fff}
+.footer-bottom{border-top:1px solid var(--gray-700);padding-top:20px;display:flex;justify-content:space-between;font-size:13px;flex-wrap:wrap;gap:12px}
+.footer-bottom a{color:var(--gray-400);transition:color .15s}
+.footer-bottom a:hover{color:#fff}
+
+/* === RESPONSIVE === */
+@media(max-width:768px){
+  .nav-links{display:none}
+  .mobile-toggle{display:flex}
+  .hero-inner{grid-template-columns:1fr;text-align:center;gap:40px}
+  .hero-sub{margin-left:auto;margin-right:auto}
+  .hero-ctas{justify-content:center}
+  .features-grid{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr;gap:16px}
+  .testimonials{grid-template-columns:1fr}
+  .stats-row{gap:32px}
+  .email-form{flex-direction:column}
+  .footer-grid{grid-template-columns:1fr 1fr;gap:32px}
+  .budget-row{flex-wrap:wrap}.budget-meta{text-align:left;min-width:auto}
+}
+@media(max-width:480px){
+  .hero{padding:48px 0 40px}
+  .hero h1{font-size:1.75rem}
+  .footer-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+<div class="container nav-inner">
+  <a href="/" class="logo" aria-label="Budgetin Home">
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#0EA5E9"/>
+      <path d="M10 22V10h4a6 6 0 0 1 0 12H10z" fill="#fff" opacity=".9"/>
+      <circle cx="21" cy="16" r="3.5" fill="#fff" opacity=".6"/>
+    </svg>
+    Budgetin
+  </a>
+  <div class="nav-links">
+    <a href="#fitur">Fitur</a>
+    <a href="#cara-kerja">Cara Kerja</a>
+    <a href="#demo">Demo Budget</a>
+    <a href="#daftar" class="nav-cta">Mulai Gratis</a>
+  </div>
+  <button class="mobile-toggle" aria-label="Menu"><span></span><span></span><span></span></button>
+</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+<div class="container hero-inner">
+  <div>
+    <h1>Atur Keuanganmu<br>dari Nol, <span>Tanpa Ribet.</span></h1>
+    <p class="hero-sub">Satu tempat untuk catat pemasukan, pengeluaran, dan transfer — plus bandingin budget vs realisasi tiap bulan. Gratis, simpel, cocok buat kamu yang baru mulai.</p>
+    <div class="hero-ctas">
+      <a href="#daftar" class="btn btn-primary">Mulai Gratis Sekarang</a>
+      <a href="#fitur" class="btn btn-outline">Lihat Fitur</a>
+    </div>
+    <p class="hero-note">Tanpa kartu kredit. Tanpa komitmen.</p>
+  </div>
+  <div class="hero-visual">
+    <div class="hero-card">
+      <h4>Cashflow Bulan Ini</h4>
+      <div class="hero-bar">
+        <div class="hero-bar-item"><div class="bar" style="height:90%;background:var(--green-500)"></div><span>Masuk</span></div>
+        <div class="hero-bar-item"><div class="bar" style="height:60%;background:var(--red-500)"></div><span>Keluar</span></div>
+        <div class="hero-bar-item"><div class="bar" style="height:30%;background:var(--blue-500)"></div><span>Transfer</span></div>
+      </div>
+      <div class="hero-summary">
+        <div><div class="label">Pemasukan</div><div class="val val-green">+7,5jt</div></div>
+        <div><div class="label">Pengeluaran</div><div class="val val-red">-4,2jt</div></div>
+        <div><div class="label">Selisih</div><div class="val val-green">+3,3jt</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="fitur">
+<div class="container">
+  <div style="text-align:center">
+    <p class="section-label">Fitur Utama</p>
+    <h2 class="section-title">Semua yang Kamu Butuhkan<br>untuk Mulai Atur Uang</h2>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon icon-expense">↓</div>
+      <h3>Catat Pengeluaran</h3>
+      <p>Tahu ke mana uangmu pergi itu langkah pertama. Catat per kategori — makan, transport, hiburan — dan lihat ringkasannya per hari, minggu, atau bulan.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-income">↑</div>
+      <h3>Catat Pemasukan</h3>
+      <p>Gaji, freelance, passive income — semua dicatat di satu tempat. Pantau dari mana aja uang masuk dan seberapa stabil pemasukanmu.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-transfer">⇄</div>
+      <h3>Transfer Antar Akun</h3>
+      <p>Pindah uang dari BCA ke GoPay? Bukan pengeluaran. Transfer dicatat terpisah — saldo pindah, total uangmu tetap sama.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon icon-budget">◎</div>
+      <h3>Budget vs Realisasi</h3>
+      <p>Set budget per kategori tiap bulan. Lihat otomatis: udah habis berapa, sisa berapa, dan statusnya — aman, hampir limit, atau kebobolan.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="cara-kerja">
+<div class="container" style="text-align:center">
+  <p class="section-label">Cara Kerja</p>
+  <h2 class="section-title">Mulai dalam 3 Langkah</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Daftar Gratis</h3>
+      <p>Buat akun dalam 30 detik. Cukup email dan password — gak perlu data macam-macam.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Catat Transaksimu</h3>
+      <p>Masukin pemasukan, pengeluaran, atau transfer. Pilih kategori, masukin jumlah, selesai.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Pantau &amp; Kontrol</h3>
+      <p>Lihat dashboard: berapa yang masuk, berapa yang keluar, budget masih aman atau kebobolan.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- BUDGET DEMO WIDGET -->
+<section class="budget-demo" id="demo">
+<div class="container" style="text-align:center">
+  <p class="section-label">Demo Interaktif</p>
+  <h2 class="section-title">Budget vs Realisasi — Maret 2026</h2>
+  <p class="section-desc" style="margin:0 auto">Lihat langsung gimana fitur budget tracking bekerja. Data di bawah adalah contoh — nanti kamu bisa isi sendiri.</p>
+  <div class="budget-widget" id="budgetWidget">
+    <h3>Status Budget Bulan Ini</h3>
+    <p class="subtitle">Hanya menghitung kategori pengeluaran (bukan pemasukan atau transfer)</p>
+    <!-- JS will render budget rows here -->
+  </div>
+</div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<section class="proof">
+<div class="container" style="text-align:center">
+  <p class="section-label">Testimoni</p>
+  <h2 class="section-title">Dipercaya Ribuan Anak Muda Indonesia</h2>
+  <div class="testimonials">
+    <div class="testimonial">
+      <p>"Dulu gajian langsung habis gak jelas. Sekarang aku tahu persis ke mana aja uangku pergi."</p>
+      <div class="author">Rina, 26</div>
+      <div class="role">Marketing Staff, Jakarta</div>
+    </div>
+    <div class="testimonial">
+      <p>"Fitur budget vs realisasi bikin aku sadar kalau pengeluaran makan di luar ternyata over budget tiap bulan."</p>
+      <div class="author">Dimas, 29</div>
+      <div class="role">Software Engineer, Bandung</div>
+    </div>
+    <div class="testimonial">
+      <p>"Akhirnya nemu app yang ngerti kalau transfer GoPay itu bukan pengeluaran. Laporan jadi bersih."</p>
+      <div class="author">Sari, 24</div>
+      <div class="role">Freelance Designer, Surabaya</div>
+    </div>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><div class="num">10.000+</div><div class="label">Pengguna Aktif</div></div>
+    <div class="stat"><div class="num">500.000+</div><div class="label">Transaksi Dicatat</div></div>
+    <div class="stat"><div class="num">4.8 / 5.0</div><div class="label">Rating Kepuasan</div></div>
+  </div>
+</div>
+</section>
+
+<!-- EMAIL CAPTURE CTA -->
+<section class="email-cta" id="daftar">
+<div class="container">
+  <p class="section-label">Mulai Sekarang</p>
+  <h2 class="section-title">Mulai Atur Keuanganmu Hari Ini</h2>
+  <p class="section-desc">Gak perlu jadi ahli finansial. Gak perlu modal besar. Yang penting mulai dulu — dan kita bantu dari langkah pertama.</p>
+  <form class="email-form" onsubmit="return false">
+    <input type="email" placeholder="Masukkan emailmu..." aria-label="Alamat email" required>
+    <button type="submit">Daftar Gratis</button>
+  </form>
+  <p class="email-note">Gratis selamanya untuk fitur dasar. Tanpa spam.</p>
+</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+<div class="container">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0EA5E9"/><path d="M10 22V10h4a6 6 0 0 1 0 12H10z" fill="#fff" opacity=".9"/><circle cx="21" cy="16" r="3.5" fill="#fff" opacity=".6"/></svg>
+        Budgetin
+      </div>
+      <p>Bantu kamu mulai financial planning dari nol, tanpa ribet. Dibuat untuk anak muda Indonesia.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Produk</h4>
+      <a href="#">Dashboard</a><a href="#">Transaksi</a><a href="#">Anggaran</a><a href="#">Laporan</a>
+    </div>
+    <div class="footer-col">
+      <h4>Perusahaan</h4>
+      <a href="#">Tentang Kami</a><a href="#">Blog</a><a href="#">Karir</a><a href="#">Kontak</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Kebijakan Privasi</a><a href="#">Syarat &amp; Ketentuan</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>&copy; 2026 Budgetin. Dibuat dengan cinta di Jakarta.</span>
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+  </div>
+</div>
+</footer>
+
+<!-- BUDGET WIDGET JS — only JS on the page, for the interactive demo -->
+<script>
+(function(){
+  // Budget data: category, icon, bg color, budget amount, actual amount
+  var data = [
+    { cat: "Makan & Minum",   icon: "🍽", bg: "#fef2f2", budget: 1500000, actual: 1280000 },
+    { cat: "Transportasi",    icon: "🚗", bg: "#eff6ff", budget: 800000,  actual: 620000  },
+    { cat: "Hiburan",         icon: "🎮", bg: "#faf5ff", budget: 500000,  actual: 580000  },
+    { cat: "Belanja",         icon: "🛒", bg: "#fffbeb", budget: 600000,  actual: 375000  },
+    { cat: "Tagihan & Utilitas", icon: "⚡", bg: "#f0fdf4", budget: 1000000, actual: 950000 },
+    { cat: "Kopi & Jajan",    icon: "☕", bg: "#fff7ed", budget: 300000,  actual: 445000  }
+  ];
+
+  function fmt(n) {
+    return "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
+  function getStatus(pct) {
+    if (pct <= 75) return { label: "Aman", cls: "safe" };
+    if (pct <= 100) return { label: "Hampir Limit", cls: "warn" };
+    return { label: "Over Budget", cls: "over" };
+  }
+
+  var widget = document.getElementById("budgetWidget");
+  var html = '<h3>Status Budget Bulan Ini</h3>';
+  html += '<p class="subtitle">Hanya menghitung kategori pengeluaran (bukan pemasukan atau transfer)</p>';
+
+  for (var i = 0; i < data.length; i++) {
+    var d = data[i];
+    var pct = Math.round((d.actual / d.budget) * 100);
+    var s = getStatus(pct);
+    var remaining = d.budget - d.actual;
+    var barW = Math.min(pct, 100);
+    var remainText = remaining >= 0
+      ? "Sisa: " + fmt(remaining)
+      : "Lebih: " + fmt(Math.abs(remaining));
+
+    html += '<div class="budget-row">';
+    html += '<div class="budget-icon" style="background:' + d.bg + '">' + d.icon + '</div>';
+    html += '<div class="budget-info">';
+    html += '<div class="cat-name">' + d.cat + '</div>';
+    html += '<div class="cat-amounts">' + fmt(d.actual) + ' dari ' + fmt(d.budget) + ' — ' + remainText + '</div>';
+    html += '<div class="budget-bar"><div class="budget-bar-fill bar-' + s.cls + '" style="width:' + barW + '%"></div></div>';
+    html += '</div>';
+    html += '<div class="budget-meta">';
+    html += '<div class="budget-pct pct-' + s.cls + '">' + pct + '%</div>';
+    html += '<span class="budget-status status-' + s.cls + '">' + s.label + '</span>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  widget.innerHTML = html;
+})();
+</script>
+</body>
+</html>

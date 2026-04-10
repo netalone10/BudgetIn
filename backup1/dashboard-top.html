@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Budgetin — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sky-500:#0ea5e9;--sky-600:#0EA5E9;--sky-700:#0284c7;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-800:#1f2937;--gray-900:#111827;
+  --green-50:#f0fdf4;--green-500:#22c55e;--green-600:#16a34a;--green-700:#15803d;
+  --red-50:#fef2f2;--red-500:#ef4444;--red-600:#dc2626;
+  --amber-50:#fffbeb;--amber-500:#f59e0b;--amber-600:#d97706;--amber-700:#b45309;
+  --font:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+  --sidebar-w:240px;--radius:12px;
+}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:var(--font);color:var(--gray-800);background:var(--gray-50);line-height:1.6;font-size:15px;min-height:100vh}
+
+/* ── Shell layout (from app-shell) ── */
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sidebar-w);background:#fff;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:40}
+.main{flex:1;margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+.main-content{flex:1;padding:32px;overflow-y:auto}
+.sidebar-header{padding:24px 20px 20px;display:flex;align-items:center;gap:10px;font-size:20px;font-weight:800;color:var(--sky-700)}
+.sidebar-nav{flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:500;color:var(--gray-600);text-decoration:none;transition:all .15s}
+.nav-item:hover{background:var(--gray-100);color:var(--gray-900)}
+.nav-item.active{background:#e0f2fe;color:var(--sky-700);font-weight:600}
+.nav-item svg{width:20px;height:20px;flex-shrink:0}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--gray-200);display:flex;align-items:center;gap:12px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--sky-500);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:13px;font-weight:600;color:var(--gray-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:12px;color:var(--gray-400)}
+.btn-logout{background:none;border:none;cursor:pointer;color:var(--gray-400);padding:4px;border-radius:6px;display:flex;align-items:center;transition:color .15s}
+.btn-logout:hover{color:#ef4444}
+.topbar{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:#fff;border-bottom:1px solid var(--gray-200);align-items:center;padding:0 16px;z-index:50}
+.btn-hamburger{background:none;border:none;cursor:pointer;color:var(--gray-800);display:flex;align-items:center;padding:4px}
+.topbar-title{flex:1;text-align:center;font-size:16px;font-weight:700;color:var(--sky-700)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:35}
+.bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--gray-200);z-index:40}
+.bottom-nav-inner{display:flex;justify-content:space-around;padding:6px 0 env(safe-area-inset-bottom,8px)}
+.bnav-item{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:500;color:var(--gray-400);text-decoration:none;padding:4px 8px;transition:color .15s}
+.bnav-item.active{color:var(--sky-600)}
+.bnav-item svg{width:22px;height:22px}
+
+/* ── Dashboard widgets ── */
+.page-title{font-size:22px;font-weight:800;color:var(--gray-900);margin-bottom:24px}
+.widgets{display:flex;flex-direction:column;gap:20px}
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--gray-200);padding:24px}
+.card-label{font-size:13px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+
+/* Net Worth */
+.nw-total{font-size:32px;font-weight:800;color:var(--gray-900);line-height:1.2}
+.nw-badge{display:inline-flex;align-items:center;gap:4px;background:var(--green-50);color:var(--green-700);font-size:13px;font-weight:600;padding:4px 10px;border-radius:20px;margin-top:8px}
+.nw-accounts{display:flex;gap:24px;margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-100);flex-wrap:wrap}
+.nw-acc{display:flex;flex-direction:column;gap:2px}
+.nw-acc-name{font-size:12px;color:var(--gray-400);font-weight:500}
+.nw-acc-val{font-size:15px;font-weight:700;color:var(--gray-800)}
+
+/* Cashflow */
+.cf-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.cf-item{display:flex;align-items:center;gap:10px}
+.cf-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cf-icon.green{background:var(--green-50);color:var(--green-600)}
+.cf-icon.red{background:var(--red-50);color:var(--red-600)}
+.cf-label{font-size:13px;color:var(--gray-500);font-weight:500}
+.cf-val{font-size:20px;font-weight:700}
+.cf-val.green{color:var(--green-600)}
+.cf-val.red{color:var(--red-600)}
+.cf-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:16px;background:var(--gray-100)}
+.cf-bar-in{background:var(--green-500);border-radius:4px 0 0 4px}
+.cf-bar-out{background:var(--red-500);border-radius:0 4px 4px 0}
+.cf-footer{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;flex-wrap:wrap;gap:4px}
+.cf-diff{font-size:15px;font-weight:700;color:var(--green-600)}
+.cf-note{font-size:12px;color:var(--gray-400);font-style:italic}
+
+/* Quick Actions */
+.qa-row{display:flex;gap:12px}
+.qa-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 12px;border-radius:10px;border:1.5px solid;background:#fff;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.qa-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.qa-btn svg{width:18px;height:18px;flex-shrink:0}
+.qa-btn.expense{color:var(--red-600);border-color:var(--red-500)}
+.qa-btn.expense:hover{background:var(--red-50)}
+.qa-btn.income{color:var(--green-600);border-color:var(--green-500)}
+.qa-btn.income:hover{background:var(--green-50)}
+.qa-btn.transfer{color:var(--sky-700);border-color:var(--sky-500)}
+.qa-btn.transfer:hover{background:#e0f2fe}
+
+/* Budget Overview */
+.bud-list{display:flex;flex-direction:column;gap:14px}
+.bud-row{display:flex;flex-direction:column;gap:4px}
+.bud-head{display:flex;justify-content:space-between;align-items:center}
+.bud-name{font-size:14px;font-weight:600;color:var(--gray-800)}
+.bud-badge{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
+.bud-badge.green{background:var(--green-50);color:var(--green-700)}
+.bud-badge.amber{background:var(--amber-50);color:var(--amber-700)}
+.bud-badge.red{background:var(--red-50);color:var(--red-600)}
+.bud-info{font-size:12px;color:var(--gray-400)}
+.bud-bar{height:6px;border-radius:3px;background:var(--gray-100);overflow:hidden}
+.bud-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.bud-bar-fill.green{background:var(--green-500)}
+.bud-bar-fill.amber{background:var(--amber-500)}
+.bud-bar-fill.red{background:var(--red-500)}
+.card-footer{margin-top:16px;padding-top:12px;border-top:1px solid var(--gray-100)}
+.card-link{font-size:13px;font-weight:600;color:var(--sky-600);text-decoration:none}
+.card-link:hover{color:var(--sky-700);text-decoration:underline}
+
+/* Transaksi Terakhir */
+.tx-list{display:flex;flex-direction:column}
+.tx-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--gray-100)}
+.tx-row:last-child{border-bottom:none}
+.tx-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.tx-icon.out{background:var(--red-50);color:var(--red-600)}
+.tx-icon.in{background:var(--green-50);color:var(--green-600)}
+.tx-icon.tf{background:#e0f2fe;color:var(--sky-700)}
+.tx-detail{flex:1;min-width:0}
+.tx-name{font-size:14px;font-weight:600;color:var(--gray-900)}
+.tx-cat{font-size:12px;color:var(--gray-400)}
+.tx-right{text-align:right;flex-shrink:0}
+.tx-amount{font-size:14px;font-weight:700}
+.tx-amount.out{color:var(--red-600)}
+.tx-amount.in{color:var(--green-600)}
+.tx-amount.tf{color:var(--sky-700)}
+.tx-date{font-size:11px;color:var(--gray-400)}
+
+/* Goal Progress */
+.goal-card{display:flex;align-items:center;gap:24px}
+.goal-ring{flex-shrink:0}
+.goal-info{flex:1;min-width:0}
+.goal-title{font-size:16px;font-weight:700;color:var(--gray-900)}
+.goal-amount{font-size:13px;color:var(--gray-500);margin-top:2px}
+.goal-amount strong{color:var(--sky-700)}
+.goal-meta{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.goal-meta-item{font-size:12px;color:var(--gray-400)}
+.goal-meta-item strong{color:var(--gray-600)}
+
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);transition:transform .25s ease}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .topbar{display:flex}
+  .main-content{padding:72px 16px 80px}
+  .bottom-nav{display:block}
+  .overlay.show{display:block}
+  .nw-total{font-size:26px}
+  .cf-cols{grid-template-columns:1fr}
+  .qa-row{flex-direction:column}
+  .goal-card{flex-direction:column;text-align:center}
+  .goal-meta{justify-content:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+      Budgetin
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+      <a href="#" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Transaksi</a>
+      <a href="#" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Anggaran</a>
+      <a href="#" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Target</a>
+      <a href="#" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Laporan</a>
+      <a href="#" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 4v16"/><path d="M2 10h20"/></svg>Akun Saya</a>
+      <a href="#" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Pengaturan</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">BS</div>
+      <div class="user-info"><div class="user-name">Budi Santoso</div><div class="user-role">Personal</div></div>
+      <button class="btn-logout" title="Keluar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    </div>
+  </aside>
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="btn-hamburger" onclick="toggleSidebar()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <span class="topbar-title">Dashboard</span>
+      <div style="width:32px"></div>
+    </header>
+    <div class="main-content">
+      <h1 class="page-title">Dashboard</h1>
+      <div class="widgets">
+        <!-- Widget 1: Net Worth -->
+        <div class="card">
+          <div class="card-label">Total Kekayaan Bersih</div>
+          <div class="nw-total">Rp 24.500.000</div>
+          <div class="nw-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            +Rp 1.200.000 dari bulan lalu
+          </div>
+          <div class="nw-accounts">
+            <div class="nw-acc"><span class="nw-acc-name">BCA</span><span class="nw-acc-val">Rp 15.000.000</span></div>
+            <div class="nw-acc"><span class="nw-acc-name">GoPay</span><span class="nw-acc-val">Rp 2.500.000</span></div>
+            <div class="nw-acc"><span class="nw-acc-name">Jenius</span><span class="nw-acc-val">Rp 7.000.000</span></div>
+          </div>
+        </div>
+        <!-- Widget 2: Cashflow -->
+        <div class="card">
+          <div class="card-label">Cashflow Bulan Ini</div>
+          <div class="cf-cols">
+            <div class="cf-item">
+              <div class="cf-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+              <div><div class="cf-label">Pemasukan</div><div class="cf-val green">Rp 8.500.000</div></div>
+            </div>
+            <div class="cf-item">
+              <div class="cf-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+              <div><div class="cf-label">Pengeluaran</div><div class="cf-val red">Rp 5.200.000</div></div>
+            </div>
+          </div>
+          <div class="cf-bar"><div class="cf-bar-in" style="width:62%"></div><div class="cf-bar-out" style="width:38%"></div></div>
+          <div class="cf-footer">
+            <span class="cf-diff">Selisih +Rp 3.300.000</span>
+            <span class="cf-note">Transfer tidak termasuk dalam cashflow</span>
+          </div>
+        </div>
+        <!-- Widget 3: Quick Actions -->
+        <div class="card">
+          <div class="card-label">Aksi Cepat</div>
+          <div class="qa-row">
+            <button class="qa-btn expense">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Pengeluaran
+            </button>
+            <button class="qa-btn income">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Pemasukan
+            </button>
+            <button class="qa-btn transfer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              Transfer
+            </button>
+          </div>
+        </div>
+        <!-- Widget 4: Budget Overview -->
+        <div class="card">
+          <div class="card-label">Anggaran Bulan Ini</div>
+          <div class="bud-list">
+            <div class="bud-row">
+              <div class="bud-head"><span class="bud-name">Makan</span><span class="bud-badge amber">Hampir Limit</span></div>
+              <div class="bud-info">Rp 1.200.000 / Rp 1.500.000 (80%)</div>
+              <div class="bud-bar"><div class="bud-bar-fill amber" style="width:80%"></div></div>
+            </div>
+            <div class="bud-row">
+              <div class="bud-head"><span class="bud-name">Transport</span><span class="bud-badge green">Aman</span></div>
+              <div class="bud-info">Rp 450.000 / Rp 600.000 (75%)</div>
+              <div class="bud-bar"><div class="bud-bar-fill green" style="width:75%"></div></div>
+            </div>
+            <div class="bud-row">
+              <div class="bud-head"><span class="bud-name">Hiburan</span><span class="bud-badge red">Over Budget</span></div>
+              <div class="bud-info">Rp 320.000 / Rp 300.000 (107%)</div>
+              <div class="bud-bar"><div class="bud-bar-fill red" style="width:100%"></div></div>
+            </div>
+            <div class="bud-row">
+              <div class="bud-head"><span class="bud-name">Belanja</span><span class="bud-badge amber">Hampir Limit</span></div>
+              <div class="bud-info">Rp 800.000 / Rp 1.000.000 (80%)</div>
+              <div class="bud-bar"><div class="bud-bar-fill amber" style="width:80%"></div></div>
+            </div>
+            <div class="bud-row">
+              <div class="bud-head"><span class="bud-name">Tagihan</span><span class="bud-badge amber">Pas</span></div>
+              <div class="bud-info">Rp 500.000 / Rp 500.000 (100%)</div>
+              <div class="bud-bar"><div class="bud-bar-fill amber" style="width:100%"></div></div>
+            </div>
+          </div>
+          <div class="card-footer"><a href="/anggaran" class="card-link">Lihat semua &rarr;</a></div>
+        </div>
+        <!-- Widget 5: Transaksi Terakhir -->
+        <div class="card">
+          <div class="card-label">Transaksi Terakhir</div>
+          <div class="tx-list">
+            <div class="tx-row">
+              <div class="tx-icon out">&darr;</div>
+              <div class="tx-detail"><div class="tx-name">Grabfood — Makan Siang</div><div class="tx-cat">Makan</div></div>
+              <div class="tx-right"><div class="tx-amount out">-Rp 45.000</div><div class="tx-date">Hari ini</div></div>
+            </div>
+            <div class="tx-row">
+              <div class="tx-icon in">&uarr;</div>
+              <div class="tx-detail"><div class="tx-name">Gaji Maret</div><div class="tx-cat">Pemasukan</div></div>
+              <div class="tx-right"><div class="tx-amount in">+Rp 8.500.000</div><div class="tx-date">1 Mar</div></div>
+            </div>
+            <div class="tx-row">
+              <div class="tx-icon tf">&hArr;</div>
+              <div class="tx-detail"><div class="tx-name">BCA &rarr; GoPay</div><div class="tx-cat">Transfer</div></div>
+              <div class="tx-right"><div class="tx-amount tf">Rp 500.000</div><div class="tx-date">28 Feb</div></div>
+            </div>
+            <div class="tx-row">
+              <div class="tx-icon out">&darr;</div>
+              <div class="tx-detail"><div class="tx-name">Spotify Premium</div><div class="tx-cat">Hiburan</div></div>
+              <div class="tx-right"><div class="tx-amount out">-Rp 54.990</div><div class="tx-date">27 Feb</div></div>
+            </div>
+            <div class="tx-row">
+              <div class="tx-icon out">&darr;</div>
+              <div class="tx-detail"><div class="tx-name">PLN Token Listrik</div><div class="tx-cat">Tagihan</div></div>
+              <div class="tx-right"><div class="tx-amount out">-Rp 350.000</div><div class="tx-date">25 Feb</div></div>
+            </div>
+          </div>
+          <div class="card-footer"><a href="/transaksi" class="card-link">Semua transaksi &rarr;</a></div>
+        </div>
+        <!-- Widget 6: Goal Progress -->
+        <div class="card">
+          <div class="card-label">Target Tabungan</div>
+          <div class="goal-card">
+            <svg class="goal-ring" width="90" height="90" viewBox="0 0 90 90">
+              <circle cx="45" cy="45" r="38" fill="none" stroke="#f3f4f6" stroke-width="7"/>
+              <circle cx="45" cy="45" r="38" fill="none" stroke="#0ea5e9" stroke-width="7" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="187" transform="rotate(-90 45 45)"/>
+              <text x="45" y="43" text-anchor="middle" font-size="15" font-weight="800" fill="#111827" font-family="Plus Jakarta Sans,sans-serif">21,7%</text>
+              <text x="45" y="56" text-anchor="middle" font-size="9" fill="#9ca3af" font-family="Plus Jakarta Sans,sans-serif">tercapai</text>
+            </svg>
+            <div class="goal-info">
+              <div class="goal-title">Nikah 2026</div>
+              <div class="goal-amount"><strong>Rp 13.000.000</strong> / Rp 60.000.000</div>
+              <div class="goal-meta">
+                <span class="goal-meta-item">Sisa: <strong>Rp 47.000.000</strong></span>
+                <span class="goal-meta-item">Estimasi: <strong>27 bulan lagi</strong></span>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer"><a href="/target" class="card-link">Lihat semua target &rarr;</a></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<nav class="bottom-nav"><div class="bottom-nav-inner">
+  <a href="#" class="bnav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+  <a href="#" class="bnav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Transaksi</a>
+  <a href="#" class="bnav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Target</a>
+  <a href="#" class="bnav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Laporan</a>
+  <a href="#" class="bnav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 4v16"/><path d="M2 10h20"/></svg>Akun</a>
+</div></nav>
+<script>
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show')}
+</script>
+</body>
+</html>
