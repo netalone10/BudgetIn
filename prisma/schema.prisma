@@ -1,0 +1,53 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")   // pgbouncer (port 6543) — untuk runtime
+  directUrl = env("DIRECT_URL")     // direct (port 5432) — untuk prisma db push/migrate
+}
+
+model User {
+  id           String     @id @default(uuid())
+  googleId     String     @unique @map("google_id")
+  email        String     @unique
+  name         String
+  image        String?
+  accessToken  String?    @map("access_token")
+  refreshToken String?    @map("refresh_token")
+  tokenExpiry  DateTime?  @map("token_expiry")
+  sheetsId     String?    @map("sheets_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  budgets    Budget[]
+  categories Category[]
+
+  @@map("users")
+}
+
+model Category {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  name   String // "Makan", "Transport", dll — auto dari AI, Title Case
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgets Budget[]
+
+  @@unique([userId, name])
+  @@map("categories")
+}
+
+model Budget {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  categoryId String   @map("category_id")
+  amount     Float    // nominal budget per bulan dalam Rupiah
+  month      String   // format: "2026-04" (YYYY-MM)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month])
+  @@map("budgets")
+}

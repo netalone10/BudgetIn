@@ -1,0 +1,104 @@
+import Groq from "groq-sdk";
+import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+const TIMEZONE = "Asia/Jakarta";
+const MODEL = "llama-3.1-8b-instant";
+
+export interface ParsedRecord {
+  intent: "transaksi" | "budget_setting" | "laporan" | "unknown";
+
+  // intent: transaksi
+  amount?: number;
+  category?: string;
+  note?: string;
+  date?: string; // YYYY-MM-DD
+
+  // intent: budget_setting
+  budgetCategory?: string;
+  budgetAmount?: number;
+
+  // intent: laporan
+  period?: string; // "minggu ini" | "bulan ini" | "bulan lalu" | "YYYY-MM"
+  reportType?: "summary" | "per_category" | "analisis";
+
+  // intent: unknown
+  clarification?: string;
+}
+
+const SYSTEM_PROMPT = `Kamu adalah asisten pencatat keuangan. Tugasmu adalah mengklasifikasikan input user dan mengekstrak data yang relevan.
+
+RULES:
+1. Tentukan intent dari input:
+   - "transaksi": user mencatat pengeluaran atau pemasukan (ada nominal + konteks belanja/bayar/beli/dll)
+   - "budget_setting": user ingin set atau ubah batas budget per kategori (ada kata: budget/limit/alokasi)
+   - "laporan": user meminta rekap, ringkasan, atau analisis pengeluaran (ada kata: rekap/laporan/lihat/berapa/analisis)
+   - "unknown": tidak bisa ditentukan, butuh klarifikasi
+
+2. Untuk transaksi, infer kategori dari konteks:
+   - makan/minum/warung/resto/kafe/warteg/nasi/bakso/mie/kopi → "Makan"
+   - grab/gojek/transjakarta/commuter/ojek/bensin/parkir/toll/taksi → "Transport"
+   - netflix/spotify/game/bioskop/hiburan/konser/streaming → "Hiburan"
+   - listrik/air/internet/kos/sewa/iuran/wifi/pln → "Tagihan"
+   - obat/dokter/apotek/rumah sakit/klinik/vitamin → "Kesehatan"
+   - lainnya → gunakan kategori paling relevan dalam Title Case
+
+3. Konversi nominal: "35rb" → 35000, "1.5jt" → 1500000, "500ribu" → 500000, "2k" → 2000, "1.500.000" → 1500000
+
+4. Resolve tanggal relatif ke format YYYY-MM-DD timezone Asia/Jakarta:
+   - "kemarin" → yesterday
+   - "tadi pagi" / "tadi" / "barusan" → today
+   - "minggu lalu" → 7 days ago
+   - default (tidak disebutkan) → today
+
+5. Output HANYA JSON valid, tanpa teks tambahan, tanpa markdown backticks.
+
+6. Jika intent = "unknown", isi field clarification dengan pertanyaan singkat dalam bahasa yang sama dengan input user.
+
+7. FORMAT JSON WAJIB per intent:
+   - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","note":"STRING","date":"YYYY-MM-DD"}
+   - budget_setting: {"intent":"budget_setting","budgetCategory":"STRING","budgetAmount":NUMBER}
+   - laporan: {"intent":"laporan","period":"STRING","reportType":"summary"}
+   - unknown: {"intent":"unknown","clarification":"STRING"}
+
+   PENTING: untuk budget_setting WAJIB gunakan key "budgetCategory" dan "budgetAmount" (bukan "category"/"amount").`;
+
+export async function classifyIntent(
+  prompt: string
+): Promise<ParsedRecord> {
+  const jakartaNow = toZonedTime(new Date(), TIMEZONE);
+  const today = format(jakartaNow, "yyyy-MM-dd");
+  const currentMonth = format(jakartaNow, "yyyy-MM");
+
+  const userMessage = `Tanggal hari ini: ${today} (bulan: ${currentMonth})\n\nInput user: "${prompt}"`;
+
+  const completion = await groq.chat.completions.create({
+    model: MODEL,
+    temperature: 0.1,
+    response_format: { type: "json_object" },
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userMessage },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+
+  try {
+    const parsed = JSON.parse(raw) as ParsedRecord;
+
+    // Default date ke hari ini kalau tidak ada
+    if (parsed.intent === "transaksi" && !parsed.date) {
+      parsed.date = today;
+    }
+
+    return parsed;
+  } catch {
+    return {
+      intent: "unknown",
+      clarification: "Maaf, tidak bisa memproses input. Coba ulangi dengan lebih jelas.",
+    };
+  }
+}
