@@ -76,10 +76,8 @@ export async function POST(
       data: { password: hashed },
     });
 
-    // Kirim email (fire and forget)
-    sendPasswordResetEmail(user.email, user.name, newPassword).catch((err) =>
-      console.error("[admin/reset-password] email error:", err)
-    );
+    // Kirim email — await supaya error ketahuan
+    await sendPasswordResetEmail(user.email, user.name, newPassword);
 
     return NextResponse.json({ success: true });
   } catch (err) {
