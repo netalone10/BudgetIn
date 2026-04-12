@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Loader2, Users, TrendingUp, Calendar, ShieldCheck, Mail, Chrome } from "lucide-react";
+import {
+  Loader2, Users, TrendingUp, Calendar, ShieldCheck,
+  Mail, Chrome, Trash2, KeyRound, AlertTriangle, X, CheckCircle2,
+} from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Stats {
@@ -28,6 +32,8 @@ interface UserRow {
   createdAt: string;
 }
 
+type DialogType = "delete" | "reset-password" | null;
+
 function fmt(n: number) {
   return new Intl.NumberFormat("id-ID").format(n);
 }
@@ -50,6 +56,11 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [forbidden, setForbidden] = useState(false);
 
+  // Dialog state
+  const [dialog, setDialog] = useState<{ type: DialogType; user: UserRow | null }>({ type: null, user: null });
+  const [actionLoading, setActionLoading] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
   useEffect(() => {
     if (status === "unauthenticated") redirect("/auth");
   }, [status]);
@@ -68,6 +79,40 @@ export default function AdminPage() {
       })
       .finally(() => setLoading(false));
   }, [status]);
+
+  function showToast(msg: string, ok: boolean) {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  async function handleDelete() {
+    if (!dialog.user) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${dialog.user.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Gagal menghapus.", false); return; }
+      setUsers((prev) => prev.filter((u) => u.id !== dialog.user!.id));
+      showToast(`User "${dialog.user.name}" berhasil dihapus.`, true);
+      setDialog({ type: null, user: null });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!dialog.user) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${dialog.user.id}?action=reset-password`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Gagal reset.", false); return; }
+      showToast(`Password berhasil direset & dikirim ke ${dialog.user.email}.`, true);
+      setDialog({ type: null, user: null });
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   if (status === "loading" || loading) {
     return (
@@ -93,7 +138,7 @@ export default function AdminPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
-      <main className="mx-auto w-full max-w-4xl flex-1 space-y-6 px-4 py-6">
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -133,7 +178,8 @@ export default function AdminPage() {
                   <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground hidden sm:table-cell">Email</th>
                   <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground">Tipe</th>
                   <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground hidden md:table-cell">Budget</th>
-                  <th className="py-2.5 pr-4 text-right text-[11px] font-medium text-muted-foreground">Daftar</th>
+                  <th className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground hidden sm:table-cell">Daftar</th>
+                  <th className="py-2.5 pr-4 text-right text-[11px] font-medium text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -160,8 +206,32 @@ export default function AdminPage() {
                     <td className="py-3 pr-3 hidden md:table-cell">
                       <span className="text-xs text-muted-foreground">{u.budgetCount} budget</span>
                     </td>
-                    <td className="py-3 pr-4 text-right">
+                    <td className="py-3 pr-3 hidden sm:table-cell text-right">
                       <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo(u.createdAt)}</span>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* Reset password — hanya email user */}
+                        {u.type === "email" && (
+                          <button
+                            onClick={() => setDialog({ type: "reset-password", user: u })}
+                            title="Reset password"
+                            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          >
+                            <KeyRound className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {/* Delete — semua user kecuali diri sendiri */}
+                        {u.id !== session?.userId && (
+                          <button
+                            onClick={() => setDialog({ type: "delete", user: u })}
+                            title="Hapus user"
+                            className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -171,6 +241,83 @@ export default function AdminPage() {
         </div>
 
       </main>
+
+      {/* ── Confirm Dialog ── */}
+      {dialog.type && dialog.user && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-xl border bg-card p-6 shadow-xl space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "rounded-full p-2",
+                  dialog.type === "delete" ? "bg-destructive/10" : "bg-yellow-500/10"
+                )}>
+                  {dialog.type === "delete"
+                    ? <AlertTriangle className="h-5 w-5 text-destructive" />
+                    : <KeyRound className="h-5 w-5 text-yellow-500" />
+                  }
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">
+                    {dialog.type === "delete" ? "Hapus User" : "Reset Password"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">{dialog.user.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setDialog({ type: null, user: null })} className="text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              {dialog.type === "delete"
+                ? <>Hapus <span className="font-medium text-foreground">{dialog.user.email}</span> beserta semua transaksi, budget, dan kategorinya? <span className="text-destructive font-medium">Tidak bisa dibatalkan.</span></>
+                : <>Generate password baru untuk <span className="font-medium text-foreground">{dialog.user.email}</span> dan kirim via email?</>
+              }
+            </p>
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDialog({ type: null, user: null })}
+                disabled={actionLoading}
+              >
+                Batal
+              </Button>
+              <Button
+                className={cn(
+                  "flex-1",
+                  dialog.type === "delete" && "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                )}
+                onClick={dialog.type === "delete" ? handleDelete : handleResetPassword}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : dialog.type === "delete" ? "Hapus" : "Reset & Kirim Email"
+                }
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toast ── */}
+      {toast && (
+        <div className={cn(
+          "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm shadow-lg",
+          toast.ok
+            ? "border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/80 dark:text-green-400"
+            : "border-destructive/30 bg-destructive/10 text-destructive"
+        )}>
+          {toast.ok
+            ? <CheckCircle2 className="h-4 w-4 shrink-0" />
+            : <AlertTriangle className="h-4 w-4 shrink-0" />
+          }
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
