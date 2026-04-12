@@ -9,7 +9,10 @@ import TransactionCard, { Transaction } from "@/components/TransactionCard";
 import ReportView from "@/components/ReportView";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
+import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 
 type ResponseData =
   | { intent: "transaksi"; transaction: Transaction; message: string }
@@ -34,6 +37,16 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<string[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Hitung pengeluaran & pemasukan hari ini (WIB)
+  const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
+  const todayStats = useMemo(() => {
+    const todayTxs = transactions.filter((t) => t.date === todayStr);
+    const expense = todayTxs.filter((t) => t.type !== "income").reduce((s, t) => s + t.amount, 0);
+    const income = todayTxs.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const count = todayTxs.filter((t) => t.type !== "income").length;
+    return { expense, income, count };
+  }, [transactions, todayStr]);
 
   useEffect(() => {
     if (status === "unauthenticated") redirect("/");
@@ -168,6 +181,57 @@ export default function DashboardPage() {
             Ketik transaksi, set budget, atau minta laporan.
           </p>
         </div>
+
+        {/* Today's Summary */}
+        {!txLoading && (
+          <div className="flex gap-3">
+            {/* Pengeluaran hari ini */}
+            <div
+              className="flex-1 rounded-xl px-4 py-3 flex items-center justify-between"
+              style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
+            >
+              <div>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                    Keluar hari ini
+                  </span>
+                </div>
+                <p className="text-lg font-semibold tabular-nums" style={{ color: "var(--foreground)" }}>
+                  {todayStats.expense > 0
+                    ? `Rp ${new Intl.NumberFormat("id-ID").format(todayStats.expense)}`
+                    : <span style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Belum ada</span>
+                  }
+                </p>
+                {todayStats.count > 0 && (
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                    {todayStats.count} transaksi
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Pemasukan hari ini — hanya tampil kalau ada */}
+            {todayStats.income > 0 && (
+              <div
+                className="flex-1 rounded-xl px-4 py-3 flex items-center justify-between"
+                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
+              >
+                <div>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                    <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                      Masuk hari ini
+                    </span>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums text-green-600 dark:text-green-400">
+                    +{new Intl.NumberFormat("id-ID").format(todayStats.income)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Prompt Input */}
         <form onSubmit={handleSubmit} className="space-y-1.5">
