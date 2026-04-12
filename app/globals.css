@@ -13,27 +13,30 @@
 ──────────────────────────────────────────────────────────────────────────── */
 
 @theme inline {
-  /* Fonts */
-  --font-display: "Playfair Display", Georgia, serif;
-  --font-sans:    "Source Sans 3", system-ui, sans-serif;
-  --font-mono:    "IBM Plex Mono", monospace;
-
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-
-  /* Map CSS var tokens to Tailwind color utilities */
-  --color-background:        var(--background);
-  --color-foreground:        var(--foreground);
-  --color-card:              var(--card);
-  --color-card-foreground:   var(--card-foreground);
-  --color-popover:           var(--popover);
-  --color-popover-foreground:var(--popover-foreground);
-  --color-primary:           var(--primary);
-  --color-primary-foreground:var(--primary-foreground);
-  --color-secondary:         var(--secondary);
+  --font-heading: var(--font-playfair);
+  --font-sans: var(--font-source-sans);
+  --font-mono: var(--font-ibm-plex-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted:             var(--muted);
   --color-muted-foreground:  var(--muted-foreground);
@@ -69,180 +72,155 @@
 }
 
 /* ── WCAG AA Notes ───────────────────────────────────────────────────────────
-   foreground (#1A1A1A) on background (#FAFAF8)     : ~18:1 ✅
-   muted-foreground (#6B6B6B) on bg (#FAFAF8)       : ~5.6:1 ✅
-   muted-foreground (#6B6B6B) on muted (#F5F3F0)    : ~5.1:1 ✅
-   accent gold (#B8860B) on white card (#FFF)        : ~4.8:1 ✅
-   primary-foreground (#FFF) on primary (#B8860B)   : ~4.8:1 ✅
+   Serif Design System — Ivory + Burnished Gold palette
+   - foreground (#1A1A1A) on background (#FAFAF8) : ~19:1  ✅
+   - muted-foreground (#6B6B6B) on background     : ~5.5:1 ✅
+   - muted-foreground on muted (#F5F3F0)           : ~5.0:1 ✅
+   - primary (#B8860B) on white                   : ~4.7:1 ✅
+   - primary-foreground (white) on primary gold   : >4.5:1 ✅
+   Dark mode: primary lightens to #D4A84B for contrast
 ──────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Warm ivory surfaces */
-  --background:        #FAFAF8;
-  --foreground:        #1A1A1A;
-  --card:              #FFFFFF;
-  --card-foreground:   #1A1A1A;
-  --popover:           #FFFFFF;
-  --popover-foreground:#1A1A1A;
-
-  /* Burnished gold as primary/accent */
-  --primary:           #B8860B;
-  --primary-foreground:#FFFFFF;
-
-  /* Muted surfaces with warm tones */
-  --secondary:         #F5F3F0;
-  --secondary-foreground:#1A1A1A;
-  --muted:             #F5F3F0;
-  --muted-foreground:  #6B6B6B;
-
-  /* Accent = gold (same as primary for this design system) */
-  --accent:            #F5F3F0;
+  /* Serif System — Warm Ivory + Burnished Gold */
+  --background: #FAFAF8;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --muted: #F5F3F0;
+  --muted-foreground: #6B6B6B;
+  --secondary: #F5F3F0;
+  --secondary-foreground: #1A1A1A;
+  --accent: #F5F3F0;
   --accent-foreground: #1A1A1A;
-
-  /* Semantic */
-  --destructive:       oklch(0.577 0.245 27.325);
-  --border:            #E8E4DF;
-  --input:             #E8E4DF;
-  --ring:              #B8860B;
-
-  /* Chart palette — warm editorial tones */
-  --chart-1: #B8860B;
+  /* Burnished Gold — the single signature accent */
+  --primary: #B8860B;
+  --primary-foreground: #FFFFFF;
+  --border: #E8E4DF;
+  --input: #E8E4DF;
+  --ring: #B8860B;
+  --destructive: oklch(0.577 0.245 27.325);
+  --radius: 0.5rem;
+  /* Charts — warm monochrome scale */
+  --chart-1: #1A1A1A;
   --chart-2: #6B6B6B;
-  --chart-3: #1A1A1A;
+  --chart-3: #B8860B;
   --chart-4: #D4A84B;
   --chart-5: #E8E4DF;
-
-  --radius: 0.5rem;
-
-  /* Gold accent shorthand for custom use */
-  --gold:              #B8860B;
-  --gold-light:        #D4A84B;
-
-  /* Sidebar */
-  --sidebar:                   #F5F3F0;
-  --sidebar-foreground:        #1A1A1A;
-  --sidebar-primary:           #B8860B;
-  --sidebar-primary-foreground:#FFFFFF;
-  --sidebar-accent:            #E8E4DF;
+  --sidebar: #F5F3F0;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #B8860B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FAFAF8;
   --sidebar-accent-foreground: #1A1A1A;
-  --sidebar-border:            #E8E4DF;
-  --sidebar-ring:              #B8860B;
+  --sidebar-border: #E8E4DF;
+  --sidebar-ring: #B8860B;
 }
 
 .dark {
-  --background:        #1A1A18;
-  --foreground:        #F0EDE8;
-  --card:              #242420;
-  --card-foreground:   #F0EDE8;
-  --popover:           #242420;
-  --popover-foreground:#F0EDE8;
-  --primary:           #D4A84B;
-  --primary-foreground:#1A1A1A;
-  --secondary:         #2A2A26;
-  --secondary-foreground:#F0EDE8;
-  --muted:             #2A2A26;
-  --muted-foreground:  #A09890;
-  --accent:            #2A2A26;
-  --accent-foreground: #F0EDE8;
-  --destructive:       oklch(0.704 0.191 22.216);
-  --border:            rgba(240,237,232,0.1);
-  --input:             rgba(240,237,232,0.15);
-  --ring:              #D4A84B;
-  --chart-1: #D4A84B;
-  --chart-2: #A09890;
-  --chart-3: #F0EDE8;
+  --background: #1A1A1A;
+  --foreground: #F5F3F0;
+  --card: #222220;
+  --card-foreground: #F5F3F0;
+  --popover: #222220;
+  --popover-foreground: #F5F3F0;
+  --muted: #2A2A28;
+  --muted-foreground: #A8A8A4;
+  --secondary: #2A2A28;
+  --secondary-foreground: #F5F3F0;
+  --accent: #2A2A28;
+  --accent-foreground: #F5F3F0;
+  /* Lighter gold for dark mode contrast */
+  --primary: #D4A84B;
+  --primary-foreground: #1A1A1A;
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #D4A84B;
+  --destructive: oklch(0.704 0.191 22.216);
+  --chart-1: #F5F3F0;
+  --chart-2: #A8A8A4;
+  --chart-3: #D4A84B;
   --chart-4: #B8860B;
-  --chart-5: #3A3A36;
-  --gold:              #D4A84B;
-  --gold-light:        #E8C87A;
-  --sidebar:                   #242420;
-  --sidebar-foreground:        #F0EDE8;
-  --sidebar-primary:           #D4A84B;
-  --sidebar-primary-foreground:#1A1A1A;
-  --sidebar-accent:            #2A2A26;
-  --sidebar-accent-foreground: #F0EDE8;
-  --sidebar-border:            rgba(240,237,232,0.1);
-  --sidebar-ring:              #D4A84B;
+  --chart-5: #2A2A28;
+  --sidebar: #222220;
+  --sidebar-foreground: #F5F3F0;
+  --sidebar-primary: #D4A84B;
+  --sidebar-primary-foreground: #1A1A1A;
+  --sidebar-accent: #2A2A28;
+  --sidebar-accent-foreground: #F5F3F0;
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: #D4A84B;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-source-sans), "Source Sans 3", system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   html {
+    font-family: var(--font-source-sans), "Source Sans 3", system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     scroll-behavior: smooth;
     hanging-punctuation: first last;
   }
-
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-sans);
-    font-size: 1rem;
-    line-height: 1.75;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-  }
-
+  /* Headings use Playfair Display */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
-    line-height: 1.15;
-    text-wrap: balance;
+    font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
   }
-
-  p, li { text-wrap: pretty; }
-
-  /* Global focus ring using gold accent */
+  small, .text-xs {
+    font-size: 0.75rem;
+  }
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid var(--primary);
     outline-offset: 3px;
     border-radius: 4px;
   }
 
-  /* Minimum font size floor */
-  small, .text-xs { font-size: 0.75rem; }
-
-  /* Smooth transitions on interactive elements */
-  a, button, [role="button"] {
-    transition: color 200ms ease-out,
-                background 200ms ease-out,
-                border-color 200ms ease-out,
-                box-shadow 200ms ease-out,
-                opacity 200ms ease-out;
-  }
-
-  /* Selection color — warm gold tint */
-  ::selection {
-    background: rgba(184, 134, 11, 0.18);
-    color: var(--foreground);
-  }
-}
-
-/* ── Serif-specific utility classes ────────────────────────────────────────── */
-
-/* Small caps label — the signature element */
-.small-caps {
-  font-family: var(--font-mono);
+/* ── Section Label — IBM Plex Mono small caps pattern ──────────────────── */
+.label-serif {
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
   font-size: 0.75rem;
   font-weight: 500;
   letter-spacing: 0.15em;
   text-transform: uppercase;
+  color: var(--primary);
 }
 
-/* Section label with flanking rule lines */
-.section-label {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
+/* ── Color Themes (preserved for settings compatibility) ─────────────────── */
+[data-color="teal"] {
+  --primary: oklch(0.48 0.07 192);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.48 0.07 192);
 }
-.section-label-line {
-  height: 1px;
-  flex: 1;
-  background: var(--border);
+[data-color="teal"].dark {
+  --primary: oklch(0.60 0.07 192);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.60 0.07 192);
+}
+[data-color="blue"] {
+  --primary: oklch(0.546 0.245 262.881);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.546 0.245 262.881);
+}
+[data-color="blue"].dark {
+  --primary: oklch(0.707 0.165 254.624);
+  --primary-foreground: oklch(0.145 0 0);
+  --ring: oklch(0.707 0.165 254.624);
+}
+[data-color="green"] {
+  --primary: oklch(0.527 0.154 150.069);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.527 0.154 150.069);
 }
 .section-label-text {
   font-family: var(--font-mono);
@@ -252,10 +230,10 @@
   text-transform: uppercase;
   color: var(--gold);
 }
-
-/* Display heading — Playfair Display */
-.font-display {
-  font-family: var(--font-display);
+[data-color="purple"] {
+  --primary: oklch(0.558 0.288 302.321);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.558 0.288 302.321);
 }
 
 /* Subtle paper texture overlay */
@@ -268,16 +246,10 @@
   opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-
-/* Scroll-driven fade reveal — no layout shift */
-.fade-in { opacity: 1; }
-@supports (animation-timeline: scroll()) {
-  .fade-in {
-    opacity: 0;
-    animation: serif-fade linear both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 80%;
-  }
+[data-color="rose"] {
+  --primary: oklch(0.586 0.253 17.585);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.586 0.253 17.585);
 }
 @keyframes serif-fade { to { opacity: 1; } }
 

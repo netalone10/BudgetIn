@@ -98,7 +98,6 @@ export default function DashboardPage() {
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
-        // Update budget spent count locally lalu refresh dari server
         fetchBudget();
       }
 
@@ -141,7 +140,7 @@ export default function DashboardPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--muted-foreground)" }} />
       </div>
     );
   }
@@ -149,16 +148,23 @@ export default function DashboardPage() {
   const dataLoading = txLoading || budgetLoading;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--background)" }}>
       <Navbar />
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6">
-        {/* Greeting */}
-        <div>
-          <h2 className="text-lg font-semibold">
-            Halo, {session?.user?.name?.split(" ")[0]} 👋
+
+        {/* Greeting — Playfair Display */}
+        <div className="space-y-1 pb-1">
+          <h2
+            className="text-2xl font-normal"
+            style={{
+              fontFamily: "var(--font-playfair), Georgia, serif",
+              color: "var(--foreground)",
+            }}
+          >
+            Halo, {session?.user?.name?.split(" ")[0]}
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
             Ketik transaksi, set budget, atau minta laporan.
           </p>
         </div>
@@ -189,8 +195,8 @@ export default function DashboardPage() {
               )}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Enter untuk kirim · Shift+Enter untuk baris baru
+          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+            Enter untuk kirim &middot; Shift+Enter untuk baris baru
           </p>
         </form>
 
@@ -198,70 +204,100 @@ export default function DashboardPage() {
         {response && (
           <div>
             {"error" in response ? (
-              <div className="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3">
-                <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                <p className="text-sm text-destructive">{response.error}</p>
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(239,68,68,0.4)", backgroundColor: "rgba(239,68,68,0.05)" }}>
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--destructive)" }} />
+                <p className="text-sm" style={{ color: "var(--destructive)" }}>{response.error}</p>
               </div>
             ) : response.intent === "transaksi" ? (
-              <div className="flex items-start gap-3 rounded-xl border border-green-500/30 bg-green-50/40 dark:bg-green-950/20 px-4 py-3">
-                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
                 <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
               </div>
             ) : response.intent === "pemasukan" ? (
-              <div className="flex items-start gap-3 rounded-xl border border-green-500/30 bg-green-50/40 dark:bg-green-950/20 px-4 py-3">
-                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
                 <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
               </div>
             ) : response.intent === "budget_setting" ? (
-              <div className="flex items-start gap-3 rounded-xl border border-blue-500/30 bg-blue-50/40 dark:bg-blue-950/20 px-4 py-3">
-                <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(59,130,246,0.3)", backgroundColor: "rgba(59,130,246,0.05)" }}>
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
                 <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{response.message}</p>
               </div>
             ) : response.intent === "laporan" ? (
               <ReportView data={response} />
             ) : response.intent === "unknown" ? (
-              <div className="flex items-start gap-3 rounded-xl border border-yellow-500/30 bg-yellow-50/40 dark:bg-yellow-950/20 px-4 py-3">
-                <Info className="h-4 w-4 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(234,179,8,0.3)", backgroundColor: "rgba(234,179,8,0.05)" }}>
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400" />
                 <p className="text-sm text-yellow-700 dark:text-yellow-400">{response.clarification}</p>
               </div>
             ) : null}
           </div>
         )}
 
-        {/* Dashboard Tabs — Arus Kas & vs Budget */}
+        {/* Dashboard Tabs */}
         <DashboardTabs
           transactions={transactions}
           budgetData={budgetData}
           loading={dataLoading}
         />
 
-        {/* Riwayat Transaksi — edit & hapus */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground">Riwayat Transaksi</h3>
+        {/* Riwayat Transaksi */}
+        <div className="space-y-3">
+          {/* Section label with rule lines */}
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1" style={{ backgroundColor: "var(--border)" }} />
+            <h3
+              style={{
+                fontFamily: "var(--font-ibm-plex-mono), monospace",
+                fontSize: "0.75rem",
+                fontWeight: 500,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                color: "var(--muted-foreground)",
+              }}
+            >
+              Riwayat Transaksi
+            </h3>
+            <span className="h-px flex-1" style={{ backgroundColor: "var(--border)" }} />
+          </div>
+
           {txLoading ? (
-            <div className="rounded-xl border overflow-hidden">
+            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-3 animate-pulse border-b last:border-0">
-                  <div className="h-3 w-12 rounded bg-muted" />
-                  <div className="h-3 flex-1 rounded bg-muted" />
-                  <div className="h-5 w-16 rounded-full bg-muted" />
-                  <div className="h-3 w-16 rounded bg-muted" />
+                <div key={i} className="flex items-center gap-4 px-4 py-3 animate-pulse" style={{ borderBottom: "1px solid var(--border)" }}>
+                  <div className="h-3 w-12 rounded" style={{ backgroundColor: "var(--muted)" }} />
+                  <div className="h-3 flex-1 rounded" style={{ backgroundColor: "var(--muted)" }} />
+                  <div className="h-5 w-16 rounded-full" style={{ backgroundColor: "var(--muted)" }} />
+                  <div className="h-3 w-16 rounded" style={{ backgroundColor: "var(--muted)" }} />
                 </div>
               ))}
             </div>
           ) : transactions.length === 0 ? (
-            <div className="rounded-xl border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+            <div
+              className="rounded-xl px-4 py-8 text-center text-sm"
+              style={{
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--card)",
+                color: "var(--muted-foreground)",
+              }}
+            >
               Belum ada transaksi bulan ini.
             </div>
           ) : (
-            <div className="rounded-xl border bg-card overflow-hidden">
+            <div
+              className="rounded-xl overflow-hidden"
+              style={{
+                border: "1px solid var(--border)",
+                backgroundColor: "var(--card)",
+              }}
+            >
               <table className="w-full">
                 <thead>
-                  <tr className="border-b bg-muted/30">
-                    <th className="py-2.5 pl-4 pr-3 text-left text-[11px] font-medium text-muted-foreground w-16">Tgl</th>
-                    <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground">Deskripsi</th>
-                    <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground">Kategori</th>
-                    <th className="py-2.5 pr-2 text-right text-[11px] font-medium text-muted-foreground">Jumlah</th>
+                  <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in srgb, var(--muted) 30%, transparent)" }}>
+                    <th className="py-2.5 pl-4 pr-3 text-left w-16" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Tgl</th>
+                    <th className="py-2.5 pr-3 text-left" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Deskripsi</th>
+                    <th className="py-2.5 pr-3 text-left" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Kategori</th>
+                    <th className="py-2.5 pr-2 text-right" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Jumlah</th>
                     <th className="py-2.5 pr-3 w-16" />
                   </tr>
                 </thead>
@@ -278,7 +314,13 @@ export default function DashboardPage() {
                 </tbody>
               </table>
               {transactions.length > 20 && (
-                <div className="border-t px-4 py-2.5 text-center text-xs text-muted-foreground">
+                <div
+                  className="px-4 py-2.5 text-center text-xs"
+                  style={{
+                    borderTop: "1px solid var(--border)",
+                    color: "var(--muted-foreground)",
+                  }}
+                >
                   Menampilkan 20 dari {transactions.length} transaksi
                 </div>
               )}
