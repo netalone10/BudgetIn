@@ -11,23 +11,36 @@ export default function Icon() {
           width: 32,
           height: 32,
           borderRadius: 8,
-          background: "#01696f",
+          background: "linear-gradient(135deg, #01696f 0%, #0c4e54 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          position: "relative",
         }}
       >
+        {/* Coin circle accent */}
+        <div
+          style={{
+            position: "absolute",
+            top: 5,
+            right: 5,
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.25)",
+          }}
+        />
         <span
           style={{
             color: "#ffffff",
-            fontSize: 20,
-            fontWeight: 700,
+            fontSize: 18,
+            fontWeight: 800,
             fontFamily: "sans-serif",
             lineHeight: 1,
-            letterSpacing: "-1px",
+            letterSpacing: "-0.5px",
           }}
         >
-          C
+          B
         </span>
       </div>
     ),
