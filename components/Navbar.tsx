@@ -12,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, KeyRound } from "lucide-react";
+import { LogOut, KeyRound, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -27,6 +28,12 @@ export default function Navbar() {
 
   // Email user = tidak punya sheetsId (tidak login via Google)
   const isEmailUser = !session?.sheetsId;
+
+  // Admin check — client side (hanya untuk tampil/sembunyi menu, actual guard ada di API)
+  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 
   return (
     <>
@@ -71,16 +78,28 @@ export default function Navbar() {
 
                   {/* Ganti Password — hanya untuk email users */}
                   {isEmailUser && (
-                    <>
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onClick={() => setShowChangePassword(true)}
-                      >
-                        <KeyRound className="mr-2 h-4 w-4" />
-                        Ganti Password
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setShowChangePassword(true)}
+                    >
+                      <KeyRound className="mr-2 h-4 w-4" />
+                      Ganti Password
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* Admin Panel — email di ADMIN_EMAILS */}
+                  {adminEmails.includes(session?.user?.email?.toLowerCase() ?? "") && (
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => window.location.href = "/admin"}
+                    >
+                      <ShieldCheck className="mr-2 h-4 w-4 text-primary" />
+                      Admin Panel
+                    </DropdownMenuItem>
+                  )}
+
+                  {(isEmailUser || adminEmails.includes(session?.user?.email?.toLowerCase() ?? "")) && (
+                    <DropdownMenuSeparator />
                   )}
 
                   <DropdownMenuItem
