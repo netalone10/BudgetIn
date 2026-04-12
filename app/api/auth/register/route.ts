@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { seedDefaultCategories } from "@/utils/seed-categories";
+import { generateVerificationToken, getTokenExpiry } from "@/lib/token-utils";
+import { sendVerificationEmail } from "@/lib/email";
 
 // POST /api/auth/register — daftar dengan email + password
 export async function POST(req: NextRequest) {
@@ -32,18 +34,30 @@ export async function POST(req: NextRequest) {
 
     const hashed = await bcrypt.hash(password, 12);
 
+    // Generate token verifikasi
+    const verificationToken = generateVerificationToken();
+    const verificationTokenExpiry = getTokenExpiry();
+
     const user = await prisma.user.create({
       data: {
         email,
         name: name.trim(),
         password: hashed,
+        verificationToken,
+        verificationTokenExpiry,
+        // emailVerified tetap null — belum diverifikasi
       },
     });
 
     // Seed kategori default (income + expense)
     await seedDefaultCategories(user.id);
 
-    return NextResponse.json({ success: true });
+    // Kirim email verifikasi (fire and forget — jangan block response)
+    sendVerificationEmail(email, name.trim(), verificationToken).catch((err) =>
+      console.error("[register] sendVerificationEmail error:", err)
+    );
+
+    return NextResponse.json({ message: "verification_sent" });
   } catch (error) {
     console.error("[register]", error);
     return NextResponse.json(

@@ -47,6 +47,11 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.password);
         if (!valid) return null;
 
+        // Blokir login jika email belum diverifikasi
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED:" + user.email);
+        }
+
         return { id: user.id, email: user.email, name: user.name, image: user.image };
       },
     }),
