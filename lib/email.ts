@@ -23,7 +23,7 @@ export async function sendVerificationEmail(
   name: string,
   token: string
 ): Promise<void> {
-  const link = `${APP_URL}/auth/verify?token=${token}`;
+  const link = `${APP_URL}/api/auth/verify?token=${token}`;
 
   await resend.emails.send({
     from: FROM,
