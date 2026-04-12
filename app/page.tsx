@@ -144,8 +144,20 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        © 2026 Catatuang · Dibuat dengan ❤️ untuk kantong Indonesia
+      <footer className="border-t py-8 text-center text-xs text-muted-foreground space-y-1">
+        <p className="font-medium text-foreground/70">© 2026 Catatuang — Aplikasi pencatat keuangan pribadi berbasis AI</p>
+        <p>
+          Dirancang &amp; dikembangkan oleh{" "}
+          <a
+            href="https://amuharr.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary hover:underline underline-offset-4 transition-colors"
+          >
+            Akbar Muharram
+          </a>
+          {" "}· Semua hak dilindungi
+        </p>
       </footer>
     </div>
   );
