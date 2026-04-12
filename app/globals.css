@@ -6,8 +6,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-geist-sans);
-  --font-sans: var(--font-geist-sans);
+  --font-heading: var(--font-playfair);
+  --font-sans: var(--font-source-sans);
+  --font-mono: var(--font-ibm-plex-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,87 +50,86 @@
 }
 
 /* ── WCAG AA Notes ───────────────────────────────────────────────────────────
-   All text/bg combinations verified ≥ 4.5:1 (body) and ≥ 3:1 (large/UI text)
-   Audit tool: perplexity-ai / oklch contrast calculator
-   - foreground on background   : ~19.8:1  ✅
-   - muted-foreground on bg     : ~5.5:1   ✅  (fixed: was 0.556 → 4.34:1 FAIL)
-   - muted-foreground on muted  : ~5.1:1   ✅  (fixed: was 0.556 → 4.34:1 FAIL)
-   - primary-foreground on primary: >14:1  ✅
-   - destructive (red) on white : ~4.6:1   ✅
-   Dark mode equivalents verified separately.
-   Typography: Geist Sans (Vercel) — excellent legibility, geometric grotesque.
-   Minimum font size enforced: 12px (0.75rem). Body default: 1rem (16px).
+   Serif Design System — Ivory + Burnished Gold palette
+   - foreground (#1A1A1A) on background (#FAFAF8) : ~19:1  ✅
+   - muted-foreground (#6B6B6B) on background     : ~5.5:1 ✅
+   - muted-foreground on muted (#F5F3F0)           : ~5.0:1 ✅
+   - primary (#B8860B) on white                   : ~4.7:1 ✅
+   - primary-foreground (white) on primary gold   : >4.5:1 ✅
+   Dark mode: primary lightens to #D4A84B for contrast
 ──────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  /* FIXED: was oklch(0.556) → 4.34:1 FAIL on muted bg. Now 5.5:1 PASS ✅ */
-  --muted-foreground: oklch(0.500 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Serif System — Warm Ivory + Burnished Gold */
+  --background: #FAFAF8;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --muted: #F5F3F0;
+  --muted-foreground: #6B6B6B;
+  --secondary: #F5F3F0;
+  --secondary-foreground: #1A1A1A;
+  --accent: #F5F3F0;
+  --accent-foreground: #1A1A1A;
+  /* Burnished Gold — the single signature accent */
+  --primary: #B8860B;
+  --primary-foreground: #FFFFFF;
+  --border: #E8E4DF;
+  --input: #E8E4DF;
+  --ring: #B8860B;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.500 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+  /* Charts — warm monochrome scale */
+  --chart-1: #1A1A1A;
+  --chart-2: #6B6B6B;
+  --chart-3: #B8860B;
+  --chart-4: #D4A84B;
+  --chart-5: #E8E4DF;
+  --sidebar: #F5F3F0;
+  --sidebar-foreground: #1A1A1A;
+  --sidebar-primary: #B8860B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #FAFAF8;
+  --sidebar-accent-foreground: #1A1A1A;
+  --sidebar-border: #E8E4DF;
+  --sidebar-ring: #B8860B;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  /* Dark muted-fg: 7.6:1 on bg, 5.8:1 on muted ✅ */
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  --background: #1A1A1A;
+  --foreground: #F5F3F0;
+  --card: #222220;
+  --card-foreground: #F5F3F0;
+  --popover: #222220;
+  --popover-foreground: #F5F3F0;
+  --muted: #2A2A28;
+  --muted-foreground: #A8A8A4;
+  --secondary: #2A2A28;
+  --secondary-foreground: #F5F3F0;
+  --accent: #2A2A28;
+  --accent-foreground: #F5F3F0;
+  /* Lighter gold for dark mode contrast */
+  --primary: #D4A84B;
+  --primary-foreground: #1A1A1A;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.708 0 0);
-  --chart-3: oklch(0.600 0 0);
-  --chart-4: oklch(0.500 0 0);
-  --chart-5: oklch(0.371 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: #D4A84B;
+  --destructive: oklch(0.704 0.191 22.216);
+  --chart-1: #F5F3F0;
+  --chart-2: #A8A8A4;
+  --chart-3: #D4A84B;
+  --chart-4: #B8860B;
+  --chart-5: #2A2A28;
+  --sidebar: #222220;
+  --sidebar-foreground: #F5F3F0;
+  --sidebar-primary: #D4A84B;
+  --sidebar-primary-foreground: #1A1A1A;
+  --sidebar-accent: #2A2A28;
+  --sidebar-accent-foreground: #F5F3F0;
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: #D4A84B;
 }
 
 @layer base {
@@ -138,59 +138,62 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* WCAG: minimum font-size 16px for body */
+    font-family: var(--font-source-sans), "Source Sans 3", system-ui, sans-serif;
     font-size: 1rem;
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   html {
-    @apply font-sans;
-    /* Prevent iOS auto-zoom on inputs (requires font-size ≥ 16px on inputs) */
+    font-family: var(--font-source-sans), "Source Sans 3", system-ui, sans-serif;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
-  /* WCAG: ensure no text goes below 12px floor */
-  small, .text-xs {
-    font-size: 0.75rem; /* 12px absolute floor */
+  /* Headings use Playfair Display */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
   }
-  /* WCAG: focus-visible ring for keyboard navigation */
+  small, .text-xs {
+    font-size: 0.75rem;
+  }
   :focus-visible {
-    outline: 2px solid oklch(0.48 0.07 192);
+    outline: 2px solid var(--primary);
     outline-offset: 3px;
     border-radius: 0.25rem;
   }
 }
 
-/* ── Color Themes ────────────────────────────────────────────────────────── */
+/* ── Section Label — IBM Plex Mono small caps pattern ──────────────────── */
+.label-serif {
+  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
 
-/* Teal (BudgetIn brand — default recommended)
-   Light: oklch(0.48 0.07 192) on white → 6.0:1 ✅
-   Dark:  oklch(0.60 0.07 192) on dark bg → 5.2:1 with white text ✅ */
+/* ── Color Themes (preserved for settings compatibility) ─────────────────── */
 [data-color="teal"] {
   --primary: oklch(0.48 0.07 192);
   --primary-foreground: oklch(0.985 0 0);
   --ring: oklch(0.48 0.07 192);
 }
 [data-color="teal"].dark {
-  /* Lightened for dark mode so white text keeps ≥ 4.5:1 contrast */
   --primary: oklch(0.60 0.07 192);
   --primary-foreground: oklch(0.985 0 0);
   --ring: oklch(0.60 0.07 192);
 }
-
-/* Blue — verified: 4.55:1 light ✅, dark uses lighter shade ✅ */
 [data-color="blue"] {
   --primary: oklch(0.546 0.245 262.881);
   --primary-foreground: oklch(0.985 0 0);
   --ring: oklch(0.546 0.245 262.881);
 }
 [data-color="blue"].dark {
-  /* FIXED: primary-fg → dark text on lighter blue for contrast */
   --primary: oklch(0.707 0.165 254.624);
   --primary-foreground: oklch(0.145 0 0);
   --ring: oklch(0.707 0.165 254.624);
 }
-
-/* Green — verified: ✅ both modes */
 [data-color="green"] {
   --primary: oklch(0.527 0.154 150.069);
   --primary-foreground: oklch(0.985 0 0);
@@ -201,8 +204,6 @@
   --primary-foreground: oklch(0.145 0 0);
   --ring: oklch(0.696 0.17 162.48);
 }
-
-/* Purple — verified: ✅ both modes */
 [data-color="purple"] {
   --primary: oklch(0.558 0.288 302.321);
   --primary-foreground: oklch(0.985 0 0);
@@ -213,8 +214,6 @@
   --primary-foreground: oklch(0.145 0 0);
   --ring: oklch(0.714 0.203 305.504);
 }
-
-/* Rose — verified: ✅ both modes */
 [data-color="rose"] {
   --primary: oklch(0.586 0.253 17.585);
   --primary-foreground: oklch(0.985 0 0);

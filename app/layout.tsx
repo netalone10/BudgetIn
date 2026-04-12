@@ -1,9 +1,28 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { Playfair_Display, Source_Sans_3, IBM_Plex_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
 import "./globals.css";
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+});
+
+const sourceSans = Source_Sans_3({
+  subsets: ["latin"],
+  variable: "--font-source-sans",
+  weight: ["300", "400", "600", "700"],
+  display: "swap",
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  variable: "--font-ibm-plex-mono",
+  weight: ["400", "500"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "BudgetIn",
@@ -19,8 +38,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning className={cn("font-sans", GeistSans.variable)}>
-      <body className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+    <html
+      lang="id"
+      suppressHydrationWarning
+      className={cn(
+        playfair.variable,
+        sourceSans.variable,
+        ibmPlexMono.variable
+      )}
+    >
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
