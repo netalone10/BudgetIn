@@ -11,7 +11,11 @@ export function generateRandomPassword(): string {
     .join("");
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://budget.amuharr.com";
+// APP_URL: server-side only, tidak perlu NEXT_PUBLIC_
+const APP_URL =
+  process.env.APP_URL ??
+  process.env.NEXTAUTH_URL ??
+  "https://budget.amuharr.com";
 const FROM = "BudgetIn <noreply@amuharr.com>";
 
 export async function sendVerificationEmail(
