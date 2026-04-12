@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { createGoogleSheet } from "@/utils/sheets";
 import { seedDefaultCategories } from "@/utils/seed-categories";
+import { isAdmin } from "@/lib/is-admin";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -116,22 +117,23 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (user) {
         if (account?.provider === "credentials") {
-          // Credentials: user.id sudah berupa DB id
           const dbUser = await prisma.user.findUnique({
             where: { id: user.id },
-            select: { id: true, sheetsId: true },
+            select: { id: true, sheetsId: true, email: true },
           });
           token.userId = dbUser?.id;
           token.sheetsId = dbUser?.sheetsId ?? undefined;
           token.accessToken = undefined;
+          token.isAdmin = isAdmin(dbUser?.email);
         } else if (account?.provider === "google") {
           const dbUser = await prisma.user.findUnique({
             where: { googleId: user.id! },
-            select: { id: true, sheetsId: true },
+            select: { id: true, sheetsId: true, email: true },
           });
           token.userId = dbUser?.id;
           token.sheetsId = dbUser?.sheetsId;
           token.accessToken = account.access_token ?? undefined;
+          token.isAdmin = isAdmin(dbUser?.email);
         }
       }
       return token;
@@ -142,6 +144,8 @@ export const authOptions: NextAuthOptions = {
       session.userId = token.userId as string;
       session.sheetsId = token.sheetsId as string | null;
       session.accessToken = token.accessToken as string | null;
+      // Expose isAdmin ke client — dihitung server-side, tidak bocorkan list email
+      session.isAdmin = token.isAdmin as boolean ?? false;
       return session;
     },
   },

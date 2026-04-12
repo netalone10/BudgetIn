@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, KeyRound, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -29,11 +28,8 @@ export default function Navbar() {
   // Email user = tidak punya sheetsId (tidak login via Google)
   const isEmailUser = !session?.sheetsId;
 
-  // Admin check — client side (hanya untuk tampil/sembunyi menu, actual guard ada di API)
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+  // Admin status langsung dari session (dihitung server-side saat login)
+  const isAdminUser = session?.isAdmin === true;
 
   return (
     <>
@@ -87,8 +83,8 @@ export default function Navbar() {
                     </DropdownMenuItem>
                   )}
 
-                  {/* Admin Panel — email di ADMIN_EMAILS */}
-                  {adminEmails.includes(session?.user?.email?.toLowerCase() ?? "") && (
+                  {/* Admin Panel — hanya untuk admin */}
+                  {isAdminUser && (
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={() => window.location.href = "/admin"}
@@ -98,9 +94,7 @@ export default function Navbar() {
                     </DropdownMenuItem>
                   )}
 
-                  {(isEmailUser || adminEmails.includes(session?.user?.email?.toLowerCase() ?? "")) && (
-                    <DropdownMenuSeparator />
-                  )}
+                  {(isEmailUser || isAdminUser) && <DropdownMenuSeparator />}
 
                   <DropdownMenuItem
                     className="cursor-pointer text-destructive focus:text-destructive"
