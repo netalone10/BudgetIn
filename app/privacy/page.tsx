@@ -3,8 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kebijakan Privasi — Catatuang",
-  description: "Kebijakan privasi penggunaan aplikasi Catatuang.",
+  title: "Kebijakan Privasi — BudgetIn",
+  description: "Kebijakan privasi penggunaan aplikasi BudgetIn.",
 };
 
 export default function PrivacyPage() {
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex h-14 items-center justify-between border-b px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
         <Link href="/" className="font-bold tracking-tight text-lg hover:opacity-80 transition-opacity">
-          Catatuang
+          BudgetIn
         </Link>
         <ThemeToggle />
       </header>
@@ -26,9 +26,9 @@ export default function PrivacyPage() {
 
         <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
           <section className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">1. Tentang Catatuang</h2>
+            <h2 className="text-base font-semibold text-foreground">1. Tentang BudgetIn</h2>
             <p>
-              Catatuang adalah aplikasi pencatat keuangan pribadi berbasis AI yang dikembangkan oleh{" "}
+              BudgetIn adalah aplikasi pencatat keuangan pribadi berbasis AI yang dikembangkan oleh{" "}
               <a href="https://amuharr.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline underline-offset-4">
                 Akbar Muharram
               </a>. Kami berkomitmen untuk melindungi privasi dan data pribadi pengguna.
@@ -37,7 +37,7 @@ export default function PrivacyPage() {
 
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">2. Data yang Kami Kumpulkan</h2>
-            <p>Ketika kamu menggunakan Catatuang, kami mengumpulkan data berikut:</p>
+            <p>Ketika kamu menggunakan BudgetIn, kami mengumpulkan data berikut:</p>
             <ul className="list-disc list-inside space-y-2 pl-2">
               <li><span className="text-foreground font-medium">Data Akun:</span> nama, alamat email, dan foto profil dari akun Google kamu saat login.</li>
               <li><span className="text-foreground font-medium">Data Transaksi:</span> catatan pengeluaran dan pemasukan yang kamu input ke aplikasi.</li>
@@ -61,18 +61,18 @@ export default function PrivacyPage() {
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">4. Penyimpanan Data</h2>
             <p>
-              Data kamu disimpan di infrastruktur <span className="text-foreground font-medium">Supabase</span> yang aman dengan enkripsi standar industri. Data transaksi juga tersimpan langsung di <span className="text-foreground font-medium">Google Sheets milikmu sendiri</span> — artinya kamu memiliki kendali penuh atas datamu.
+              Data kamu disimpan di infrastruktur <span className="text-foreground font-medium">Supabase</span> yang aman dengan enkripsi standar industri. Data transaksi juga tersimpan langsung di <span className="text-foreground font-medium">Google Sheets milikmu sendiri</span> &mdash; artinya kamu memiliki kendali penuh atas datamu.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">5. Layanan Pihak Ketiga</h2>
-            <p>Catatuang menggunakan layanan pihak ketiga berikut:</p>
+            <p>BudgetIn menggunakan layanan pihak ketiga berikut:</p>
             <ul className="list-disc list-inside space-y-2 pl-2">
-              <li><span className="text-foreground font-medium">Google OAuth & Sheets API</span> — untuk autentikasi dan sinkronisasi data.</li>
-              <li><span className="text-foreground font-medium">Groq AI</span> — untuk pemrosesan bahasa alami pada input transaksi.</li>
-              <li><span className="text-foreground font-medium">Vercel</span> — untuk hosting dan deployment aplikasi.</li>
-              <li><span className="text-foreground font-medium">Supabase</span> — untuk penyimpanan database.</li>
+              <li><span className="text-foreground font-medium">Google OAuth &amp; Sheets API</span> &mdash; untuk autentikasi dan sinkronisasi data.</li>
+              <li><span className="text-foreground font-medium">Groq AI</span> &mdash; untuk pemrosesan bahasa alami pada input transaksi.</li>
+              <li><span className="text-foreground font-medium">Vercel</span> &mdash; untuk hosting dan deployment aplikasi.</li>
+              <li><span className="text-foreground font-medium">Supabase</span> &mdash; untuk penyimpanan database.</li>
             </ul>
             <p className="mt-2">Setiap layanan di atas tunduk pada kebijakan privasi masing-masing.</p>
           </section>
@@ -105,13 +105,13 @@ export default function PrivacyPage() {
         </div>
 
         <div className="mt-12 pt-8 border-t flex gap-6 text-xs text-muted-foreground">
-          <Link href="/" className="hover:text-primary transition-colors">← Kembali ke Beranda</Link>
-          <Link href="/terms" className="hover:text-primary transition-colors">Syarat & Ketentuan →</Link>
+          <Link href="/" className="hover:text-primary transition-colors">&larr; Kembali ke Beranda</Link>
+          <Link href="/terms" className="hover:text-primary transition-colors">Syarat &amp; Ketentuan &rarr;</Link>
         </div>
       </main>
 
       <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        <p>© 2026 Catatuang — Dikembangkan oleh{" "}
+        <p>&copy; 2026 BudgetIn &mdash; Dikembangkan oleh{" "}
           <a href="https://amuharr.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline underline-offset-4">Akbar Muharram</a>
         </p>
       </footer>

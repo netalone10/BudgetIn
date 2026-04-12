@@ -6,7 +6,7 @@ import Providers from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Catatuang",
+  title: "BudgetIn",
   description: "Catat pengeluaran, pahami uangmu — cukup dengan ketik.",
   verification: {
     google: "5ee8c7cbea14c8b4",

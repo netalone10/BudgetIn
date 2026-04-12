@@ -14,7 +14,7 @@ export default async function LandingPage() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Navbar */}
       <header className="flex h-14 items-center justify-between border-b px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
-        <span className="font-bold tracking-tight text-lg">Catatuang</span>
+        <span className="font-bold tracking-tight text-lg">BudgetIn</span>
         <ThemeToggle />
       </header>
 
@@ -29,10 +29,10 @@ export default async function LandingPage() {
             <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl leading-tight">
               Catat pengeluaran,{" "}
               <span className="text-primary">pahami uangmu</span>
-              {" "}— cukup dengan ketik.
+              {" "}&mdash; cukup dengan ketik.
             </h1>
             <p className="text-lg text-muted-foreground max-w-lg mx-auto">
-              Tulis seperti chat biasa. AI kami yang proses sisanya — kategori, budget, hingga laporan otomatis.
+              Tulis seperti chat biasa. AI kami yang proses sisanya &mdash; kategori, budget, hingga laporan otomatis.
             </p>
           </div>
 
@@ -41,7 +41,7 @@ export default async function LandingPage() {
               Mulai Gratis
             </Link>
             <p className="text-xs text-muted-foreground">
-              Gratis · Tidak perlu kartu kredit · Login dengan email atau Google
+              Gratis &middot; Tidak perlu kartu kredit &middot; Login dengan email atau Google
             </p>
           </div>
         </section>
@@ -64,11 +64,11 @@ export default async function LandingPage() {
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="shrink-0 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">AI</span>
-                  <span className="text-muted-foreground">✓ Dicatat: Makan — Rp 18.000</span>
+                  <span className="text-muted-foreground">&check; Dicatat: Makan &mdash; Rp 18.000</span>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Tulis natural — AI otomatis ekstrak nominal, kategori, dan tanggal.
+                Tulis natural &mdash; AI otomatis ekstrak nominal, kategori, dan tanggal.
               </p>
             </div>
 
@@ -145,7 +145,7 @@ export default async function LandingPage() {
       </main>
 
       <footer className="border-t py-8 text-center text-xs text-muted-foreground space-y-2">
-        <p className="font-medium text-foreground/70">© 2026 Catatuang — Aplikasi pencatat keuangan pribadi berbasis AI</p>
+        <p className="font-medium text-foreground/70">&copy; 2026 BudgetIn &mdash; Aplikasi pencatat keuangan pribadi berbasis AI</p>
         <p>
           Dirancang &amp; dikembangkan oleh{" "}
           <a
@@ -156,11 +156,11 @@ export default async function LandingPage() {
           >
             Akbar Muharram
           </a>
-          {" "}· Semua hak dilindungi
+          {" "}&middot; Semua hak dilindungi
         </p>
         <p className="flex items-center justify-center gap-4">
           <Link href="/privacy" className="hover:text-primary transition-colors">Kebijakan Privasi</Link>
-          <span>·</span>
+          <span>&middot;</span>
           <Link href="/terms" className="hover:text-primary transition-colors">Syarat &amp; Ketentuan</Link>
         </p>
       </footer>
