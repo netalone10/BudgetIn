@@ -142,7 +142,7 @@ RULES:
 9. VALIDASI NOMINAL WAJIB: Input transaksi/pemasukan/budget_setting HARUS mengandung nominal uang dalam IDR.
    - VALID: "makan 35rb", "gajian 8jt", "beli kopi 25000", "dapat freelance 2.5jt"
    - TIDAK VALID → return unknown: "dapat warisan 1kg emas", "jual 1 lot BBCA", "beli 2 gram emas", "terima 50 pcs barang"
-   Jika input menggunakan satuan NON-UANG (kg, gram, gr, lot, unit, pcs, lembar, meter, liter, ml) tanpa menyebut nilai/harga dalam IDR,
+   Jika input menggunakan satuan NON-UANG (kg, gram, gr, ons, ton, lot, unit, pcs, ekor, biji, potong, ikat, helai, lusin, botol, kaleng, sachet, kantong, bungkus, kotak, porsi, meter, liter, ml) tanpa menyebut nilai/harga dalam IDR,
    return: {"intent":"unknown","clarification":"Input harus berisi nominal uang (contoh: 35rb, 2jt). Untuk aset non-uang, tulis nilainya: 'jual saham dapat 5jt' atau 'dapat emas senilai 3jt'."}
 
 10. FORMAT JSON WAJIB per intent:

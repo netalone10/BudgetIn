@@ -30,7 +30,7 @@ function parseNominalFromPrompt(text: string): number | null {
 }
 
 // Pola satuan NON-uang yang tidak boleh lolos tanpa nominal IDR
-const NON_MONETARY_UNITS = /\b(?:kg|gram|gr|lot|unit|pcs|pack|lembar|batang|buah|meter|cm|ml|liter|ltr|dus|karton)\b/i;
+const NON_MONETARY_UNITS = /\b(?:kg|gram|gr|ons|ton|lot|unit|pcs|pack|lembar|batang|buah|meter|cm|mm|ml|liter|ltr|dus|karton|ekor|biji|potong|ikat|helai|lusin|kodi|tangkai|porsi|botol|kaleng|sachet|kantong|bungkus|kotak|toples)\b/i;
 // Nominal IDR: rb/ribu/jt/juta/k, Rp prefix, atau angka 4+ digit
 const MONETARY_INDICATOR = /\d+\s*(?:rb|ribu|jt|juta|[ck]\b)|(?:rp\.?\s*|idr\s*)\d|\b\d{4,}\b/i;
 // Intent yang tidak butuh nominal (laporan)
