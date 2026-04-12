@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import {
   Loader2, Users, TrendingUp, Calendar, ShieldCheck,
   Mail, Chrome, Trash2, KeyRound, AlertTriangle, X, CheckCircle2,
-  BadgeCheck, Clock,
+  BadgeCheck, Clock, MailCheck,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ interface UserRow {
   createdAt: string;
 }
 
-type DialogType = "delete" | "reset-password" | null;
+type DialogType = "delete" | "reset-password" | "resend-verification" | null;
 
 function fmt(n: number) {
   return new Intl.NumberFormat("id-ID").format(n);
@@ -110,6 +110,20 @@ export default function AdminPage() {
       const data = await res.json();
       if (!res.ok) { showToast(data.error ?? "Gagal reset.", false); return; }
       showToast(`Password berhasil direset & dikirim ke ${dialog.user.email}.`, true);
+      setDialog({ type: null, user: null });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    if (!dialog.user) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${dialog.user.id}?action=resend-verification`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "Gagal kirim.", false); return; }
+      showToast(`Email verifikasi dikirim ke ${dialog.user.email}.`, true);
       setDialog({ type: null, user: null });
     } finally {
       setActionLoading(false);
@@ -228,6 +242,16 @@ export default function AdminPage() {
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* Resend verification — hanya email user yang belum verified */}
+                        {u.type === "email" && !u.emailVerified && (
+                          <button
+                            onClick={() => setDialog({ type: "resend-verification", user: u })}
+                            title="Kirim ulang email verifikasi"
+                            className="rounded-md p-1.5 text-muted-foreground hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                          >
+                            <MailCheck className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         {/* Reset password — hanya email user */}
                         {u.type === "email" && (
                           <button
@@ -267,16 +291,20 @@ export default function AdminPage() {
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "rounded-full p-2",
-                  dialog.type === "delete" ? "bg-destructive/10" : "bg-yellow-500/10"
+                  dialog.type === "delete" ? "bg-destructive/10" :
+                  dialog.type === "resend-verification" ? "bg-blue-500/10" : "bg-yellow-500/10"
                 )}>
                   {dialog.type === "delete"
                     ? <AlertTriangle className="h-5 w-5 text-destructive" />
+                    : dialog.type === "resend-verification"
+                    ? <MailCheck className="h-5 w-5 text-blue-500" />
                     : <KeyRound className="h-5 w-5 text-yellow-500" />
                   }
                 </div>
                 <div>
                   <p className="font-semibold text-sm">
-                    {dialog.type === "delete" ? "Hapus User" : "Reset Password"}
+                    {dialog.type === "delete" ? "Hapus User" :
+                     dialog.type === "resend-verification" ? "Kirim Verifikasi" : "Reset Password"}
                   </p>
                   <p className="text-xs text-muted-foreground truncate max-w-[200px]">{dialog.user.name}</p>
                 </div>
@@ -289,6 +317,8 @@ export default function AdminPage() {
             <p className="text-sm text-muted-foreground">
               {dialog.type === "delete"
                 ? <>Hapus <span className="font-medium text-foreground">{dialog.user.email}</span> beserta semua transaksi, budget, dan kategorinya? <span className="text-destructive font-medium">Tidak bisa dibatalkan.</span></>
+                : dialog.type === "resend-verification"
+                ? <>Kirim ulang link verifikasi ke <span className="font-medium text-foreground">{dialog.user.email}</span>?</>
                 : <>Generate password baru untuk <span className="font-medium text-foreground">{dialog.user.email}</span> dan kirim via email?</>
               }
             </p>
@@ -307,12 +337,18 @@ export default function AdminPage() {
                   "flex-1",
                   dialog.type === "delete" && "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                 )}
-                onClick={dialog.type === "delete" ? handleDelete : handleResetPassword}
+                onClick={
+                  dialog.type === "delete" ? handleDelete :
+                  dialog.type === "resend-verification" ? handleResendVerification :
+                  handleResetPassword
+                }
                 disabled={actionLoading}
               >
                 {actionLoading
                   ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : dialog.type === "delete" ? "Hapus" : "Reset & Kirim Email"
+                  : dialog.type === "delete" ? "Hapus"
+                  : dialog.type === "resend-verification" ? "Kirim Email"
+                  : "Reset & Kirim Email"
                 }
               </Button>
             </div>

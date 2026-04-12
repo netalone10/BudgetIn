@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/is-admin";
 import bcrypt from "bcryptjs";
-import { generateRandomPassword, sendPasswordResetEmail } from "@/lib/email";
+import { generateRandomPassword, sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email";
+import { generateVerificationToken, getTokenExpiry } from "@/lib/token-utils";
 
 async function guardAdmin() {
   const session = await getServerSession(authOptions);
@@ -50,38 +51,69 @@ export async function POST(
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action");
 
-  if (action !== "reset-password") {
-    return NextResponse.json({ error: "Unknown action." }, { status: 400 });
-  }
+  // ── Reset Password ───────────────────────────────────────────────────────
+  if (action === "reset-password") {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, name: true, password: true },
+      });
 
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, email: true, name: true, password: true },
-    });
+      if (!user) return NextResponse.json({ error: "User tidak ditemukan." }, { status: 404 });
+      if (!user.password) {
+        return NextResponse.json(
+          { error: "User ini login via Google, tidak bisa reset password." },
+          { status: 400 }
+        );
+      }
 
-    if (!user) return NextResponse.json({ error: "User tidak ditemukan." }, { status: 404 });
-    if (!user.password) {
-      return NextResponse.json(
-        { error: "User ini login via Google, tidak bisa reset password." },
-        { status: 400 }
-      );
+      const newPassword = generateRandomPassword();
+      const hashed = await bcrypt.hash(newPassword, 12);
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashed },
+      });
+
+      await sendPasswordResetEmail(user.email, user.name, newPassword);
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      console.error("[admin/reset-password]", err);
+      return NextResponse.json({ error: "Gagal reset password." }, { status: 500 });
     }
-
-    const newPassword = generateRandomPassword();
-    const hashed = await bcrypt.hash(newPassword, 12);
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashed },
-    });
-
-    // Kirim email — await supaya error ketahuan
-    await sendPasswordResetEmail(user.email, user.name, newPassword);
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("[admin/reset-password]", err);
-    return NextResponse.json({ error: "Gagal reset password." }, { status: 500 });
   }
+
+  // ── Resend Verification ───────────────────────────────────────────────────
+  if (action === "resend-verification") {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, name: true, password: true, emailVerified: true },
+      });
+
+      if (!user) return NextResponse.json({ error: "User tidak ditemukan." }, { status: 404 });
+      if (!user.password) {
+        return NextResponse.json({ error: "User ini login via Google." }, { status: 400 });
+      }
+      if (user.emailVerified) {
+        return NextResponse.json({ error: "Email sudah terverifikasi." }, { status: 400 });
+      }
+
+      const verificationToken = generateVerificationToken();
+      const verificationTokenExpiry = getTokenExpiry();
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { verificationToken, verificationTokenExpiry },
+      });
+
+      await sendVerificationEmail(user.email, user.name, verificationToken);
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      console.error("[admin/resend-verification]", err);
+      return NextResponse.json({ error: "Gagal kirim email verifikasi." }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ error: "Unknown action." }, { status: 400 });
 }
