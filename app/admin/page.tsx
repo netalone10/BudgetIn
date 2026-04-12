@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
   Loader2, Users, TrendingUp, Calendar, ShieldCheck,
   Mail, Chrome, Trash2, KeyRound, AlertTriangle, X, CheckCircle2,
+  BadgeCheck, Clock,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ interface UserRow {
   email: string;
   type: "google" | "email";
   hasSheets: boolean;
+  emailVerified: boolean;
   budgetCount: number;
   categoryCount: number;
   createdAt: string;
@@ -193,15 +195,30 @@ export default function AdminPage() {
                       <span className="text-xs text-muted-foreground truncate block max-w-[180px]">{u.email}</span>
                     </td>
                     <td className="py-3 pr-3">
-                      <span className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        u.type === "google"
-                          ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                          : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                      )}>
-                        {u.type === "google" ? <Chrome className="h-2.5 w-2.5" /> : <Mail className="h-2.5 w-2.5" />}
-                        {u.type === "google" ? "Google" : "Email"}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium w-fit",
+                          u.type === "google"
+                            ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                        )}>
+                          {u.type === "google" ? <Chrome className="h-2.5 w-2.5" /> : <Mail className="h-2.5 w-2.5" />}
+                          {u.type === "google" ? "Google" : "Email"}
+                        </span>
+                        {u.type === "email" && (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium w-fit",
+                            u.emailVerified
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500"
+                          )}>
+                            {u.emailVerified
+                              ? <><BadgeCheck className="h-2.5 w-2.5" />Verified</>
+                              : <><Clock className="h-2.5 w-2.5" />Unverified</>
+                            }
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 pr-3 hidden md:table-cell">
                       <span className="text-xs text-muted-foreground">{u.budgetCount} budget</span>
