@@ -37,6 +37,8 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
   const [customLoading, setCustomLoading] = useState(false);
+  const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
+  const [page, setPage] = useState(1);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -118,6 +120,7 @@ export default function DashboardPage() {
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
+        setPage(1);
         fetchBudget();
       }
 
@@ -389,7 +392,7 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.slice(0, 20).map((t) => (
+                  {transactions.slice((page - 1) * pageSize, page * pageSize).map((t) => (
                     <TransactionCard
                       key={t.id}
                       transaction={t}
@@ -400,17 +403,55 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
-              {transactions.length > 20 && (
-                <div
-                  className="px-4 py-2.5 text-center text-xs"
-                  style={{
-                    borderTop: "1px solid var(--border)",
-                    color: "var(--muted-foreground)",
-                  }}
-                >
-                  Menampilkan 20 dari {transactions.length} transaksi
+              {/* Footer: page size selector + pagination */}
+              <div
+                className="flex items-center justify-between px-4 py-2.5 gap-4"
+                style={{ borderTop: "1px solid var(--border)" }}
+              >
+                {/* Page size */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>Tampilkan</span>
+                  {([10, 20, 50] as const).map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { setPageSize(n); setPage(1); }}
+                      className="text-xs px-2 py-0.5 rounded"
+                      style={{
+                        fontWeight: pageSize === n ? 600 : 400,
+                        background: pageSize === n ? "var(--primary)" : "transparent",
+                        color: pageSize === n ? "var(--primary-foreground)" : "var(--muted-foreground)",
+                        border: "1px solid var(--border)",
+                      }}
+                    >
+                      {n}
+                    </button>
+                  ))}
                 </div>
-              )}
+                {/* Pagination */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                    {Math.min((page - 1) * pageSize + 1, transactions.length)}–{Math.min(page * pageSize, transactions.length)} dari {transactions.length}
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="text-xs px-2 py-0.5 rounded border disabled:opacity-30"
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      onClick={() => setPage((p) => Math.min(Math.ceil(transactions.length / pageSize), p + 1))}
+                      disabled={page >= Math.ceil(transactions.length / pageSize)}
+                      className="text-xs px-2 py-0.5 rounded border disabled:opacity-30"
+                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
