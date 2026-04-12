@@ -88,7 +88,7 @@ export default function AuthPage() {
     <div className="flex min-h-screen flex-col bg-background">
       <header className="flex h-14 items-center justify-between border-b px-6">
         <Link href="/" className="font-bold tracking-tight text-lg">
-          Catatuang
+          BudgetIn
         </Link>
         <ThemeToggle />
       </header>
@@ -97,7 +97,7 @@ export default function AuthPage() {
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-bold tracking-tight">
-              {tab === "login" ? "Masuk ke Catatuang" : "Buat akun baru"}
+              {tab === "login" ? "Masuk ke BudgetIn" : "Buat akun baru"}
             </h1>
             <p className="text-sm text-muted-foreground">
               {tab === "login"
