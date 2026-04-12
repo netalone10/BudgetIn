@@ -29,6 +29,13 @@ function parseNominalFromPrompt(text: string): number | null {
   return null;
 }
 
+// Pola satuan NON-uang yang tidak boleh lolos tanpa nominal IDR
+const NON_MONETARY_UNITS = /\b(?:kg|gram|gr|lot|unit|pcs|pack|lembar|batang|buah|meter|cm|ml|liter|ltr|dus|karton)\b/i;
+// Nominal IDR: rb/ribu/jt/juta/k, Rp prefix, atau angka 4+ digit
+const MONETARY_INDICATOR = /\d+\s*(?:rb|ribu|jt|juta|[ck]\b)|(?:rp\.?\s*|idr\s*)\d|\b\d{4,}\b/i;
+// Intent yang tidak butuh nominal (laporan)
+const REPORT_KEYWORDS = /\b(?:rekap|laporan|lihat|berapa|analisis|summary|ringkasan|pengeluaran|pemasukan bulan)\b/i;
+
 function correctAmount(prompt: string, aiAmount: number): number {
   const expected = parseNominalFromPrompt(prompt);
   if (!expected || aiAmount === expected) return aiAmount;
@@ -120,6 +127,20 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+  }
+
+  // Pre-check: satuan non-uang tanpa nominal IDR → tolak sebelum hit Groq
+  if (
+    !REPORT_KEYWORDS.test(prompt) &&
+    NON_MONETARY_UNITS.test(prompt) &&
+    !MONETARY_INDICATOR.test(prompt)
+  ) {
+    return NextResponse.json({
+      intent: "unknown",
+      clarification:
+        "Input harus mengandung nominal uang (contoh: 35rb, 2jt). " +
+        "Untuk aset non-uang, tulis nilainya dalam IDR — misal: 'jual saham BBCA dapat 5jt' atau 'dapat emas senilai 3jt'.",
+    });
   }
 
   // Classify intent via Groq
