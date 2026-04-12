@@ -25,7 +25,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CatatUang — Catat pengeluaranmu, cukup dengan ketik",
+  title: "BudgetIn — Catat pengeluaranmu, cukup dengan ketik",
   description: "Catat pengeluaran, pahami uangmu — cukup dengan ketik. AI yang proses sisanya.",
   verification: {
     google: "5ee8c7cbea14c8b4",
