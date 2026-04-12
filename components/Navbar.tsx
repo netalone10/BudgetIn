@@ -27,7 +27,7 @@ export default function Navbar() {
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold tracking-tight">Catatuang</span>
+          <span className="text-lg font-bold tracking-tight">BudgetIn</span>
           <span className="hidden text-xs text-muted-foreground sm:inline">
             — catat pengeluaranmu
           </span>

@@ -35,6 +35,8 @@ export default function DashboardPage() {
   const [budgetLoading, setBudgetLoading] = useState(true);
 
   const [categories, setCategories] = useState<string[]>([]);
+  const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
+  const [customLoading, setCustomLoading] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -128,6 +130,19 @@ export default function DashboardPage() {
       setResponse({ error: "Koneksi gagal. Coba lagi." });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleFetchPeriod(from: string, to: string) {
+    setCustomLoading(true);
+    try {
+      const res = await fetch(`/api/record?period=custom&from=${from}&to=${to}`);
+      const data = await res.json();
+      setCustomTransactions(data.transactions ?? []);
+    } catch {
+      setCustomTransactions([]);
+    } finally {
+      setCustomLoading(false);
     }
   }
 
@@ -303,6 +318,9 @@ export default function DashboardPage() {
           transactions={transactions}
           budgetData={budgetData}
           loading={dataLoading}
+          onFetchPeriod={handleFetchPeriod}
+          customTransactions={customTransactions}
+          customLoading={customLoading}
         />
 
         {/* Riwayat Transaksi */}

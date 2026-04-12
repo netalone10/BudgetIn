@@ -130,6 +130,12 @@ export async function getTransactions(
   const todayStr = format(jakartaNow, "yyyy-MM-dd");
   const currentMonth = format(jakartaNow, "yyyy-MM");
 
+  // Custom range: "custom:2026-04-01:2026-04-12"
+  if (period.startsWith("custom:")) {
+    const [, from, to] = period.split(":");
+    return transactions.filter((t) => t.date >= from && t.date <= to);
+  }
+
   if (period === "bulan ini") {
     return transactions.filter((t) => t.date.startsWith(currentMonth));
   }

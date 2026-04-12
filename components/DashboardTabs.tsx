@@ -2,9 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { Transaction } from "@/components/TransactionCard";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getDaysInMonth, getDate } from "date-fns";
+import { getDaysInMonth, getDate, startOfWeek, endOfWeek, format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
@@ -54,27 +54,57 @@ export interface BudgetData {
   budgets: BudgetItem[];
 }
 
+type Period = "today" | "week" | "month" | "custom";
+
 interface Props {
-  transactions: Transaction[];
+  transactions: Transaction[];       // selalu berisi data bulan ini dari server
   budgetData: BudgetData | null;
   loading: boolean;
+  onFetchPeriod?: (from: string, to: string) => void; // callback untuk custom period
+  customTransactions?: Transaction[]; // hasil fetch custom period dari parent
+  customLoading?: boolean;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function DashboardTabs({ transactions, budgetData, loading }: Props) {
+export default function DashboardTabs({
+  transactions,
+  budgetData,
+  loading,
+  onFetchPeriod,
+  customTransactions,
+  customLoading = false,
+}: Props) {
   const [activeTab, setActiveTab] = useState<"cashflow" | "budget">("cashflow");
+  const [period, setPeriod] = useState<Period>("month");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Prorated date info
+  // Date helpers (WIB)
   const now = toZonedTime(new Date(), TIMEZONE);
+  const todayStr = format(now, "yyyy-MM-dd");
+  const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+
+  // Prorated date info
   const dayOfMonth = getDate(now);
   const totalDays = getDaysInMonth(now);
   const prorationPct = Math.round((dayOfMonth / totalDays) * 100);
 
+  // Filter transactions berdasarkan period yang dipilih
+  const filteredTransactions = useMemo(() => {
+    if (period === "custom") return customTransactions ?? [];
+    return transactions.filter((t) => {
+      if (period === "today") return t.date === todayStr;
+      if (period === "week") return t.date >= weekStart && t.date <= weekEnd;
+      return true; // month — semua data
+    });
+  }, [period, transactions, customTransactions, todayStr, weekStart, weekEnd]);
+
   // Split transactions
-  const incomeTxs = useMemo(() => transactions.filter((t) => t.type === "income"), [transactions]);
-  const expenseTxs = useMemo(() => transactions.filter((t) => t.type !== "income"), [transactions]);
+  const incomeTxs = useMemo(() => filteredTransactions.filter((t) => t.type === "income"), [filteredTransactions]);
+  const expenseTxs = useMemo(() => filteredTransactions.filter((t) => t.type !== "income"), [filteredTransactions]);
 
   // Aggregate by category
   const incomeByCategory = useMemo(() => {
@@ -101,6 +131,23 @@ export default function DashboardTabs({ transactions, budgetData, loading }: Pro
     });
   }
 
+  function handlePeriodChange(p: Period) {
+    setPeriod(p);
+    setExpanded(new Set());
+  }
+
+  function handleCustomSubmit() {
+    if (!customFrom || !customTo) return;
+    onFetchPeriod?.(customFrom, customTo);
+  }
+
+  const PERIOD_LABELS: Record<Period, string> = {
+    today: "Hari Ini",
+    week: "Minggu Ini",
+    month: "Bulan Ini",
+    custom: "Custom",
+  };
+
   // ── Loading skeleton ───────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -119,10 +166,63 @@ export default function DashboardTabs({ transactions, budgetData, loading }: Pro
     );
   }
 
+  const isLoading = loading || (period === "custom" && customLoading);
+
   return (
-    <div>
+    <div className="space-y-3">
+
+      {/* ── Period Selector ──────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(["today", "week", "month", "custom"] as Period[]).map((p) => (
+          <button
+            key={p}
+            onClick={() => handlePeriodChange(p)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors",
+              period === p
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {p === "custom" && <Calendar className="h-3 w-3" />}
+            {PERIOD_LABELS[p]}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom date range picker */}
+      {period === "custom" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="h-8 rounded-lg border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <span className="text-xs text-muted-foreground">s/d</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="h-8 rounded-lg border bg-background px-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <button
+            onClick={handleCustomSubmit}
+            disabled={!customFrom || !customTo}
+            className={cn(
+              "h-8 rounded-lg px-4 text-xs font-medium transition-colors",
+              customFrom && customTo
+                ? "bg-primary text-primary-foreground hover:opacity-90"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+          >
+            Tampilkan
+          </button>
+        </div>
+      )}
+
       {/* ── Tab Headers ─────────────────────────────────────────────────────── */}
-      <div className="flex border-b mb-4">
+      <div className="flex border-b">
         {(["cashflow", "budget"] as const).map((tab) => (
           <button
             key={tab}

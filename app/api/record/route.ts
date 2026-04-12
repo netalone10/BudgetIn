@@ -46,17 +46,24 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "bulan ini";
+  const customFrom = searchParams.get("from");
+  const customTo = searchParams.get("to");
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { sheetsId: true },
   });
 
+  // Resolve period — custom range override
+  const resolvedPeriod = (period === "custom" && customFrom && customTo)
+    ? `custom:${customFrom}:${customTo}`
+    : period;
+
   // ── Email user: baca dari DB ──────────────────────────────────────────────
   if (!user?.sheetsId) {
     try {
-      const transactions = await getTransactionsDB(session.userId, period);
-      return NR.json({ transactions: transactions.slice(0, 50) });
+      const transactions = await getTransactionsDB(session.userId, resolvedPeriod);
+      return NR.json({ transactions: transactions.slice(0, 200) });
     } catch {
       return NR.json({ transactions: [] });
     }
@@ -65,9 +72,9 @@ export async function GET(req: NextRequest) {
   // ── Google user: baca dari Sheets ─────────────────────────────────────────
   try {
     const accessToken = await getValidToken(session.userId);
-    const transactions = await getTransactions(user.sheetsId, accessToken, period);
+    const transactions = await getTransactions(user.sheetsId, accessToken, resolvedPeriod);
     transactions.sort((a, b) => (a.date < b.date ? 1 : -1));
-    return NR.json({ transactions: transactions.slice(0, 50) });
+    return NR.json({ transactions: transactions.slice(0, 200) });
   } catch {
     return NR.json({ transactions: [] });
   }

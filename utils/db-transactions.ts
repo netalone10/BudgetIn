@@ -64,11 +64,14 @@ export async function getTransactionsDB(
   let dateFilter: { gte?: string; lte?: string } = {};
 
   const periodLow = period.toLowerCase();
-  if (periodLow.includes("bulan ini") || periodLow.includes("this month")) {
+  if (periodLow.startsWith("custom:")) {
+    const [, from, to] = period.split(":");
+    dateFilter = { gte: from, lte: to };
+  } else if (periodLow.includes("bulan ini") || periodLow.includes("this month")) {
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     dateFilter = { gte: `${ym}-01`, lte: `${ym}-31` };
   } else if (periodLow.includes("minggu ini") || periodLow.includes("this week")) {
-    const day = now.getDay(); // 0=Sun
+    const day = now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - ((day + 6) % 7));
     const sunday = new Date(monday);
@@ -86,7 +89,6 @@ export async function getTransactionsDB(
     const d = yesterday.toISOString().slice(0, 10);
     dateFilter = { gte: d, lte: d };
   } else {
-    // Fallback: bulan ini
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     dateFilter = { gte: `${ym}-01`, lte: `${ym}-31` };
   }
