@@ -5,7 +5,7 @@ declare module "next-auth" {
   interface Session {
     userId: string;
     sheetsId: string | null;
-    accessToken: string;
+    accessToken: string | null;
   }
 }
 

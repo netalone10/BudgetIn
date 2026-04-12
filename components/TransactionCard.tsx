@@ -13,10 +13,12 @@ export interface Transaction {
   category: string;
   note: string;
   created_at: string;
+  type?: "expense" | "income";
 }
 
 interface Props {
   transaction: Transaction;
+  categories?: string[];
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: Partial<Transaction>) => void;
 }
@@ -31,11 +33,18 @@ function formatDate(dateStr: string) {
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
-export default function TransactionCard({ transaction, onDelete, onUpdate }: Props) {
+export default function TransactionCard({ transaction, categories = [], onDelete, onUpdate }: Props) {
   const [editing, setEditing] = useState(false);
+  const [editDate, setEditDate] = useState(transaction.date);
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
+  const [editCategory, setEditCategory] = useState(transaction.category);
   const [loading, setLoading] = useState(false);
+
+  // Gabungkan kategori user + kategori transaksi ini (kalau belum ada di list)
+  const categoryOptions = categories.includes(transaction.category)
+    ? categories
+    : [...categories, transaction.category].sort();
 
   async function handleSave() {
     setLoading(true);
@@ -43,15 +52,30 @@ export default function TransactionCard({ transaction, onDelete, onUpdate }: Pro
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        date: editDate,
         note: editNote,
         amount: Number(editAmount),
+        category: editCategory,
       }),
     });
     if (res.ok) {
-      onUpdate(transaction.id, { note: editNote, amount: Number(editAmount) });
+      onUpdate(transaction.id, {
+        date: editDate,
+        note: editNote,
+        amount: Number(editAmount),
+        category: editCategory,
+      });
       setEditing(false);
     }
     setLoading(false);
+  }
+
+  function handleCancel() {
+    setEditDate(transaction.date);
+    setEditNote(transaction.note);
+    setEditAmount(String(transaction.amount));
+    setEditCategory(transaction.category);
+    setEditing(false);
   }
 
   async function handleDelete() {
@@ -62,93 +86,114 @@ export default function TransactionCard({ transaction, onDelete, onUpdate }: Pro
     setLoading(false);
   }
 
-  return (
-    <div
-      className={cn(
-        "flex items-start justify-between gap-3 rounded-lg border p-3 text-sm transition-colors",
-        editing && "bg-muted/50"
-      )}
-    >
-      {/* Left: date + category badge */}
-      <div className="flex items-start gap-2 min-w-0">
-        <span className="mt-0.5 shrink-0 text-xs text-muted-foreground w-12">
-          {formatDate(transaction.date)}
-        </span>
-        <div className="min-w-0">
-          <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium mb-1">
-            {transaction.category}
-          </span>
-          {editing ? (
-            <Input
-              className="h-6 text-xs px-1 py-0"
-              value={editNote}
-              onChange={(e) => setEditNote(e.target.value)}
-            />
-          ) : (
-            <p className="text-muted-foreground truncate">{transaction.note || "—"}</p>
-          )}
-        </div>
-      </div>
+  const isIncome = transaction.type === "income";
 
-      {/* Right: amount + actions */}
-      <div className="flex items-center gap-1 shrink-0">
+  return (
+    <tr className={cn(
+      "group border-b last:border-0 transition-colors hover:bg-muted/30",
+      editing && "bg-muted/40"
+    )}>
+      {/* Tanggal */}
+      <td className="py-2.5 pl-4 pr-3 text-xs text-muted-foreground whitespace-nowrap w-20">
         {editing ? (
           <Input
-            className="h-6 w-24 text-xs px-1 py-0 text-right"
+            type="date"
+            className="h-7 text-xs px-2 w-32"
+            value={editDate}
+            onChange={(e) => setEditDate(e.target.value)}
+          />
+        ) : (
+          formatDate(transaction.date)
+        )}
+      </td>
+
+      {/* Deskripsi */}
+      <td className="py-2.5 pr-3 min-w-0">
+        {editing ? (
+          <Input
+            className="h-7 text-xs px-2"
+            value={editNote}
+            onChange={(e) => setEditNote(e.target.value)}
+          />
+        ) : (
+          <span className="text-sm truncate block max-w-[160px]">
+            {transaction.note || <span className="text-muted-foreground">—</span>}
+          </span>
+        )}
+      </td>
+
+      {/* Kategori */}
+      <td className="py-2.5 pr-3 whitespace-nowrap">
+        {editing ? (
+          <select
+            value={editCategory}
+            onChange={(e) => setEditCategory(e.target.value)}
+            className={cn(
+              "h-7 rounded-md border bg-background px-2 text-xs",
+              "focus:outline-none focus:ring-1 focus:ring-ring",
+              "min-w-[100px]"
+            )}
+          >
+            {categoryOptions.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+            {!categoryOptions.includes(editCategory) && (
+              <option value={editCategory}>{editCategory}</option>
+            )}
+          </select>
+        ) : (
+          <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+            {transaction.category}
+          </span>
+        )}
+      </td>
+
+      {/* Jumlah */}
+      <td className="py-2.5 pr-2 text-right whitespace-nowrap">
+        {editing ? (
+          <Input
+            className="h-7 w-28 text-xs px-2 text-right"
             value={editAmount}
             onChange={(e) => setEditAmount(e.target.value)}
             type="number"
           />
         ) : (
-          <span className="font-medium tabular-nums">
-            -{formatRupiah(transaction.amount)}
+          <span className={cn(
+            "text-sm font-semibold tabular-nums",
+            isIncome ? "text-green-600 dark:text-green-400" : ""
+          )}>
+            {isIncome ? "+" : "-"}{formatRupiah(transaction.amount)}
           </span>
         )}
+      </td>
 
-        {editing ? (
-          <>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={handleSave}
-              disabled={loading}
-            >
-              <Check className="h-3 w-3 text-green-600" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() => setEditing(false)}
-              disabled={loading}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 opacity-50 hover:opacity-100"
-              onClick={() => setEditing(true)}
-              disabled={loading}
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 opacity-50 hover:opacity-100 hover:text-destructive"
-              onClick={handleDelete}
-              disabled={loading}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </>
-        )}
-      </div>
-    </div>
+      {/* Actions */}
+      <td className="py-2.5 pr-3 w-16">
+        <div className={cn(
+          "flex items-center justify-end gap-0.5 transition-opacity",
+          editing ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
+          {editing ? (
+            <>
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSave} disabled={loading}>
+                <Check className="h-3 w-3 text-green-600" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancel} disabled={loading}>
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditing(true)} disabled={loading}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button size="icon" variant="ghost" className="h-6 w-6 hover:text-destructive" onClick={handleDelete} disabled={loading}>
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
   );
 }

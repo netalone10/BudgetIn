@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { getTransactions } from "@/utils/sheets";
+import { getTransactionsDB } from "@/utils/db-transactions";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -30,26 +31,40 @@ export async function GET() {
     orderBy: { category: { name: "asc" } },
   });
 
-  // Hitung spent per kategori dari Sheets
+  // Hitung spent + income — dari Sheets (Google) atau DB (email)
   let spentByCategory: Record<string, number> = {};
-  if (user?.sheetsId) {
-    try {
+  let totalIncome = 0;
+  let totalExpense = 0;
+
+  try {
+    let transactions: { type?: string; amount: number; category: string }[] = [];
+
+    if (user?.sheetsId) {
+      // Google user → Sheets
       const accessToken = await getValidToken(session.userId);
-      const transactions = await getTransactions(
-        user.sheetsId,
-        accessToken,
-        "bulan ini"
-      );
-      for (const t of transactions) {
+      transactions = await getTransactions(user.sheetsId, accessToken, "bulan ini");
+    } else {
+      // Email user → DB
+      transactions = await getTransactionsDB(session.userId, "bulan ini");
+    }
+
+    for (const t of transactions) {
+      if (t.type === "income") {
+        totalIncome += t.amount;
+      } else {
+        totalExpense += t.amount;
         spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
       }
-    } catch {
-      // Sheets gagal — tetap return budgets tanpa spent
     }
+  } catch {
+    // Gagal ambil transaksi — return budgets tanpa spent
   }
 
   return NextResponse.json({
     month: currentMonth,
+    totalIncome,
+    totalExpense,
+    netCashflow: totalIncome - totalExpense,
     budgets: budgets.map((b) => ({
       id: b.id,
       category: b.category.name,

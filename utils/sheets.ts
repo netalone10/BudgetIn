@@ -5,7 +5,6 @@ import { v4 as uuidv4 } from "uuid";
 
 const TIMEZONE = "Asia/Jakarta";
 
-// Helper: buat Sheets client dari access token
 function getSheetsClient(accessToken: string) {
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: accessToken });
@@ -14,7 +13,6 @@ function getSheetsClient(accessToken: string) {
 
 // ─── ONBOARDING ──────────────────────────────────────────────────────────────
 
-// Buat Google Sheets baru untuk user baru saat onboarding
 export async function createGoogleSheet(
   accessToken: string,
   userName: string
@@ -33,12 +31,13 @@ export async function createGoogleSheet(
 
   const spreadsheetId = spreadsheet.data.spreadsheetId!;
 
+  // Header row: tambah kolom "type" (expense | income)
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Transaksi!A1:F1",
+    range: "Transaksi!A1:G1",
     valueInputOption: "RAW",
     requestBody: {
-      values: [["id", "date", "amount", "category", "note", "created_at"]],
+      values: [["id", "date", "amount", "category", "note", "created_at", "type"]],
     },
   });
 
@@ -58,14 +57,14 @@ export async function createGoogleSheet(
 
 export interface Transaction {
   id: string;
-  date: string;       // YYYY-MM-DD
+  date: string;
   amount: number;
   category: string;
   note: string;
-  created_at: string; // ISO 8601
+  created_at: string;
+  type: "expense" | "income"; // kolom G — default "expense" untuk backward compat
 }
 
-// Append satu transaksi baru ke tab Transaksi
 export async function appendTransaction(
   sheetsId: string,
   accessToken: string,
@@ -79,11 +78,19 @@ export async function appendTransaction(
     "yyyy-MM-dd'T'HH:mm:ssxxx"
   );
 
-  const row = [id, data.date, data.amount, data.category, data.note, created_at];
+  const row = [
+    id,
+    data.date,
+    data.amount,
+    data.category,
+    data.note,
+    created_at,
+    data.type ?? "expense",
+  ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A:F",
+    range: "Transaksi!A:G",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -92,22 +99,21 @@ export async function appendTransaction(
   return { id, ...data, created_at };
 }
 
-// Baca semua transaksi (opsional filter by period)
 export async function getTransactions(
   sheetsId: string,
   accessToken: string,
-  period?: string // "minggu ini" | "bulan ini" | "bulan lalu" | "YYYY-MM"
+  period?: string
 ): Promise<Transaction[]> {
   const sheets = getSheetsClient(accessToken);
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A2:F",
+    range: "Transaksi!A2:G",
   });
 
   const rows = res.data.values ?? [];
   const transactions: Transaction[] = rows
-    .filter((row) => row[0]) // skip empty rows
+    .filter((row) => row[0])
     .map((row) => ({
       id: row[0],
       date: row[1],
@@ -115,11 +121,11 @@ export async function getTransactions(
       category: row[3],
       note: row[4] ?? "",
       created_at: row[5] ?? "",
+      type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
     }));
 
   if (!period) return transactions;
 
-  // Filter by period
   const jakartaNow = toZonedTime(new Date(), TIMEZONE);
   const todayStr = format(jakartaNow, "yyyy-MM-dd");
   const currentMonth = format(jakartaNow, "yyyy-MM");
@@ -127,7 +133,6 @@ export async function getTransactions(
   if (period === "bulan ini") {
     return transactions.filter((t) => t.date.startsWith(currentMonth));
   }
-
   if (period === "bulan lalu") {
     const lastMonth = format(
       new Date(jakartaNow.getFullYear(), jakartaNow.getMonth() - 1, 1),
@@ -135,7 +140,6 @@ export async function getTransactions(
     );
     return transactions.filter((t) => t.date.startsWith(lastMonth));
   }
-
   if (period === "minggu ini") {
     const weekAgo = format(
       new Date(jakartaNow.getTime() - 7 * 24 * 60 * 60 * 1000),
@@ -143,8 +147,6 @@ export async function getTransactions(
     );
     return transactions.filter((t) => t.date >= weekAgo && t.date <= todayStr);
   }
-
-  // YYYY-MM format
   if (/^\d{4}-\d{2}$/.test(period)) {
     return transactions.filter((t) => t.date.startsWith(period));
   }
@@ -152,7 +154,6 @@ export async function getTransactions(
   return transactions;
 }
 
-// Update transaksi — scan kolom id, update row
 export async function updateTransaction(
   sheetsId: string,
   accessToken: string,
@@ -164,31 +165,30 @@ export async function updateTransaction(
   const rowIndex = await findRowById(sheets, sheetsId, id);
   if (rowIndex === -1) throw new Error(`Transaction ${id} not found`);
 
-  // Baca row saat ini
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:F${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:G${rowIndex}`,
   });
   const current = res.data.values?.[0] ?? [];
 
   const updated = [
-    current[0],                              // id (tidak berubah)
+    current[0],
     data.date ?? current[1],
     data.amount ?? current[2],
     data.category ?? current[3],
     data.note ?? current[4],
-    current[5],                              // created_at (tidak berubah)
+    current[5],
+    data.type ?? current[6] ?? "expense",
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:F${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:G${rowIndex}`,
     valueInputOption: "RAW",
     requestBody: { values: [updated] },
   });
 }
 
-// Hapus transaksi — scan kolom id, clear row
 export async function deleteTransaction(
   sheetsId: string,
   accessToken: string,
@@ -196,17 +196,13 @@ export async function deleteTransaction(
 ): Promise<void> {
   const sheets = getSheetsClient(accessToken);
 
-  // Dapatkan sheetId numerik tab Transaksi
   const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetsId });
-  const sheet = meta.data.sheets?.find(
-    (s) => s.properties?.title === "Transaksi"
-  );
+  const sheet = meta.data.sheets?.find((s) => s.properties?.title === "Transaksi");
   const sheetId = sheet?.properties?.sheetId ?? 0;
 
   const rowIndex = await findRowById(sheets, sheetsId, id);
   if (rowIndex === -1) throw new Error(`Transaction ${id} not found`);
 
-  // Delete row (rowIndex adalah 1-based, Sheets API pakai 0-based)
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: sheetsId,
     requestBody: {
@@ -216,8 +212,8 @@ export async function deleteTransaction(
             range: {
               sheetId,
               dimension: "ROWS",
-              startIndex: rowIndex - 1, // 0-based
-              endIndex: rowIndex,       // exclusive
+              startIndex: rowIndex - 1,
+              endIndex: rowIndex,
             },
           },
         },
@@ -228,7 +224,6 @@ export async function deleteTransaction(
 
 // ─── BUDGET BACKUP ────────────────────────────────────────────────────────────
 
-// Backup budget ke tab Budget di Sheets (mirror dari DB)
 export async function appendBudgetBackup(
   sheetsId: string,
   accessToken: string,
@@ -237,7 +232,6 @@ export async function appendBudgetBackup(
   month: string
 ): Promise<void> {
   const sheets = getSheetsClient(accessToken);
-
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
     range: "Budget!A:C",
@@ -249,20 +243,13 @@ export async function appendBudgetBackup(
 
 // ─── HELPER ───────────────────────────────────────────────────────────────────
 
-// Scan kolom A (id) untuk cari row number (1-based)
-async function findRowById(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sheets: any,
-  sheetsId: string,
-  id: string
-): Promise<number> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findRowById(sheets: any, sheetsId: string, id: string): Promise<number> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
     range: "Transaksi!A:A",
   });
-
   const rows: string[][] = res.data.values ?? [];
   const index = rows.findIndex((row) => row[0] === id);
-  if (index === -1) return -1;
-  return index + 1; // 1-based row number
+  return index === -1 ? -1 : index + 1;
 }

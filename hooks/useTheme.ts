@@ -2,39 +2,66 @@
 
 import { useEffect, useState } from "react";
 
-type Theme = "light" | "dark";
+type Mode = "light" | "dark";
+export type ColorTheme = "default" | "blue" | "green" | "purple" | "rose";
+
+export const COLOR_THEMES: { value: ColorTheme; label: string; color: string }[] = [
+  { value: "default", label: "Default", color: "oklch(0.205 0 0)" },
+  { value: "blue",    label: "Blue",    color: "oklch(0.546 0.245 262.881)" },
+  { value: "green",   label: "Green",   color: "oklch(0.527 0.154 150.069)" },
+  { value: "purple",  label: "Purple",  color: "oklch(0.558 0.288 302.321)" },
+  { value: "rose",    label: "Rose",    color: "oklch(0.586 0.253 17.585)" },
+];
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [mode, setMode] = useState<Mode>("light");
+  const [colorTheme, setColorTheme] = useState<ColorTheme>("default");
 
-  // Mount: baca localStorage, fallback ke system preference
   useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored === "dark" || stored === "light") {
-      applyTheme(stored);
-      setTheme(stored);
-    } else {
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const initial: Theme = systemDark ? "dark" : "light";
-      applyTheme(initial);
-      setTheme(initial);
-    }
+    // Restore mode
+    const storedMode = localStorage.getItem("theme") as Mode | null;
+    const initialMode =
+      storedMode === "dark" || storedMode === "light"
+        ? storedMode
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    applyMode(initialMode);
+    setMode(initialMode);
+
+    // Restore color theme
+    const storedColor = localStorage.getItem("color-theme") as ColorTheme | null;
+    const initialColor = COLOR_THEMES.find((t) => t.value === storedColor)
+      ? storedColor!
+      : "default";
+    applyColor(initialColor);
+    setColorTheme(initialColor);
   }, []);
 
-  function applyTheme(t: Theme) {
-    if (t === "dark") {
-      document.documentElement.classList.add("dark");
+  function applyMode(m: Mode) {
+    document.documentElement.classList.toggle("dark", m === "dark");
+  }
+
+  function applyColor(c: ColorTheme) {
+    if (c === "default") {
+      document.documentElement.removeAttribute("data-color");
     } else {
-      document.documentElement.classList.remove("dark");
+      document.documentElement.setAttribute("data-color", c);
     }
   }
 
-  function toggle() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    applyTheme(next);
+  function toggleMode() {
+    const next: Mode = mode === "dark" ? "light" : "dark";
+    applyMode(next);
     localStorage.setItem("theme", next);
-    setTheme(next);
+    setMode(next);
   }
 
-  return { theme, toggle };
+  function setThemeColor(c: ColorTheme) {
+    applyColor(c);
+    localStorage.setItem("color-theme", c);
+    setColorTheme(c);
+  }
+
+  return { theme: mode, toggle: toggleMode, colorTheme, setThemeColor };
 }

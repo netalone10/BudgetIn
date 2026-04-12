@@ -4,18 +4,16 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { updateTransaction, deleteTransaction } from "@/utils/sheets";
+import { updateTransactionDB, deleteTransactionDB } from "@/utils/db-transactions";
 
 type Params = { params: Promise<{ recordId: string }> };
 
 // PATCH /api/record/[recordId] — edit transaksi
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
-  if (!session?.userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { recordId } = await params; // Next.js 16: params adalah Promise
-
+  const { recordId } = await params;
   const body = await req.json();
 
   const user = await prisma.user.findUnique({
@@ -23,10 +21,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     select: { sheetsId: true },
   });
 
+  // ── Email user: update di DB ───────────────────────────────────────────────
   if (!user?.sheetsId) {
-    return NextResponse.json({ error: "Sheets tidak ditemukan" }, { status: 400 });
+    try {
+      await updateTransactionDB(session.userId, recordId, {
+        date: body.date,
+        amount: body.amount,
+        category: body.category,
+        note: body.note,
+      });
+      return NextResponse.json({ success: true });
+    } catch {
+      return NextResponse.json({ error: "Gagal update transaksi." }, { status: 500 });
+    }
   }
 
+  // ── Google user: update di Sheets ─────────────────────────────────────────
   let accessToken: string;
   try {
     accessToken = await getValidToken(session.userId);
@@ -41,22 +51,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       category: body.category,
       note: body.note,
     });
-
-    return NextResponse.json({ success: true, message: "Transaksi diupdate." });
+    return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json(
-      { error: "Gagal update transaksi. Coba lagi." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Gagal update transaksi." }, { status: 500 });
   }
 }
 
 // DELETE /api/record/[recordId] — hapus transaksi
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
-  if (!session?.userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { recordId } = await params;
 
@@ -65,10 +69,17 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     select: { sheetsId: true },
   });
 
+  // ── Email user: hapus dari DB ─────────────────────────────────────────────
   if (!user?.sheetsId) {
-    return NextResponse.json({ error: "Sheets tidak ditemukan" }, { status: 400 });
+    try {
+      await deleteTransactionDB(session.userId, recordId);
+      return NextResponse.json({ success: true });
+    } catch {
+      return NextResponse.json({ error: "Gagal hapus transaksi." }, { status: 500 });
+    }
   }
 
+  // ── Google user: hapus dari Sheets ───────────────────────────────────────
   let accessToken: string;
   try {
     accessToken = await getValidToken(session.userId);
@@ -78,11 +89,8 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   try {
     await deleteTransaction(user.sheetsId, accessToken, recordId);
-    return NextResponse.json({ success: true, message: "Transaksi dihapus." });
+    return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json(
-      { error: "Gagal hapus transaksi. Coba lagi." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Gagal hapus transaksi." }, { status: 500 });
   }
 }

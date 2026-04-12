@@ -1,10 +1,14 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { createGoogleSheet } from "@/utils/sheets";
+import { seedDefaultCategories } from "@/utils/seed-categories";
+import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    // ── Google OAuth ──────────────────────────────────────────────────────────
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -17,9 +21,32 @@ export const authOptions: NextAuthOptions = {
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive.file",
           ].join(" "),
-          access_type: "offline",  // dapat refresh token
-          prompt: "consent",       // paksa minta consent ulang supaya refresh token selalu dikasih
+          access_type: "offline",
+          prompt: "consent",
         },
+      },
+    }),
+
+    // ── Email / Password ──────────────────────────────────────────────────────
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        if (!user || !user.password) return null;
+
+        const valid = await bcrypt.compare(credentials.password, user.password);
+        if (!valid) return null;
+
+        return { id: user.id, email: user.email, name: user.name, image: user.image };
       },
     }),
   ],
@@ -29,12 +56,17 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // Dipanggil saat user login — simpan/update user ke DB + trigger onboarding
+    // ── signIn — hanya untuk Google (Credentials ditangani di authorize) ──────
     async signIn({ user, account }) {
-      if (!account || account.provider !== "google") return false;
+      if (!account) return false;
+
+      // Credentials: user sudah di-validate di authorize(), boleh masuk
+      if (account.provider === "credentials") return true;
+
+      // Google flow
+      if (account.provider !== "google") return false;
 
       try {
-        // Upsert user ke DB
         const dbUser = await prisma.user.upsert({
           where: { googleId: user.id! },
           update: {
@@ -59,7 +91,7 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        // Onboarding: buat Google Sheet kalau belum ada
+        // Onboarding: buat Google Sheet + seed kategori default (sekali saja)
         if (!dbUser.sheetsId && account.access_token) {
           const sheetsId = await createGoogleSheet(
             account.access_token,
@@ -69,6 +101,8 @@ export const authOptions: NextAuthOptions = {
             where: { id: dbUser.id },
             data: { sheetsId },
           });
+          // Seed kategori default untuk user baru
+          await seedDefaultCategories(dbUser.id);
         }
 
         return true;
@@ -78,30 +112,42 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
-    // Tambahkan userId + accessToken ke JWT
+    // ── JWT — sertakan userId ke token ────────────────────────────────────────
     async jwt({ token, user, account }) {
-      if (user && account) {
-        const dbUser = await prisma.user.findUnique({
-          where: { googleId: user.id! },
-          select: { id: true, sheetsId: true },
-        });
-        token.userId = dbUser?.id;
-        token.sheetsId = dbUser?.sheetsId;
-        token.accessToken = account.access_token;
+      if (user) {
+        if (account?.provider === "credentials") {
+          // Credentials: user.id sudah berupa DB id
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { id: true, sheetsId: true },
+          });
+          token.userId = dbUser?.id;
+          token.sheetsId = dbUser?.sheetsId ?? undefined;
+          token.accessToken = undefined;
+        } else if (account?.provider === "google") {
+          const dbUser = await prisma.user.findUnique({
+            where: { googleId: user.id! },
+            select: { id: true, sheetsId: true },
+          });
+          token.userId = dbUser?.id;
+          token.sheetsId = dbUser?.sheetsId;
+          token.accessToken = account.access_token ?? undefined;
+        }
       }
       return token;
     },
 
-    // Expose userId + accessToken ke session (client-accessible)
+    // ── Session ───────────────────────────────────────────────────────────────
     async session({ session, token }) {
       session.userId = token.userId as string;
       session.sheetsId = token.sheetsId as string | null;
-      session.accessToken = token.accessToken as string;
+      session.accessToken = token.accessToken as string | null;
       return session;
     },
   },
 
   pages: {
-    error: "/auth/error",  // halaman error custom
+    signIn: "/auth",
+    error: "/auth/error",
   },
 };

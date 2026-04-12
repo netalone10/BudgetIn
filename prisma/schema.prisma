@@ -9,19 +9,21 @@ datasource db {
 }
 
 model User {
-  id           String     @id @default(uuid())
-  googleId     String     @unique @map("google_id")
-  email        String     @unique
+  id           String    @id @default(uuid())
+  googleId     String?   @unique @map("google_id")  // null untuk email users
+  email        String    @unique
   name         String
   image        String?
-  accessToken  String?    @map("access_token")
-  refreshToken String?    @map("refresh_token")
-  tokenExpiry  DateTime?  @map("token_expiry")
-  sheetsId     String?    @map("sheets_id")
-  createdAt    DateTime   @default(now()) @map("created_at")
+  password     String?   // bcrypt hash — hanya untuk email/password users
+  accessToken  String?   @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  tokenExpiry  DateTime? @map("token_expiry")
+  sheetsId     String?   @map("sheets_id")          // null untuk email users
+  createdAt    DateTime  @default(now()) @map("created_at")
 
-  budgets    Budget[]
-  categories Category[]
+  budgets      Budget[]
+  categories   Category[]
+  transactions Transaction[]
 
   @@map("users")
 }
@@ -29,7 +31,7 @@ model User {
 model Category {
   id     String @id @default(uuid())
   userId String @map("user_id")
-  name   String // "Makan", "Transport", dll — auto dari AI, Title Case
+  name   String
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   budgets Budget[]
@@ -39,15 +41,32 @@ model Category {
 }
 
 model Budget {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  categoryId String   @map("category_id")
-  amount     Float    // nominal budget per bulan dalam Rupiah
-  month      String   // format: "2026-04" (YYYY-MM)
+  id         String @id @default(uuid())
+  userId     String @map("user_id")
+  categoryId String @map("category_id")
+  amount     Float
+  month      String // format: "2026-04" (YYYY-MM)
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([userId, categoryId, month])
   @@map("budgets")
+}
+
+// Transaksi di DB — digunakan untuk email/password users (non-Google)
+// Google users tetap pakai Google Sheets
+model Transaction {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  date      String   // YYYY-MM-DD
+  amount    Float
+  category  String
+  note      String   @default("")
+  type      String   @default("expense") // "expense" | "income"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
 }
