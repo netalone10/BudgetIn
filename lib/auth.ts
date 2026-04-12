@@ -72,8 +72,9 @@ export const authOptions: NextAuthOptions = {
       // Google flow
       if (account.provider !== "google") return false;
 
+      let dbUser;
       try {
-        const dbUser = await prisma.user.upsert({
+        dbUser = await prisma.user.upsert({
           where: { googleId: user.id! },
           update: {
             name: user.name ?? "",
@@ -96,9 +97,15 @@ export const authOptions: NextAuthOptions = {
               : null,
           },
         });
+      } catch (error) {
+        console.error("[signIn] DB upsert error:", error);
+        return "/auth/error?error=OnboardingFailed";
+      }
 
-        // Onboarding: buat Google Sheet + seed kategori default (sekali saja)
-        if (!dbUser.sheetsId && account.access_token) {
+      // Onboarding: buat Google Sheet + seed kategori default (sekali saja)
+      // Jika gagal, tetap izinkan login — akan dicoba ulang di next sign-in
+      if (!dbUser.sheetsId && account.access_token) {
+        try {
           const sheetsId = await createGoogleSheet(
             account.access_token,
             user.name ?? "User"
@@ -107,15 +114,19 @@ export const authOptions: NextAuthOptions = {
             where: { id: dbUser.id },
             data: { sheetsId },
           });
-          // Seed kategori default untuk user baru
           await seedDefaultCategories(dbUser.id);
+        } catch (sheetsError) {
+          console.error("[signIn] createGoogleSheet error:", sheetsError);
+          // Lanjutkan login meski Sheets gagal — user masih bisa pakai DB storage
         }
-
-        return true;
-      } catch (error) {
-        console.error("signIn error:", error);
-        return "/auth/error?error=OnboardingFailed";
       }
+
+      // Seed kategori jika belum ada (untuk user lama)
+      if (dbUser.sheetsId) {
+        seedDefaultCategories(dbUser.id).catch(() => {});
+      }
+
+      return true;
     },
 
     // ── JWT — sertakan userId ke token ────────────────────────────────────────
