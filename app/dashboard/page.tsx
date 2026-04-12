@@ -111,6 +111,11 @@ export default function DashboardPage() {
       const data = await res.json();
       setResponse(data);
 
+      // Auto-dismiss success notification setelah 4 detik
+      if (data.intent === "transaksi" || data.intent === "pemasukan" || data.intent === "budget_setting") {
+        setTimeout(() => setResponse(null), 4000);
+      }
+
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
         fetchBudget();
