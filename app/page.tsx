@@ -144,7 +144,7 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t py-8 text-center text-xs text-muted-foreground space-y-1">
+      <footer className="border-t py-8 text-center text-xs text-muted-foreground space-y-2">
         <p className="font-medium text-foreground/70">© 2026 Catatuang — Aplikasi pencatat keuangan pribadi berbasis AI</p>
         <p>
           Dirancang &amp; dikembangkan oleh{" "}
@@ -157,6 +157,11 @@ export default async function LandingPage() {
             Akbar Muharram
           </a>
           {" "}· Semua hak dilindungi
+        </p>
+        <p className="flex items-center justify-center gap-4">
+          <Link href="/privacy" className="hover:text-primary transition-colors">Kebijakan Privasi</Link>
+          <span>·</span>
+          <Link href="/terms" className="hover:text-primary transition-colors">Syarat &amp; Ketentuan</Link>
         </p>
       </footer>
     </div>
