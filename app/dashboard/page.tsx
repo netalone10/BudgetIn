@@ -375,7 +375,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="rounded-[24px] border border-border bg-card overflow-hidden shadow-sm">
-              <table className="w-full">
+              <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px]">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
                     <th className="py-3 px-5 text-left w-16 label-mono text-muted-foreground">Tgl</th>
@@ -397,6 +398,7 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
               <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20 gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-medium text-muted-foreground">Tampilkan</span>

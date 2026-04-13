@@ -116,7 +116,7 @@ export default function TransactionCard({ transaction, categories = [], onDelete
             onChange={(e) => setEditNote(e.target.value)}
           />
         ) : (
-          <span className="text-sm truncate block max-w-[160px]">
+          <span className="text-sm block">
             {transaction.note || <span className="text-muted-foreground">—</span>}
           </span>
         )}
