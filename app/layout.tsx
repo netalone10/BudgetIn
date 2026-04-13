@@ -1,26 +1,18 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Source_Sans_3, IBM_Plex_Mono } from "next/font/google";
+import { Inter, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
 import "./globals.css";
 
-const playfair = Playfair_Display({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  variable: "--font-inter",
   display: "swap",
 });
 
-const sourceSans = Source_Sans_3({
+const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-source-sans",
-  weight: ["300", "400", "600", "700"],
-  display: "swap",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  variable: "--font-ibm-plex-mono",
-  weight: ["400", "500"],
+  variable: "--font-geist-mono",
   display: "swap",
 });
 
@@ -42,9 +34,8 @@ export default function RootLayout({
       lang="id"
       suppressHydrationWarning
       className={cn(
-        playfair.variable,
-        sourceSans.variable,
-        ibmPlexMono.variable
+        inter.variable,
+        geistMono.variable
       )}
     >
       <body className="antialiased">

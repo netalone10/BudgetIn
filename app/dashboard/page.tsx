@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import Navbar from "@/components/Navbar";
 import DashboardTabs, { BudgetData } from "@/components/DashboardTabs";
 import TransactionCard, { Transaction } from "@/components/TransactionCard";
 import ReportView from "@/components/ReportView";
@@ -11,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -55,6 +55,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (status === "unauthenticated") redirect("/");
   }, [status]);
+
+  useEffect(() => {
+    const handleCategoryChange = () => fetchCategories();
+    window.addEventListener("categoriesChanged", handleCategoryChange);
+    return () => window.removeEventListener("categoriesChanged", handleCategoryChange);
+  }, []);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -191,70 +197,56 @@ export default function DashboardPage() {
   const dataLoading = txLoading || budgetLoading;
 
   return (
-    <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--background)" }}>
-      <Navbar onCategoriesChange={fetchCategories} />
+    <div className="flex flex-col w-full">
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-8 py-8 space-y-6">
 
-      <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6">
-
-        {/* Greeting — Playfair Display */}
-        <div className="space-y-1 pb-1">
-          <h2
-            className="text-2xl font-normal"
-            style={{
-              fontFamily: "var(--font-playfair), Georgia, serif",
-              color: "var(--foreground)",
-            }}
-          >
+        {/* Greeting */}
+        <div className="space-y-1 pb-2 mt-4 md:mt-2">
+          <h2 className="text-3xl font-semibold tracking-tight-h2 text-foreground">
             Halo, {session?.user?.name?.split(" ")[0]}
           </h2>
-          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-[15px] text-muted-foreground">
             Ketik transaksi, set budget, atau minta laporan.
           </p>
         </div>
 
         {/* Today's Summary */}
         {!txLoading && (
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             {/* Pengeluaran hari ini */}
-            <div
-              className="flex-1 rounded-xl px-4 py-3 flex items-center justify-between"
-              style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
-            >
+            <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between shadow-sm">
               <div>
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <TrendingDown className="h-3.5 w-3.5 text-destructive" />
-                  <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingDown className="h-4 w-4 text-destructive" />
+                  <span className="text-[13px] font-medium text-muted-foreground">
                     Keluar hari ini
                   </span>
                 </div>
-                <p className="text-lg font-semibold tabular-nums" style={{ color: "var(--foreground)" }}>
+                <p className="text-xl font-semibold tabular-nums text-foreground mt-1">
                   {todayStats.expense > 0
                     ? `Rp ${new Intl.NumberFormat("id-ID").format(todayStats.expense)}`
-                    : <span style={{ color: "var(--muted-foreground)", fontSize: "0.9rem" }}>Belum ada</span>
+                    : <span className="text-muted-foreground text-base">Belum ada</span>
                   }
                 </p>
                 {todayStats.count > 0 && (
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--muted-foreground)" }}>
+                  <p className="text-[12px] font-medium text-muted-foreground mt-1">
                     {todayStats.count} transaksi
                   </p>
                 )}
               </div>
             </div>
 
-            {/* Pemasukan hari ini — hanya tampil kalau ada */}
+            {/* Pemasukan hari ini */}
             {todayStats.income > 0 && (
-              <div
-                className="flex-1 rounded-xl px-4 py-3 flex items-center justify-between"
-                style={{ border: "1px solid var(--border)", backgroundColor: "var(--card)" }}
-              >
+              <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between shadow-sm">
                 <div>
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-                    <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp className="h-4 w-4 text-[#0fa76e]" />
+                    <span className="text-[13px] font-medium text-muted-foreground">
                       Masuk hari ini
                     </span>
                   </div>
-                  <p className="text-lg font-semibold tabular-nums text-green-600 dark:text-green-400">
+                  <p className="text-xl font-semibold tabular-nums text-[#0fa76e] mt-1">
                     +{new Intl.NumberFormat("id-ID").format(todayStats.income)}
                   </p>
                 </div>
@@ -264,7 +256,7 @@ export default function DashboardPage() {
         )}
 
         {/* Prompt Input */}
-        <form onSubmit={handleSubmit} className="space-y-1.5">
+        <form onSubmit={handleSubmit} className="space-y-2 mt-2">
           <div className="relative">
             <Textarea
               ref={textareaRef}
@@ -273,14 +265,14 @@ export default function DashboardPage() {
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               rows={2}
-              className="resize-none pr-12"
+              className="resize-none pr-12 rounded-[20px] shadow-sm py-3 px-4 focus-visible:ring-primary"
               disabled={loading}
             />
             <Button
               type="submit"
               size="icon"
               disabled={!prompt.trim() || loading}
-              className="absolute bottom-2 right-2 h-8 w-8"
+              className="absolute bottom-2.5 right-2 h-9 w-9 rounded-full shadow-md hover:-translate-y-px transition-transform"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -289,7 +281,7 @@ export default function DashboardPage() {
               )}
             </Button>
           </div>
-          <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+          <p className="text-[12px] font-medium text-muted-foreground px-2">
             Enter untuk kirim &middot; Shift+Enter untuk baris baru
           </p>
         </form>
@@ -339,63 +331,40 @@ export default function DashboardPage() {
         />
 
         {/* Riwayat Transaksi */}
-        <div className="space-y-3">
-          {/* Section label with rule lines */}
+        <div className="space-y-4 pt-4">
           <div className="flex items-center gap-3">
-            <span className="h-px flex-1" style={{ backgroundColor: "var(--border)" }} />
-            <h3
-              style={{
-                fontFamily: "var(--font-ibm-plex-mono), monospace",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                color: "var(--muted-foreground)",
-              }}
-            >
+            <span className="h-px flex-1 bg-border" />
+            <span className="label-mono text-muted-foreground">
               Riwayat Transaksi
-            </h3>
-            <span className="h-px flex-1" style={{ backgroundColor: "var(--border)" }} />
+            </span>
+            <span className="h-px flex-1 bg-border" />
           </div>
 
           {txLoading ? (
-            <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div className="rounded-[24px] border border-border bg-card overflow-hidden shadow-sm">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-4 px-4 py-3 animate-pulse" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <div className="h-3 w-12 rounded" style={{ backgroundColor: "var(--muted)" }} />
-                  <div className="h-3 flex-1 rounded" style={{ backgroundColor: "var(--muted)" }} />
-                  <div className="h-5 w-16 rounded-full" style={{ backgroundColor: "var(--muted)" }} />
-                  <div className="h-3 w-16 rounded" style={{ backgroundColor: "var(--muted)" }} />
+                <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border animate-pulse">
+                  <div className="h-4 w-12 bg-muted rounded-md" />
+                  <div className="h-4 flex-1 bg-muted rounded-md" />
+                  <div className="h-6 w-20 bg-muted rounded-full" />
+                  <div className="h-4 w-20 bg-muted rounded-md" />
                 </div>
               ))}
             </div>
           ) : transactions.length === 0 ? (
-            <div
-              className="rounded-xl px-4 py-8 text-center text-sm"
-              style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--card)",
-                color: "var(--muted-foreground)",
-              }}
-            >
+            <div className="rounded-[24px] border border-border bg-card px-5 py-10 text-center text-muted-foreground text-sm shadow-sm">
               Belum ada transaksi bulan ini.
             </div>
           ) : (
-            <div
-              className="rounded-xl overflow-hidden"
-              style={{
-                border: "1px solid var(--border)",
-                backgroundColor: "var(--card)",
-              }}
-            >
+            <div className="rounded-[24px] border border-border bg-card overflow-hidden shadow-sm">
               <table className="w-full">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "color-mix(in srgb, var(--muted) 30%, transparent)" }}>
-                    <th className="py-2.5 pl-4 pr-3 text-left w-16" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Tgl</th>
-                    <th className="py-2.5 pr-3 text-left" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Deskripsi</th>
-                    <th className="py-2.5 pr-3 text-left" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Kategori</th>
-                    <th className="py-2.5 pr-2 text-right" style={{ fontSize: "11px", fontWeight: 500, color: "var(--muted-foreground)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.05em" }}>Jumlah</th>
-                    <th className="py-2.5 pr-3 w-16" />
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="py-3 px-5 text-left w-16 label-mono text-muted-foreground">Tgl</th>
+                    <th className="py-3 pr-4 text-left label-mono text-muted-foreground">Deskripsi</th>
+                    <th className="py-3 pr-4 text-left label-mono text-muted-foreground">Kategori</th>
+                    <th className="py-3 pr-4 text-right label-mono text-muted-foreground">Jumlah</th>
+                    <th className="py-3 pr-4 w-16" />
                   </tr>
                 </thead>
                 <tbody>
@@ -410,49 +379,40 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
-              {/* Footer: page size selector + pagination */}
-              <div
-                className="flex items-center justify-between px-4 py-2.5 gap-4"
-                style={{ borderTop: "1px solid var(--border)" }}
-              >
-                {/* Page size */}
+              <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20 gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>Tampilkan</span>
+                  <span className="text-[13px] font-medium text-muted-foreground">Tampilkan</span>
                   {([10, 20, 50] as const).map((n) => (
                     <button
                       key={n}
                       onClick={() => { setPageSize(n); setPage(1); }}
-                      className="text-xs px-2 py-0.5 rounded"
-                      style={{
-                        fontWeight: pageSize === n ? 600 : 400,
-                        background: pageSize === n ? "var(--primary)" : "transparent",
-                        color: pageSize === n ? "var(--primary-foreground)" : "var(--muted-foreground)",
-                        border: "1px solid var(--border)",
-                      }}
+                      className={cn(
+                        "text-[13px] px-2.5 py-1 rounded-md font-medium transition-colors border",
+                        pageSize === n
+                          ? "bg-foreground text-background border-foreground shadow-[rgba(0,0,0,0.06)_0px_1px_2px]"
+                          : "bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                      )}
                     >
                       {n}
                     </button>
                   ))}
                 </div>
-                {/* Pagination */}
                 <div className="flex items-center gap-3">
-                  <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                  <span className="text-[13px] font-medium text-muted-foreground">
                     {Math.min((page - 1) * pageSize + 1, transactions.length)}–{Math.min(page * pageSize, transactions.length)} dari {transactions.length}
                   </span>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5">
                     <button
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
-                      className="text-xs px-2 py-0.5 rounded border disabled:opacity-30"
-                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      className="text-[15px] px-2.5 py-0.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 transition-colors"
                     >
                       ‹
                     </button>
                     <button
                       onClick={() => setPage((p) => Math.min(Math.ceil(transactions.length / pageSize), p + 1))}
                       disabled={page >= Math.ceil(transactions.length / pageSize)}
-                      className="text-xs px-2 py-0.5 rounded border disabled:opacity-30"
-                      style={{ borderColor: "var(--border)", color: "var(--foreground)" }}
+                      className="text-[15px] px-2.5 py-0.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 transition-colors"
                     >
                       ›
                     </button>
@@ -462,7 +422,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

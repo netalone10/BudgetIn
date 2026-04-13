@@ -2,134 +2,92 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* Dark mode via class="dark" on <html> */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-playfair);
-  --font-sans: var(--font-source-sans);
-  --font-mono: var(--font-ibm-plex-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+  
   --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-full: 9999px;
 }
 
-/* ── WCAG AA Notes ───────────────────────────────────────────────────────────
-   Serif Design System — Ivory + Burnished Gold palette
-   - foreground (#1A1A1A) on background (#FAFAF8) : ~19:1  ✅
-   - muted-foreground (#6B6B6B) on background     : ~5.5:1 ✅
-   - muted-foreground on muted (#F5F3F0)           : ~5.0:1 ✅
-   - primary (#B8860B) on white                   : ~4.7:1 ✅
-   - primary-foreground (white) on primary gold   : >4.5:1 ✅
-   Dark mode: primary lightens to #D4A84B for contrast
-──────────────────────────────────────────────────────────────────────────── */
-
 :root {
-  /* Serif System — Warm Ivory + Burnished Gold */
-  --background: #FAFAF8;
-  --foreground: #1A1A1A;
-  --card: #FFFFFF;
-  --card-foreground: #1A1A1A;
-  --popover: #FFFFFF;
-  --popover-foreground: #1A1A1A;
-  --muted: #F5F3F0;
-  --muted-foreground: #6B6B6B;
-  --secondary: #F5F3F0;
-  --secondary-foreground: #1A1A1A;
-  --accent: #F5F3F0;
-  --accent-foreground: #1A1A1A;
-  /* Burnished Gold — the single signature accent */
-  --primary: #B8860B;
-  --primary-foreground: #FFFFFF;
-  --border: #E8E4DF;
-  --input: #E8E4DF;
-  --ring: #B8860B;
-  --destructive: oklch(0.577 0.245 27.325);
-  --radius: 0.5rem;
-  /* Charts — warm monochrome scale */
-  --chart-1: #1A1A1A;
-  --chart-2: #6B6B6B;
-  --chart-3: #B8860B;
-  --chart-4: #D4A84B;
-  --chart-5: #E8E4DF;
-  --sidebar: #F5F3F0;
-  --sidebar-foreground: #1A1A1A;
-  --sidebar-primary: #B8860B;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #FAFAF8;
-  --sidebar-accent-foreground: #1A1A1A;
-  --sidebar-border: #E8E4DF;
-  --sidebar-ring: #B8860B;
+  /* Mintlify Light Mode Palette */
+  --background: #ffffff;
+  --foreground: #0d0d0d;
+  --card: #ffffff;
+  --card-foreground: #0d0d0d;
+  --popover: #ffffff;
+  --popover-foreground: #0d0d0d;
+  --primary: #18E299;
+  --primary-foreground: #0d0d0d;
+  --secondary: #ffffff;
+  --secondary-foreground: #0d0d0d;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #f5f5f5;
+  --accent-foreground: #0d0d0d;
+  --destructive: #d45656;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.05);
+  --input: rgba(0, 0, 0, 0.08);
+  --ring: #18E299;
+  --radius: 16px;
 }
 
 .dark {
-  --background: #1A1A1A;
-  --foreground: #F5F3F0;
-  --card: #222220;
-  --card-foreground: #F5F3F0;
-  --popover: #222220;
-  --popover-foreground: #F5F3F0;
-  --muted: #2A2A28;
-  --muted-foreground: #A8A8A4;
-  --secondary: #2A2A28;
-  --secondary-foreground: #F5F3F0;
-  --accent: #2A2A28;
-  --accent-foreground: #F5F3F0;
-  /* Lighter gold for dark mode contrast */
-  --primary: #D4A84B;
-  --primary-foreground: #1A1A1A;
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: #D4A84B;
-  --destructive: oklch(0.704 0.191 22.216);
-  --chart-1: #F5F3F0;
-  --chart-2: #A8A8A4;
-  --chart-3: #D4A84B;
-  --chart-4: #B8860B;
-  --chart-5: #2A2A28;
-  --sidebar: #222220;
-  --sidebar-foreground: #F5F3F0;
-  --sidebar-primary: #D4A84B;
-  --sidebar-primary-foreground: #1A1A1A;
-  --sidebar-accent: #2A2A28;
-  --sidebar-accent-foreground: #F5F3F0;
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: #D4A84B;
+  /* Mintlify Dark Mode Palette */
+  --background: #0d0d0d;
+  --foreground: #ededed;
+  --card: #141414;
+  --card-foreground: #ededed;
+  --popover: #141414;
+  --popover-foreground: #ededed;
+  --primary: #18E299;
+  --primary-foreground: #0d0d0d;
+  --secondary: #0d0d0d;
+  --secondary-foreground: #ededed;
+  --muted: #222222;
+  --muted-foreground: #a0a0a0;
+  --accent: #222222;
+  --accent-foreground: #ededed;
+  --destructive: #d45656;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #18E299;
 }
 
 @layer base {
@@ -138,89 +96,56 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-source-sans), "Source Sans 3", system-ui, sans-serif;
-    font-size: 1rem;
-    line-height: 1.6;
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  html {
-    font-family: var(--font-source-sans), "Source Sans 3", system-ui, sans-serif;
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
-  /* Headings use Playfair Display */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-playfair), "Playfair Display", Georgia, serif;
-  }
-  small, .text-xs {
-    font-size: 0.75rem;
+    font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
   }
   :focus-visible {
-    outline: 2px solid var(--primary);
-    outline-offset: 3px;
-    border-radius: 0.25rem;
+    outline: 1px solid var(--ring);
+    outline-offset: 2px;
   }
 }
 
-/* ── Section Label — IBM Plex Mono small caps pattern ──────────────────── */
-.label-serif {
-  font-family: var(--font-ibm-plex-mono), "IBM Plex Mono", monospace;
-  font-size: 0.75rem;
+/* ── Mintlify Typographic & Layout Utilities ─────────────────────────────── */
+
+.label-mono {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: var(--primary);
 }
 
-/* ── Color Themes (preserved for settings compatibility) ─────────────────── */
-[data-color="teal"] {
-  --primary: oklch(0.48 0.07 192);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.48 0.07 192);
+.badge-mono {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 9999px;
 }
-[data-color="teal"].dark {
-  --primary: oklch(0.60 0.07 192);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.60 0.07 192);
+
+/* Tight tracking for large headings */
+.tracking-tight-hero {
+  letter-spacing: -1.28px;
 }
-[data-color="blue"] {
-  --primary: oklch(0.546 0.245 262.881);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.546 0.245 262.881);
+.tracking-tight-h2 {
+  letter-spacing: -0.8px;
 }
-[data-color="blue"].dark {
-  --primary: oklch(0.707 0.165 254.624);
-  --primary-foreground: oklch(0.145 0 0);
-  --ring: oklch(0.707 0.165 254.624);
+.tracking-tight-h3 {
+  letter-spacing: -0.24px;
 }
-[data-color="green"] {
-  --primary: oklch(0.527 0.154 150.069);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.527 0.154 150.069);
+
+/* Atmospheric hero gradient */
+.hero-atmospheric-gradient {
+  background: linear-gradient(180deg, rgba(24, 226, 153, 0.08) 0%, rgba(24, 226, 153, 0) 100%);
 }
-[data-color="green"].dark {
-  --primary: oklch(0.696 0.17 162.48);
-  --primary-foreground: oklch(0.145 0 0);
-  --ring: oklch(0.696 0.17 162.48);
-}
-[data-color="purple"] {
-  --primary: oklch(0.558 0.288 302.321);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.558 0.288 302.321);
-}
-[data-color="purple"].dark {
-  --primary: oklch(0.714 0.203 305.504);
-  --primary-foreground: oklch(0.145 0 0);
-  --ring: oklch(0.714 0.203 305.504);
-}
-[data-color="rose"] {
-  --primary: oklch(0.586 0.253 17.585);
-  --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.586 0.253 17.585);
-}
-[data-color="rose"].dark {
-  --primary: oklch(0.712 0.194 13.428);
-  --primary-foreground: oklch(0.145 0 0);
-  --ring: oklch(0.712 0.194 13.428);
+.dark .hero-atmospheric-gradient {
+  background: linear-gradient(180deg, rgba(24, 226, 153, 0.05) 0%, rgba(24, 226, 153, 0) 100%);
 }

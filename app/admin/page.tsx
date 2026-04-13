@@ -8,7 +8,6 @@ import {
   Mail, Chrome, Trash2, KeyRound, AlertTriangle, X, CheckCircle2,
   BadgeCheck, Clock, MailCheck,
 } from "lucide-react";
-import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -140,9 +139,8 @@ export default function AdminPage() {
 
   if (forbidden) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
-        <div className="flex flex-1 items-center justify-center flex-col gap-3">
+      <div className="flex flex-col w-full">
+        <div className="flex flex-1 items-center justify-center flex-col gap-3 min-h-[60vh]">
           <ShieldCheck className="h-12 w-12 text-muted-foreground" />
           <p className="text-lg font-semibold">Akses Ditolak</p>
           <p className="text-sm text-muted-foreground">Kamu tidak memiliki izin untuk halaman ini.</p>
@@ -152,9 +150,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Navbar />
-      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-6">
+    <div className="flex flex-col w-full">
+      <div className="mx-auto w-full max-w-5xl px-4 md:px-8 py-8 space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -280,8 +277,7 @@ export default function AdminPage() {
             </table>
           </div>
         </div>
-
-      </main>
+      </div>
 
       {/* ── Confirm Dialog ── */}
       {dialog.type && dialog.user && (
