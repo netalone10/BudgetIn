@@ -642,28 +642,28 @@ function CategorySection({
 
             {/* Expanded transaction list */}
             {isOpen && (
-              <div className="border-t bg-muted/20">
+              <div className="border-t bg-muted/20 overflow-x-auto">
                 {catTxs.length === 0 ? (
                   <p className="px-12 py-3 text-xs text-muted-foreground">
                     Tidak ada transaksi.
                   </p>
                 ) : (
-                  catTxs.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between px-12 py-2.5 border-b last:border-0 text-xs hover:bg-muted/30"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
+                  <div className="min-w-[360px]">
+                    {catTxs.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 text-xs hover:bg-muted/30 gap-3"
+                      >
                         <span className="shrink-0 text-muted-foreground w-12">
                           {formatDate(t.date)}
                         </span>
-                        <span className="truncate">{t.note || "—"}</span>
+                        <span className="flex-1 whitespace-nowrap">{t.note || "—"}</span>
+                        <span className={cn("shrink-0 font-semibold tabular-nums", valueClass)}>
+                          {signPrefix}{fmt(t.amount)}
+                        </span>
                       </div>
-                      <span className={cn("shrink-0 font-semibold tabular-nums ml-4", valueClass)}>
-                        {signPrefix}{fmt(t.amount)}
-                      </span>
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             )}
