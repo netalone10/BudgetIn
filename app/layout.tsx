@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -39,7 +40,10 @@ export default function RootLayout({
       )}
     >
       <body className="antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Analytics />
+        </Providers>
       </body>
     </html>
   );
