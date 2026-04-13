@@ -10,14 +10,14 @@ export function checkOwnership(goalUserId: string, requestUserId: string): boole
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { goalId: string } }
+  { params }: { params: Promise<{ goalId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { goalId } = params;
+  const { goalId } = await params;
 
   try {
     await prisma.savingsGoal.delete({
