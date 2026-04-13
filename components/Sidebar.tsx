@@ -13,7 +13,8 @@ import {
   PanelLeft, 
   ListPlus, 
   ShieldCheck,
-  KeyRound
+  KeyRound,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -52,6 +53,7 @@ export default function Sidebar() {
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+    { name: "AI Analyst", href: "/dashboard/analyst", icon: Sparkles },
   ];
 
   if (isAdminUser) {
