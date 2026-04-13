@@ -28,15 +28,17 @@ model User {
   budgets      Budget[]
   categories   Category[]
   transactions Transaction[]
+  savingsGoals SavingsGoal[]
 
   @@map("users")
 }
 
 model Category {
-  id     String @id @default(uuid())
-  userId String @map("user_id")
-  name   String
-  type   String @default("expense") // "expense" | "income"
+  id        String  @id @default(uuid())
+  userId    String  @map("user_id")
+  name      String
+  type      String  @default("expense") // "expense" | "income"
+  isSavings Boolean @default(false) @map("is_savings")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   budgets Budget[]
@@ -74,4 +76,17 @@ model Transaction {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
+}
+
+model SavingsGoal {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  name         String
+  targetAmount Float     @map("target_amount")
+  deadline     DateTime? @map("deadline")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("savings_goals")
 }

@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { Transaction } from "@/components/TransactionCard";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDaysInMonth, getDate, startOfWeek, endOfWeek, format } from "date-fns";
+import { isSavingsTransaction } from "@/lib/savings-utils";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
@@ -64,6 +65,7 @@ interface Props {
   onFetchPeriod?: (from: string, to: string) => void; // callback untuk custom period
   customTransactions?: Transaction[]; // hasil fetch custom period dari parent
   customLoading?: boolean;
+  savingsCategoryNames?: Set<string>; // kategori yang ditandai isSavings=true (opsional, default empty Set)
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -75,6 +77,7 @@ export default function DashboardTabs({
   onFetchPeriod,
   customTransactions,
   customLoading = false,
+  savingsCategoryNames = new Set(),
 }: Props) {
   const [activeTab, setActiveTab] = useState<"cashflow" | "budget">("cashflow");
   const [period, setPeriod] = useState<Period>("month");
@@ -107,6 +110,17 @@ export default function DashboardTabs({
   const incomeTxs = useMemo(() => filteredTransactions.filter((t) => t.type === "income"), [filteredTransactions]);
   const expenseTxs = useMemo(() => filteredTransactions.filter((t) => t.type !== "income"), [filteredTransactions]);
 
+  // Further split expense into savings vs non-savings
+  // totalSavings counts ALL savings transactions without cap (cashflow actuals, not goal progress)
+  const savingsTxs = useMemo(
+    () => expenseTxs.filter((t) => isSavingsTransaction(t.category, savingsCategoryNames)),
+    [expenseTxs, savingsCategoryNames]
+  );
+  const nonSavingsExpenseTxs = useMemo(
+    () => expenseTxs.filter((t) => !isSavingsTransaction(t.category, savingsCategoryNames)),
+    [expenseTxs, savingsCategoryNames]
+  );
+
   // Aggregate by category
   const incomeByCategory = useMemo(() => {
     const map: Record<string, number> = {};
@@ -116,13 +130,21 @@ export default function DashboardTabs({
 
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    for (const t of expenseTxs) map[t.category] = (map[t.category] ?? 0) + t.amount;
+    for (const t of nonSavingsExpenseTxs) map[t.category] = (map[t.category] ?? 0) + t.amount;
     return Object.entries(map).sort(([, a], [, b]) => b - a);
-  }, [expenseTxs]);
+  }, [nonSavingsExpenseTxs]);
+
+  const savingsByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const t of savingsTxs) map[t.category] = (map[t.category] ?? 0) + t.amount;
+    return Object.entries(map).sort(([, a], [, b]) => b - a);
+  }, [savingsTxs]);
 
   const totalIncome = useMemo(() => incomeTxs.reduce((s, t) => s + t.amount, 0), [incomeTxs]);
-  const totalExpense = useMemo(() => expenseTxs.reduce((s, t) => s + t.amount, 0), [expenseTxs]);
-  const net = totalIncome - totalExpense;
+  const totalExpense = useMemo(() => nonSavingsExpenseTxs.reduce((s, t) => s + t.amount, 0), [nonSavingsExpenseTxs]);
+  const totalSavings = useMemo(() => savingsTxs.reduce((s, t) => s + t.amount, 0), [savingsTxs]);
+  // Formula: Income − Expenses − Savings = Sisa
+  const sisa = totalIncome - totalExpense - totalSavings;
 
   function toggle(key: string) {
     setExpanded((prev) => {
@@ -244,7 +266,7 @@ export default function DashboardTabs({
       {activeTab === "cashflow" && (
         <div className="space-y-4">
           {/* Summary cards */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <MetricCard
               icon={<TrendingUp className="h-3.5 w-3.5 text-green-500" />}
               label="Pemasukan"
@@ -258,10 +280,16 @@ export default function DashboardTabs({
               valueClass="text-destructive"
             />
             <MetricCard
+              icon={<PiggyBank className="h-3.5 w-3.5 text-blue-500" />}
+              label="Tabungan"
+              value={`-${fmt(totalSavings)}`}
+              valueClass="text-blue-600 dark:text-blue-400"
+            />
+            <MetricCard
               icon={<Minus className="h-3.5 w-3.5 text-muted-foreground" />}
-              label="Net"
-              value={`${net >= 0 ? "+" : "-"}${fmt(net)}`}
-              valueClass={net >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}
+              label="Sisa"
+              value={`${sisa >= 0 ? "+" : "-"}${fmt(sisa)}`}
+              valueClass={sisa >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}
             />
           </div>
 
@@ -286,7 +314,18 @@ export default function DashboardTabs({
                   type="expense"
                   categories={expenseByCategory}
                   total={totalExpense}
-                  transactions={expenseTxs}
+                  transactions={nonSavingsExpenseTxs}
+                  expanded={expanded}
+                  onToggle={toggle}
+                />
+              )}
+              {savingsByCategory.length > 0 && (
+                <CategorySection
+                  title="Tabungan/Alokasi"
+                  type="expense"
+                  categories={savingsByCategory}
+                  total={totalSavings}
+                  transactions={savingsTxs}
                   expanded={expanded}
                   onToggle={toggle}
                 />
@@ -399,7 +438,7 @@ export default function DashboardTabs({
 
                         {/* Budget */}
                         <td className="py-3 pr-3 text-right text-xs text-muted-foreground tabular-nums">
-                          {fmtCompact(item.budget)}
+                          {fmt(item.budget)}
                         </td>
 
                         {/* Prorated */}

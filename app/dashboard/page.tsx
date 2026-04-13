@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [budgetLoading, setBudgetLoading] = useState(true);
 
   const [categories, setCategories] = useState<string[]>([]);
+  const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(new Set());
   const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
   const [customLoading, setCustomLoading] = useState(false);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
@@ -71,7 +72,15 @@ export default function DashboardPage() {
     try {
       const r = await fetch("/api/categories");
       const d = await r.json();
-      setCategories((d.categories ?? []).map((c: { name: string }) => c.name));
+      const cats = d.categories ?? [];
+      setCategories(cats.map((c: { name: string }) => c.name));
+      // Build savings category names set
+      const savingsNames = new Set<string>(
+        cats
+          .filter((c: { isSavings?: boolean }) => c.isSavings)
+          .map((c: { name: string }) => c.name.toLowerCase())
+      );
+      setSavingsCategoryNames(savingsNames);
     } catch {
       // skip
     }
@@ -141,7 +150,15 @@ export default function DashboardPage() {
         fetchBudget();
         fetch("/api/categories")
           .then((r) => r.json())
-          .then((d) => setCategories((d.categories ?? []).map((c: { name: string }) => c.name)))
+          .then((d) => {
+            const cats = d.categories ?? [];
+            setCategories(cats.map((c: { name: string }) => c.name));
+            setSavingsCategoryNames(new Set<string>(
+              cats
+                .filter((c: { isSavings?: boolean }) => c.isSavings)
+                .map((c: { name: string }) => c.name.toLowerCase())
+            ));
+          })
           .catch(() => {});
       }
 
@@ -328,6 +345,7 @@ export default function DashboardPage() {
           onFetchPeriod={handleFetchPeriod}
           customTransactions={customTransactions}
           customLoading={customLoading}
+          savingsCategoryNames={savingsCategoryNames}
         />
 
         {/* Riwayat Transaksi */}

@@ -14,7 +14,8 @@ import {
   ListPlus, 
   ShieldCheck,
   KeyRound,
-  Sparkles
+  Sparkles,
+  PiggyBank
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -53,6 +54,7 @@ export default function Sidebar() {
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+    { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
     { name: "AI Analyst", href: "/dashboard/analyst", icon: Sparkles },
   ];
 
@@ -173,107 +175,124 @@ export default function Sidebar() {
 
   const MobileTopbarAndNav = () => (
     <div className="md:hidden">
-      {/* Topbar */}
-      <div className="flex h-14 items-center justify-between px-4 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-40 w-full">
+      {/* Topbar — fixed so it doesn't push content; layout.tsx adds pt-14 to offset */}
+      <div className="fixed top-0 left-0 right-0 flex h-14 items-center justify-between px-4 border-b border-border bg-background/90 backdrop-blur-md z-40">
         <span className="text-[17px] font-semibold tracking-tight text-foreground">
           BudgetIn
         </span>
         <button
           onClick={() => setIsMobileOpen(true)}
-          className="p-1.5 rounded-md text-foreground bg-muted hover:bg-muted/80 transition-colors"
+          className="p-1.5 rounded-md text-foreground hover:bg-muted transition-colors"
+          aria-label="Buka menu"
         >
           <Menu className="h-5 w-5" />
         </button>
       </div>
 
       {/* Mobile Sidebar Overlay */}
-      {isMobileOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div 
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-            onClick={() => setIsMobileOpen(false)}
-          />
-          <div className="relative w-72 max-w-[80vw] bg-card h-full flex flex-col border-r border-border animate-in slide-in-from-left duration-200">
-            <div className="flex h-14 items-center justify-between px-4 border-b border-border">
-              <span className="text-[17px] font-semibold tracking-tight text-foreground">
-                Menu
-              </span>
-              <button
-                onClick={() => setIsMobileOpen(false)}
-                className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <nav className="flex-1 py-4 px-3 flex flex-col gap-2 overflow-y-auto">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-sm" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
-                    )}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    <span className="text-[15px]">{item.name}</span>
-                  </Link>
-                );
-              })}
+      <div
+        className={cn(
+          "fixed inset-0 z-50 flex transition-all duration-200",
+          isMobileOpen ? "pointer-events-auto" : "pointer-events-none"
+        )}
+      >
+        {/* Backdrop */}
+        <div
+          className={cn(
+            "fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200",
+            isMobileOpen ? "opacity-100" : "opacity-0"
+          )}
+          onClick={() => setIsMobileOpen(false)}
+        />
 
-              <div className="mt-2 pt-2 border-t border-border flex flex-col gap-2">
+        {/* Drawer */}
+        <div
+          className={cn(
+            "relative w-72 max-w-[82vw] bg-card h-full flex flex-col border-r border-border transition-transform duration-200 ease-in-out",
+            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          <div className="flex h-14 items-center justify-between px-4 border-b border-border">
+            <span className="text-[17px] font-semibold tracking-tight text-foreground">
+              BudgetIn
+            </span>
+            <button
+              onClick={() => setIsMobileOpen(false)}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              aria-label="Tutup menu"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <nav className="flex-1 py-4 px-3 flex flex-col gap-1 overflow-y-auto">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setIsMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-4 py-3 transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
+                  )}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="text-[15px]">{item.name}</span>
+                </Link>
+              );
+            })}
+
+            <div className="mt-2 pt-2 border-t border-border flex flex-col gap-1">
+              <button
+                onClick={() => { setIsMobileOpen(false); setShowManageCategories(true); }}
+                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
+              >
+                <ListPlus className="h-5 w-5 shrink-0" />
+                <span className="text-[15px]">Kelola Kategori</span>
+              </button>
+              {isEmailUser && (
                 <button
-                  onClick={() => { setIsMobileOpen(false); setShowManageCategories(true); }}
+                  onClick={() => { setIsMobileOpen(false); setShowChangePassword(true); }}
                   className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
                 >
-                  <ListPlus className="h-5 w-5 shrink-0" />
-                  <span className="text-[15px]">Kelola Kategori</span>
+                  <KeyRound className="h-5 w-5 shrink-0" />
+                  <span className="text-[15px]">Ganti Password</span>
                 </button>
-                {isEmailUser && (
-                  <button
-                    onClick={() => { setIsMobileOpen(false); setShowChangePassword(true); }}
-                    className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
-                  >
-                    <KeyRound className="h-5 w-5 shrink-0" />
-                    <span className="text-[15px]">Ganti Password</span>
-                  </button>
-                )}
-              </div>
-            </nav>
-
-            <div className="p-4 border-t border-border flex flex-col gap-4">
-              <ThemeToggle />
-              {session?.user && (
-                <div className="flex items-center justify-between rounded-xl p-3 bg-muted/40 border border-border/50">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar className="h-9 w-9 shrink-0 border border-border">
-                      <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} />
-                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="text-[14px] font-semibold text-foreground truncate">{session.user.name}</p>
-                      <p className="text-[12px] text-muted-foreground truncate">{session.user.email}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => signOut({ callbackUrl: "/" })}
-                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                  >
-                    <LogOut className="h-5 w-5" />
-                  </button>
-                </div>
               )}
             </div>
+          </nav>
+
+          <div className="p-4 border-t border-border flex flex-col gap-4">
+            <ThemeToggle />
+            {session?.user && (
+              <div className="flex items-center justify-between rounded-xl p-3 bg-muted/40 border border-border/50">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-9 w-9 shrink-0 border border-border">
+                    <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} />
+                    <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold text-foreground truncate">{session.user.name}</p>
+                    <p className="text-[12px] text-muted-foreground truncate">{session.user.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => signOut({ callbackUrl: "/" })}
+                  className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 

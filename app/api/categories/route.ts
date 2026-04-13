@@ -13,7 +13,7 @@ export async function GET() {
 
   let categories = await prisma.category.findMany({
     where: { userId: session.userId },
-    select: { id: true, name: true, type: true },
+    select: { id: true, name: true, type: true, isSavings: true },
     orderBy: { name: "asc" },
   });
 
@@ -25,7 +25,7 @@ export async function GET() {
     // Refetch setelah seed
     categories = await prisma.category.findMany({
       where: { userId: session.userId },
-      select: { id: true, name: true, type: true },
+      select: { id: true, name: true, type: true, isSavings: true },
       orderBy: { name: "asc" },
     });
   }

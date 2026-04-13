@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 interface Category {
   id: string;
   name: string;
-  type?: string; 
+  type?: string;
+  isSavings: boolean;
 }
 
 interface Props {
@@ -121,6 +122,26 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
     }
   }
 
+  async function handleToggleSavings(id: string, currentValue: boolean) {
+    try {
+      const res = await fetch(`/api/categories/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isSavings: !currentValue }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCategories((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, isSavings: !currentValue } : c))
+        );
+      } else {
+        alert(data.error || "Gagal mengubah status tabungan");
+      }
+    } catch {
+      alert("Terjadi kesalahan");
+    }
+  }
+
   function startEdit(c: Category) {
     setEditingId(c.id);
     setEditName(c.name);
@@ -210,13 +231,30 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
                   ) : (
                     <>
                       <span className="font-medium truncate pr-4">{c.name}</span>
-                      <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(c)} disabled={savingId === c.id}>
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7 hover:text-destructive" onClick={() => handleDelete(c.id, c.name)} disabled={savingId === c.id}>
-                          {savingId === c.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
-                        </Button>
+                      <div className="flex items-center gap-1">
+                        {activeTab === "expense" && (
+                          <button
+                            onClick={() => handleToggleSavings(c.id, c.isSavings)}
+                            disabled={savingId === c.id}
+                            title={c.isSavings ? "Tandai bukan tabungan" : "Tandai sebagai tabungan"}
+                            className={cn(
+                              "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
+                              c.isSavings
+                                ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-400"
+                                : "bg-muted text-muted-foreground hover:bg-muted/80 opacity-0 group-hover:opacity-100"
+                            )}
+                          >
+                            💰 {c.isSavings ? "Tabungan" : "Tabungan?"}
+                          </button>
+                        )}
+                        <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(c)} disabled={savingId === c.id}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 hover:text-destructive" onClick={() => handleDelete(c.id, c.name)} disabled={savingId === c.id}>
+                            {savingId === c.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
+                          </Button>
+                        </div>
                       </div>
                     </>
                   )}
