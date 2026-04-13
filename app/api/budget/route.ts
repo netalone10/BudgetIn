@@ -60,6 +60,12 @@ export async function GET() {
     // Gagal ambil transaksi — return budgets tanpa spent
   }
 
+  const budgetedCategories = new Set(budgets.map((b) => b.category.name));
+  const unbudgeted = Object.entries(spentByCategory)
+    .filter(([cat]) => !budgetedCategories.has(cat))
+    .map(([category, spent]) => ({ category, spent }))
+    .sort((a, b) => a.category.localeCompare(b.category));
+
   return NextResponse.json({
     month: currentMonth,
     totalIncome,
@@ -71,6 +77,7 @@ export async function GET() {
       budget: b.amount,
       spent: spentByCategory[b.category.name] ?? 0,
     })),
+    unbudgeted,
   });
 }
 

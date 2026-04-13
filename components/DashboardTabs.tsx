@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Transaction } from "@/components/TransactionCard";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDaysInMonth, getDate, startOfWeek, endOfWeek, format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
@@ -52,6 +52,7 @@ export interface BudgetData {
   totalExpense: number;
   netCashflow: number;
   budgets: BudgetItem[];
+  unbudgeted?: { category: string; spent: number }[];
 }
 
 type Period = "today" | "week" | "month" | "custom";
@@ -327,6 +328,7 @@ export default function DashboardTabs({
           {!budgetData || budgetData.budgets.length === 0 ? (
             <EmptyState text='Belum ada budget. Ketik "Budget makan 500rb" untuk mulai.' />
           ) : (
+            <div className="space-y-4">
             <div className="rounded-xl border bg-card overflow-hidden">
               <table className="w-full">
                 <thead>
@@ -467,6 +469,33 @@ export default function DashboardTabs({
                   </tr>
                 </tfoot>
               </table>
+            </div>
+
+            {/* Unbudgeted categories */}
+            {budgetData.unbudgeted && budgetData.unbudgeted.length > 0 && (
+              <div className="rounded-xl border bg-card overflow-hidden">
+                <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    Pengeluaran tanpa budget
+                  </span>
+                </div>
+                <table className="w-full">
+                  <tbody>
+                    {budgetData.unbudgeted.map((item) => (
+                      <tr key={item.category} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                        <td className="py-3 pl-4 pr-2">
+                          <span className="text-sm font-medium">{item.category}</span>
+                        </td>
+                        <td className="py-3 pr-4 text-right text-sm font-medium tabular-nums text-muted-foreground" colSpan={4}>
+                          {fmt(item.spent)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             </div>
           )}
         </div>
