@@ -94,7 +94,7 @@ Target Budget Bulan Ini: ${JSON.stringify(budgetContext)}`;
 
     const summaryRes = await callWithRotation((client) =>
       client.chat.completions.create({
-        model: "llama3-70b-8192", // We use a smarter model to output high quality JSON
+        model: "llama-3.1-8b-instant",
         response_format: { type: "json_object" },
         temperature: 0.2,
         messages: [
