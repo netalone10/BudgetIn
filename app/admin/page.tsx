@@ -31,6 +31,7 @@ interface UserRow {
   budgetCount: number;
   categoryCount: number;
   createdAt: string;
+  lastActivityAt: string;
 }
 
 type DialogType = "delete" | "reset-password" | "resend-verification" | null;
@@ -191,7 +192,7 @@ export default function AdminPage() {
                   <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground hidden sm:table-cell">Email</th>
                   <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground">Tipe</th>
                   <th className="py-2.5 pr-3 text-left text-[11px] font-medium text-muted-foreground hidden md:table-cell">Budget</th>
-                  <th className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground hidden sm:table-cell">Daftar</th>
+                  <th className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground hidden sm:table-cell">Last Activity</th>
                   <th className="py-2.5 pr-4 text-right text-[11px] font-medium text-muted-foreground">Aksi</th>
                 </tr>
               </thead>
@@ -235,7 +236,7 @@ export default function AdminPage() {
                       <span className="text-xs text-muted-foreground">{u.budgetCount} budget</span>
                     </td>
                     <td className="py-3 pr-3 hidden sm:table-cell text-right">
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo(u.createdAt)}</span>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">{timeAgo(u.lastActivityAt)}</span>
                     </td>
                     <td className="py-3 pr-4">
                       <div className="flex items-center justify-end gap-1.5">

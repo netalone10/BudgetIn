@@ -41,6 +41,11 @@ export async function GET() {
         emailVerified: true,
         createdAt: true,
         _count: { select: { budgets: true, categories: true } },
+        transactions: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
       },
     }),
     prisma.transaction.count(),
@@ -67,6 +72,7 @@ export async function GET() {
       budgetCount: u._count.budgets,
       categoryCount: u._count.categories,
       createdAt: u.createdAt.toISOString(),
+      lastActivityAt: (u.transactions[0]?.createdAt ?? u.createdAt).toISOString(),
     })),
   });
 }
