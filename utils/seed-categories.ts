@@ -33,8 +33,19 @@ export const ALL_DEFAULT_CATEGORIES = [
  * Aman dipanggil berkali-kali — pakai upsert (skip kalau sudah ada).
  */
 export async function seedDefaultCategories(userId: string): Promise<void> {
+  const expenseData = DEFAULT_EXPENSE_CATEGORIES.map((name) => ({
+    userId,
+    name,
+    type: "expense",
+  }));
+  const incomeData = DEFAULT_INCOME_CATEGORIES.map((name) => ({
+    userId,
+    name,
+    type: "income",
+  }));
+
   await prisma.category.createMany({
-    data: ALL_DEFAULT_CATEGORIES.map((name) => ({ userId, name })),
+    data: [...expenseData, ...incomeData],
     skipDuplicates: true,
   });
 }

@@ -13,7 +13,7 @@ export async function GET() {
 
   let categories = await prisma.category.findMany({
     where: { userId: session.userId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, type: true },
     orderBy: { name: "asc" },
   });
 
@@ -25,10 +25,53 @@ export async function GET() {
     // Refetch setelah seed
     categories = await prisma.category.findMany({
       where: { userId: session.userId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, type: true },
       orderBy: { name: "asc" },
     });
   }
 
   return NextResponse.json({ categories });
+}
+
+// POST /api/categories — create new category
+export async function POST(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { name, type } = await req.json();
+
+    if (!name || (type !== "expense" && type !== "income")) {
+      return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+    }
+
+    // Check existing
+    const existing = await prisma.category.findUnique({
+      where: {
+        userId_name: {
+          userId: session.userId,
+          name: name.trim(),
+        },
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ error: "Kategori sudah ada" }, { status: 400 });
+    }
+
+    const category = await prisma.category.create({
+      data: {
+        userId: session.userId,
+        name: name.trim(),
+        type,
+      },
+    });
+
+    return NextResponse.json({ category });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Terjadi kesalahan" }, { status: 500 });
+  }
 }

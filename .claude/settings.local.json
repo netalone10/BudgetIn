@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx tsc:*)",
+      "Bash(rtk git:*)",
+      "Bash(rtk tsc:*)",
+      "Bash(dir \"D:\\\\Project\\\\BudgetIn\\\\app\\\\api\\\\user\")",
+      "Bash(rtk npm:*)",
+      "Bash(rtk npx:*)",
+      "mcp__258d7a00-9e6c-46f8-9cd3-5aeba13a77ca__list_teams",
+      "mcp__258d7a00-9e6c-46f8-9cd3-5aeba13a77ca__list_projects",
+      "mcp__258d7a00-9e6c-46f8-9cd3-5aeba13a77ca__list_deployments",
+      "Bash(grep -E \"\\\\.tsx$\")",
+      "Bash(ls -la /d/Project/BudgetIn/.env*)"
     ]
   }
 }

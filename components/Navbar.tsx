@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import ThemeToggle from "@/components/ThemeToggle";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
+import ManageCategoriesModal from "@/components/ManageCategoriesModal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,11 +13,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, KeyRound, ShieldCheck } from "lucide-react";
+import { LogOut, KeyRound, ShieldCheck, ListPlus } from "lucide-react";
 
-export default function Navbar() {
+interface Props {
+  onCategoriesChange?: () => void;
+}
+
+export default function Navbar({ onCategoriesChange }: Props) {
   const { data: session } = useSession();
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showManageCategories, setShowManageCategories] = useState(false);
 
   const initials = session?.user?.name
     ?.split(" ")
@@ -72,6 +78,14 @@ export default function Navbar() {
                   </div>
                   <DropdownMenuSeparator />
 
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => setShowManageCategories(true)}
+                  >
+                    <ListPlus className="mr-2 h-4 w-4" />
+                    Kelola Kategori
+                  </DropdownMenuItem>
+
                   {/* Ganti Password — hanya untuk email users */}
                   {isEmailUser && (
                     <DropdownMenuItem
@@ -94,7 +108,7 @@ export default function Navbar() {
                     </DropdownMenuItem>
                   )}
 
-                  {(isEmailUser || isAdminUser) && <DropdownMenuSeparator />}
+                  <DropdownMenuSeparator />
 
                   <DropdownMenuItem
                     className="cursor-pointer text-destructive focus:text-destructive"
@@ -109,6 +123,14 @@ export default function Navbar() {
           </div>
         </div>
       </header>
+
+      {/* Modal Kelola Kategori */}
+      {showManageCategories && (
+        <ManageCategoriesModal 
+          onClose={() => setShowManageCategories(false)} 
+          onSaved={() => onCategoriesChange?.()} 
+        />
+      )}
 
       {/* Modal Ganti Password */}
       {showChangePassword && (

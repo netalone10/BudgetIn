@@ -61,13 +61,20 @@ export default function DashboardPage() {
     fetchAll();
   }, [status]);
 
+  async function fetchCategories() {
+    try {
+      const r = await fetch("/api/categories");
+      const d = await r.json();
+      setCategories((d.categories ?? []).map((c: { name: string }) => c.name));
+    } catch {
+      // skip
+    }
+  }
+
   async function fetchAll() {
     fetchTransactions();
     fetchBudget();
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((d) => setCategories((d.categories ?? []).map((c: { name: string }) => c.name)))
-      .catch(() => {});
+    fetchCategories();
   }
 
   async function fetchTransactions() {
@@ -185,7 +192,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "var(--background)" }}>
-      <Navbar />
+      <Navbar onCategoriesChange={fetchCategories} />
 
       <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6">
 
