@@ -601,30 +601,38 @@ export default function DashboardTabs({
                     );
                   })}
                 </tbody>
-                {/* Footer: total expense */}
+                {/* Footer: total */}
                 <tfoot>
-                  <tr className="border-t bg-muted/20">
-                    <td className="py-2.5 pl-4 text-xs font-semibold text-muted-foreground" colSpan={3}>
-                      Total Pengeluaran
-                    </td>
-                    <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums text-destructive">
-                      {fmt(budgetData.totalExpense)}
-                    </td>
-                    <td className="py-2.5 pr-4 text-right text-sm font-bold tabular-nums">
-                      {(() => {
-                        const totalProrated = budgetData.budgets.reduce((s, b) => {
-                          const fixed = isFixed(b.category);
-                          return s + (fixed ? b.budget : Math.round((b.budget * dayOfMonth) / totalDays));
-                        }, 0);
-                        const totalRemaining = totalProrated - budgetData.totalExpense;
-                        return (
+                  {(() => {
+                    const totalBudget = budgetData.budgets.reduce((s, b) => s + b.budget, 0);
+                    const totalProrated = budgetData.budgets.reduce((s, b) => {
+                      const fixed = isFixed(b.category);
+                      return s + (fixed ? b.budget : Math.round((b.budget * dayOfMonth) / totalDays));
+                    }, 0);
+                    const totalRemaining = totalProrated - budgetData.totalExpense;
+                    return (
+                      <tr className="border-t bg-muted/20">
+                        <td className="py-2.5 pl-4 text-xs font-semibold text-muted-foreground">
+                          Total
+                        </td>
+                        <td className="py-2.5 pr-3 text-right text-xs font-semibold text-muted-foreground tabular-nums">
+                          {fmt(totalBudget)}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right text-xs font-semibold text-muted-foreground tabular-nums">
+                          {fmtCompact(totalProrated)}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums text-destructive">
+                          {fmt(budgetData.totalExpense)}
+                        </td>
+                        <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums">
                           <span className={totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}>
                             {totalRemaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(totalRemaining))}
                           </span>
-                        );
-                      })()}
-                    </td>
-                  </tr>
+                        </td>
+                        <td />
+                      </tr>
+                    );
+                  })()}
                 </tfoot>
               </table>
             </div>
