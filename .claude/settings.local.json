@@ -12,7 +12,8 @@
       "mcp__258d7a00-9e6c-46f8-9cd3-5aeba13a77ca__list_projects",
       "mcp__258d7a00-9e6c-46f8-9cd3-5aeba13a77ca__list_deployments",
       "Bash(grep -E \"\\\\.tsx$\")",
-      "Bash(ls -la /d/Project/BudgetIn/.env*)"
+      "Bash(ls -la /d/Project/BudgetIn/.env*)",
+      "Bash(rtk next:*)"
     ]
   }
 }
