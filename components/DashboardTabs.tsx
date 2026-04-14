@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Transaction } from "@/components/TransactionCard";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank, Pencil, Trash2, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDaysInMonth, getDate, startOfWeek, endOfWeek, format } from "date-fns";
 import { isSavingsTransaction } from "@/lib/savings-utils";
@@ -66,6 +66,7 @@ interface Props {
   customTransactions?: Transaction[]; // hasil fetch custom period dari parent
   customLoading?: boolean;
   savingsCategoryNames?: Set<string>; // kategori yang ditandai isSavings=true (opsional, default empty Set)
+  onBudgetChange?: () => void; // callback setelah edit/hapus budget
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -78,12 +79,48 @@ export default function DashboardTabs({
   customTransactions,
   customLoading = false,
   savingsCategoryNames = new Set(),
+  onBudgetChange,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"cashflow" | "budget">("cashflow");
   const [period, setPeriod] = useState<Period>("month");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Budget edit/delete state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  async function handleEditSave(item: BudgetItem) {
+    const parsed = parseFloat(editAmount.replace(/\./g, "").replace(",", "."));
+    if (!parsed || parsed <= 0) return;
+    setEditLoading(true);
+    try {
+      await fetch("/api/budget", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: item.category, amount: parsed }),
+      });
+      setEditingId(null);
+      onBudgetChange?.();
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setDeleteLoading(true);
+    try {
+      await fetch(`/api/budget/${id}`, { method: "DELETE" });
+      setDeletingId(null);
+      onBudgetChange?.();
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
 
   // Date helpers (WIB)
   const now = toZonedTime(new Date(), TIMEZONE);
@@ -384,9 +421,10 @@ export default function DashboardTabs({
                     <th className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground">
                       Realisasi
                     </th>
-                    <th className="py-2.5 pr-4 text-right text-[11px] font-medium text-muted-foreground">
+                    <th className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground">
                       Sisa
                     </th>
+                    <th className="py-2.5 pr-3 w-16" />
                   </tr>
                 </thead>
                 <tbody>
@@ -399,11 +437,13 @@ export default function DashboardTabs({
                     const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
                     const isOver = pct >= 100;
                     const isNear = pct >= 80 && !isOver;
+                    const isEditing = editingId === item.id;
+                    const isConfirmDelete = deletingId === item.id;
 
                     return (
                       <tr
                         key={item.id}
-                        className="border-b last:border-0 hover:bg-muted/20 transition-colors"
+                        className="group border-b last:border-0 hover:bg-muted/20 transition-colors"
                       >
                         {/* Kategori + badge + bar */}
                         <td className="py-3 pl-4 pr-2">
@@ -436,9 +476,25 @@ export default function DashboardTabs({
                           </div>
                         </td>
 
-                        {/* Budget */}
-                        <td className="py-3 pr-3 text-right text-xs text-muted-foreground tabular-nums">
-                          {fmt(item.budget)}
+                        {/* Budget — input saat edit */}
+                        <td className="py-3 pr-3 text-right tabular-nums">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleEditSave(item);
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              className="w-24 rounded-md border bg-background px-2 py-1 text-right text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {fmt(item.budget)}
+                            </span>
+                          )}
                         </td>
 
                         {/* Prorated */}
@@ -470,13 +526,76 @@ export default function DashboardTabs({
                         {/* Sisa */}
                         <td
                           className={cn(
-                            "py-3 pr-4 text-right text-sm font-semibold tabular-nums",
+                            "py-3 pr-3 text-right text-sm font-semibold tabular-nums",
                             remaining < 0
                               ? "text-destructive"
                               : "text-green-600 dark:text-green-400"
                           )}
                         >
                           {remaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(remaining))}
+                        </td>
+
+                        {/* Aksi */}
+                        <td className="py-3 pr-3">
+                          {isEditing ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleEditSave(item)}
+                                disabled={editLoading}
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
+                                title="Simpan"
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setEditingId(null)}
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted transition-colors"
+                                title="Batal"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : isConfirmDelete ? (
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                disabled={deleteLoading}
+                                className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white bg-destructive hover:opacity-90 transition-opacity disabled:opacity-50"
+                              >
+                                Hapus
+                              </button>
+                              <button
+                                onClick={() => setDeletingId(null)}
+                                className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => {
+                                  setEditingId(item.id);
+                                  setEditAmount(item.budget.toString());
+                                  setDeletingId(null);
+                                }}
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                title="Edit budget"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setDeletingId(item.id);
+                                  setEditingId(null);
+                                }}
+                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Hapus budget"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

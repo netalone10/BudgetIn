@@ -365,6 +365,7 @@ export default function DashboardPage() {
           customTransactions={customTransactions}
           customLoading={customLoading}
           savingsCategoryNames={savingsCategoryNames}
+          onBudgetChange={fetchBudget}
         />
 
         {/* Riwayat Transaksi */}
