@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Loader2, Sparkles, AlertTriangle, CheckCircle2, Download, Printer, ChevronRight } from "lucide-react";
+import { Loader2, Sparkles, AlertTriangle, CheckCircle2, Download, Printer, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,13 @@ interface AIReport {
   healthScore: number;
   anomalies: string[];
   recommendations: string[];
+}
+
+interface PredictionResult {
+  predictions: { category: string; history: number[]; predicted: number; trend: "up" | "down" | "stable" }[];
+  totalPredicted: number;
+  basedOnMonths: string[];
+  insight: string;
 }
 
 export default function AIAnalystPage() {
@@ -29,6 +36,10 @@ export default function AIAnalystPage() {
   const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [predLoading, setPredLoading] = useState(false);
+  const [predError, setPredError] = useState<string | null>(null);
+
   const handleGenerate = async () => {
     setLoading(true);
     setError(null);
@@ -41,6 +52,21 @@ export default function AIAnalystPage() {
       setError(err.message || "Terjadi kesalahan sistem.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePredict = async () => {
+    setPredLoading(true);
+    setPredError(null);
+    try {
+      const res = await fetch("/api/prediction");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Gagal mengambil prediksi");
+      setPrediction(data);
+    } catch (err: unknown) {
+      setPredError(err instanceof Error ? err.message : "Terjadi kesalahan.");
+    } finally {
+      setPredLoading(false);
     }
   };
 
@@ -134,7 +160,11 @@ export default function AIAnalystPage() {
             </p>
           </div>
           
-          <div className="flex items-center gap-2 print:hidden">
+          <div className="flex items-center gap-2 print:hidden flex-wrap">
+            <Button variant="outline" size="sm" onClick={handlePredict} disabled={predLoading} className="h-9">
+              {predLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+              Prediksi Bulan Depan
+            </Button>
             <Button variant="outline" size="sm" onClick={handleDownloadCsv} disabled={downloadingCsv} className="h-9">
               {downloadingCsv ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
               CSV
@@ -179,6 +209,95 @@ export default function AIAnalystPage() {
             <h3 className="font-semibold text-destructive mb-1">Gagal Diproses</h3>
             <p className="text-sm text-destructive/80 mb-4">{error}</p>
             <Button onClick={handleGenerate} variant="outline" size="sm">Coba Lagi</Button>
+          </div>
+        )}
+
+        {/* Prediction Error */}
+        {predError && (
+          <div className="rounded-[24px] border border-destructive/20 bg-destructive/5 p-4 flex items-center gap-3 print:hidden">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+            <p className="text-sm text-destructive">{predError}</p>
+          </div>
+        )}
+
+        {/* Prediction Result */}
+        {prediction && !predLoading && (
+          <div className="rounded-[24px] border border-border bg-card shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-500 print:hidden">
+            <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  Prediksi Pengeluaran Bulan Depan
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Berdasarkan data {prediction.basedOnMonths.join(", ")}
+                </p>
+              </div>
+              <span className="text-sm font-bold tabular-nums text-destructive shrink-0">
+                Est. Rp {prediction.totalPredicted.toLocaleString("id-ID")}
+              </span>
+            </div>
+
+            {prediction.insight && (
+              <div className="px-6 py-3 border-b bg-primary/5 text-sm text-foreground/80 italic">
+                {prediction.insight}
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/20">
+                    <th className="py-2.5 pl-6 pr-3 text-left text-[11px] font-medium text-muted-foreground">Kategori</th>
+                    {prediction.basedOnMonths.map((m) => (
+                      <th key={m} className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground">{m}</th>
+                    ))}
+                    <th className="py-2.5 pr-3 text-right text-[11px] font-medium text-muted-foreground">Tren</th>
+                    <th className="py-2.5 pr-6 text-right text-[11px] font-medium text-muted-foreground">Prediksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prediction.predictions.map((p) => (
+                    <tr key={p.category} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
+                      <td className="py-3 pl-6 pr-3 text-sm font-medium">{p.category}</td>
+                      {p.history.map((v, i) => (
+                        <td key={i} className="py-3 pr-3 text-right text-xs text-muted-foreground tabular-nums">
+                          {v > 0 ? `${(v / 1000).toFixed(0)}rb` : "—"}
+                        </td>
+                      ))}
+                      <td className="py-3 pr-3 text-right">
+                        {p.trend === "up" ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+                            <TrendingUp className="h-3 w-3" /> Naik
+                          </span>
+                        ) : p.trend === "down" ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+                            <TrendingDown className="h-3 w-3" /> Turun
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                            <Minus className="h-3 w-3" /> Stabil
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 pr-6 text-right text-sm font-semibold tabular-nums">
+                        Rp {p.predicted.toLocaleString("id-ID")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t bg-muted/20">
+                    <td className="py-2.5 pl-6 text-xs font-semibold text-muted-foreground" colSpan={prediction.basedOnMonths.length + 2}>
+                      Total Prediksi
+                    </td>
+                    <td className="py-2.5 pr-6 text-right text-sm font-bold tabular-nums text-destructive">
+                      Rp {prediction.totalPredicted.toLocaleString("id-ID")}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         )}
 

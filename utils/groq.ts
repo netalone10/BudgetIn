@@ -60,13 +60,16 @@ export async function callWithRotation<T>(
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedRecord {
-  intent: "transaksi" | "pemasukan" | "budget_setting" | "laporan" | "unknown";
+  intent: "transaksi" | "transaksi_bulk" | "pemasukan" | "budget_setting" | "laporan" | "unknown";
 
   // intent: transaksi (pengeluaran)
   amount?: number;
   category?: string;
   note?: string;
   date?: string; // YYYY-MM-DD
+
+  // intent: transaksi_bulk (beberapa item sekaligus)
+  items?: Array<{ amount: number; category: string; note?: string }>;
 
   // intent: pemasukan (income)
   incomeAmount?: number;
@@ -139,6 +142,11 @@ RULES:
    - bisnis/usaha/jualan/dagangan/omzet → "Bisnis"
    - lainnya → gunakan kategori paling relevan dalam Title Case
 
+8. TRANSAKSI BULK: Jika user mencantumkan BEBERAPA item pengeluaran sekaligus (dipisah koma, titik koma, atau baris baru dengan nominal masing-masing), gunakan intent "transaksi_bulk".
+   Contoh: "Belanja: ayam 30rb, sayur 15rb, telur 25rb" → transaksi_bulk
+   Contoh: "Beli kopi 25rb, snack 15rb" → transaksi_bulk
+   Gunakan "transaksi" (bukan bulk) jika hanya ADA SATU item.
+
 9. VALIDASI NOMINAL WAJIB: Input transaksi/pemasukan/budget_setting HARUS mengandung nominal uang dalam IDR.
    - VALID: "makan 35rb", "gajian 8jt", "beli kopi 25000", "dapat freelance 2.5jt"
    - TIDAK VALID → return unknown: "dapat warisan 1kg emas", "jual 1 lot BBCA", "beli 2 gram emas", "terima 50 pcs barang"
@@ -147,6 +155,7 @@ RULES:
 
 10. FORMAT JSON WAJIB per intent:
    - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","note":"STRING","date":"YYYY-MM-DD"}
+   - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"date":"YYYY-MM-DD"}
    - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","note":"STRING","date":"YYYY-MM-DD"}
    - budget_setting: {"intent":"budget_setting","budgetCategory":"STRING","budgetAmount":NUMBER}
    - laporan: {"intent":"laporan","period":"STRING","reportType":"summary"}

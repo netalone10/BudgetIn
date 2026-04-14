@@ -204,6 +204,60 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── TRANSAKSI BULK ────────────────────────────────────────────────────────
+  if (parsed.intent === "transaksi_bulk") {
+    const raw = parsed as unknown as Record<string, unknown>;
+    const items = parsed.items ?? (raw.items as typeof parsed.items) ?? [];
+    const txDate = parsed.date ?? today;
+
+    if (!items || items.length === 0) {
+      return NextResponse.json({
+        intent: "unknown",
+        clarification: "Tidak bisa mendeteksi item. Coba format: 'Belanja: ayam 30rb, sayur 15rb, telur 25rb'",
+      });
+    }
+
+    try {
+      const transactions = [];
+      for (const item of items) {
+        if (!item.amount || !item.category) continue;
+        const txData = {
+          date: txDate,
+          amount: item.amount,
+          category: item.category,
+          note: item.note ?? "",
+          type: "expense" as const,
+        };
+        const transaction = useSheets
+          ? await appendTransaction(user!.sheetsId!, accessToken, txData)
+          : await appendTransactionDB(session.userId, txData);
+
+        await prisma.category.upsert({
+          where: { userId_name: { userId: session.userId, name: item.category } },
+          update: {},
+          create: { userId: session.userId, name: item.category },
+        });
+        transactions.push(transaction);
+      }
+
+      if (transactions.length === 0) {
+        return NextResponse.json({
+          intent: "unknown",
+          clarification: "Tidak ada item valid yang bisa dicatat. Pastikan setiap item memiliki nominal.",
+        });
+      }
+
+      const total = transactions.reduce((s, t) => s + t.amount, 0);
+      return NextResponse.json({
+        intent: "transaksi_bulk",
+        transactions,
+        message: `✓ ${transactions.length} transaksi dicatat (total Rp ${total.toLocaleString("id-ID")})`,
+      });
+    } catch {
+      return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
+    }
+  }
+
   // ── PEMASUKAN ─────────────────────────────────────────────────────────────
   if (parsed.intent === "pemasukan") {
     const raw = parsed as unknown as Record<string, unknown>;

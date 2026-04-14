@@ -88,6 +88,14 @@ export async function getTransactionsDB(
     yesterday.setDate(now.getDate() - 1);
     const d = yesterday.toISOString().slice(0, 10);
     dateFilter = { gte: d, lte: d };
+  } else if (periodLow === "last3months") {
+    // Dari awal bulan 3 bulan lalu s/d akhir bulan kemarin
+    const startMonth = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const endMonth = new Date(now.getFullYear(), now.getMonth(), 0); // hari terakhir bulan lalu
+    dateFilter = {
+      gte: startMonth.toISOString().slice(0, 10),
+      lte: endMonth.toISOString().slice(0, 10),
+    };
   } else {
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     dateFilter = { gte: `${ym}-01`, lte: `${ym}-31` };

@@ -16,6 +16,7 @@ import { toZonedTime } from "date-fns-tz";
 
 type ResponseData =
   | { intent: "transaksi"; transaction: Transaction; message: string }
+  | { intent: "transaksi_bulk"; transactions: Transaction[]; message: string }
   | { intent: "pemasukan"; transaction: Transaction; amount: number; category: string; message: string }
   | { intent: "budget_setting"; category: string; amount: number; month: string; message: string }
   | { intent: "laporan"; period: string; totalSpent: number; spentByCategory: Record<string, number>; budgets: { category: string; budget: number; spent: number }[]; summary: string; transactionCount: number }
@@ -150,12 +151,18 @@ export default function DashboardPage() {
       setResponse(data);
 
       // Auto-dismiss success notification setelah 4 detik
-      if (data.intent === "transaksi" || data.intent === "pemasukan" || data.intent === "budget_setting") {
+      if (data.intent === "transaksi" || data.intent === "transaksi_bulk" || data.intent === "pemasukan" || data.intent === "budget_setting") {
         dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
       }
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
+        setPage(1);
+        fetchBudget();
+      }
+
+      if (data.intent === "transaksi_bulk" && data.transactions?.length) {
+        setTransactions((prev) => [...data.transactions, ...prev]);
         setPage(1);
         fetchBudget();
       }
@@ -329,6 +336,21 @@ export default function DashboardPage() {
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
                 <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
+              </div>
+            ) : response.intent === "transaksi_bulk" ? (
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
+                <div>
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
+                  <ul className="mt-1.5 space-y-0.5">
+                    {response.transactions.map((t, i) => (
+                      <li key={i} className="text-xs text-green-600 dark:text-green-500">
+                        · {t.category} — Rp {t.amount.toLocaleString("id-ID")}
+                        {t.note ? ` (${t.note})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             ) : response.intent === "pemasukan" ? (
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
