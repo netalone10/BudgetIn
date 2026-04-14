@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -43,6 +44,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <Analytics />
+          <SpeedInsights />
         </Providers>
       </body>
     </html>
