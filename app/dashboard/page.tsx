@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [page, setPage] = useState(1);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hitung pengeluaran & pemasukan hari ini (WIB)
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
@@ -122,22 +123,35 @@ export default function DashboardPage() {
     e?.preventDefault();
     if (!prompt.trim() || loading) return;
 
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     setLoading(true);
     setResponse(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const res = await fetch("/api/record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: prompt.trim() }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let errMsg = "Server error. Coba lagi.";
+        try { errMsg = JSON.parse(text)?.error ?? errMsg; } catch {}
+        setResponse({ error: errMsg });
+        return;
+      }
 
       const data = await res.json();
       setResponse(data);
 
       // Auto-dismiss success notification setelah 4 detik
       if (data.intent === "transaksi" || data.intent === "pemasukan" || data.intent === "budget_setting") {
-        setTimeout(() => setResponse(null), 4000);
+        dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
       }
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
@@ -333,7 +347,12 @@ export default function DashboardPage() {
                 <Info className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400" />
                 <p className="text-sm text-yellow-700 dark:text-yellow-400">{response.clarification}</p>
               </div>
-            ) : null}
+            ) : (
+              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(234,179,8,0.3)", backgroundColor: "rgba(234,179,8,0.05)" }}>
+                <Info className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400" />
+                <p className="text-sm text-yellow-700 dark:text-yellow-400">Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda.</p>
+              </div>
+            )}
           </div>
         )}
 
