@@ -117,8 +117,7 @@ function AuthForm() {
         setTurnstileToken(null);
         // Cek apakah email belum diverifikasi
         if (res.error.includes("EMAIL_NOT_VERIFIED")) {
-          const blockedEmail = res.error.split(":")[1] ?? email;
-          setUnverifiedEmail(blockedEmail);
+          setUnverifiedEmail(email);
         } else if (res.error.includes("CAPTCHA_FAILED")) {
           setError("Verifikasi CAPTCHA gagal. Coba lagi.");
         } else {

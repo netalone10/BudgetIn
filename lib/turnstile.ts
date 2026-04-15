@@ -5,9 +5,14 @@
 export async function verifyTurnstile(token: string | undefined | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
-  // Jika secret belum dikonfigurasi (development), skip verifikasi
-  if (!secret) return true;
-  if (!token) return false;
+  // Production: wajib ada secret & token
+  if (process.env.NODE_ENV === "production") {
+    if (!secret || !token) return false;
+  } else {
+    // Development: skip jika secret belum dikonfigurasi
+    if (!secret) return true;
+    if (!token) return false;
+  }
 
   try {
     const res = await fetch(

@@ -23,6 +23,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // ── Email user: update di DB ───────────────────────────────────────────────
   if (!user?.sheetsId) {
+    // Verifikasi kepemilikan sebelum update
+    const existing = await prisma.transaction.findUnique({
+      where: { id: recordId },
+      select: { userId: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
+    if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
     try {
       await updateTransactionDB(session.userId, recordId, {
         date: body.date,
@@ -71,6 +79,14 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   // ── Email user: hapus dari DB ─────────────────────────────────────────────
   if (!user?.sheetsId) {
+    // Verifikasi kepemilikan sebelum hapus
+    const existing = await prisma.transaction.findUnique({
+      where: { id: recordId },
+      select: { userId: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
+    if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
     try {
       await deleteTransactionDB(session.userId, recordId);
       return NextResponse.json({ success: true });

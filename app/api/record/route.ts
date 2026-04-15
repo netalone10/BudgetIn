@@ -45,6 +45,10 @@ function correctAmount(prompt: string, aiAmount: number): number {
   return aiAmount;
 }
 
+function isValidAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
+}
+
 // ── GET — load riwayat transaksi ──────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -168,7 +172,7 @@ export async function POST(req: NextRequest) {
     parsed.category = parsed.category ?? (raw.kategori as string) ?? (raw.type as string);
     if (parsed.amount) parsed.amount = correctAmount(prompt, parsed.amount);
 
-    if (!parsed.amount || !parsed.category) {
+    if (!parsed.amount || !parsed.category || !isValidAmount(parsed.amount)) {
       return NextResponse.json({
         intent: "unknown",
         clarification: "Nominal atau kategori tidak terdeteksi. Coba tulis ulang, contoh: 'Makan siang 35rb'",
@@ -265,7 +269,7 @@ export async function POST(req: NextRequest) {
     const incomeCategory = parsed.incomeCategory ?? (raw.category as string) ?? "Pemasukan";
     if (incomeAmount) incomeAmount = correctAmount(prompt, incomeAmount);
 
-    if (!incomeAmount) {
+    if (!incomeAmount || !isValidAmount(incomeAmount)) {
       return NextResponse.json({
         intent: "unknown",
         clarification: "Nominal pemasukan tidak terdeteksi. Contoh: 'Gajian 8jt' atau 'Dapat freelance 2.5jt'",

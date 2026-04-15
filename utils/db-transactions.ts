@@ -63,10 +63,17 @@ export async function getTransactionsDB(
   const now = new Date();
   let dateFilter: { gte?: string; lte?: string } = {};
 
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
   const periodLow = period.toLowerCase();
   if (periodLow.startsWith("custom:")) {
     const [, from, to] = period.split(":");
-    dateFilter = { gte: from, lte: to };
+    if (!DATE_RE.test(from) || !DATE_RE.test(to) || from > to) {
+      // Tanggal tidak valid → fallback ke bulan ini
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      dateFilter = { gte: `${ym}-01`, lte: `${ym}-31` };
+    } else {
+      dateFilter = { gte: from, lte: to };
+    }
   } else if (periodLow.includes("bulan ini") || periodLow.includes("this month")) {
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     dateFilter = { gte: `${ym}-01`, lte: `${ym}-31` };

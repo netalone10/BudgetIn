@@ -55,7 +55,7 @@ export const authOptions: NextAuthOptions = {
 
         // Blokir login jika email belum diverifikasi
         if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED:" + user.email);
+          throw new Error("EMAIL_NOT_VERIFIED");
         }
 
         return { id: user.id, email: user.email, name: user.name, image: user.image };
