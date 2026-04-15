@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Eye, EyeOff, MailCheck, AlertCircle, CheckCircle2 } from "lucide-react";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import ThemeToggle from "@/components/ThemeToggle";
 import Link from "next/link";
+import { Turnstile } from "@marsidev/react-turnstile";
+import type { TurnstileInstance } from "@marsidev/react-turnstile";
 
 type Tab = "login" | "register";
 
@@ -33,6 +35,11 @@ function AuthForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Turnstile CAPTCHA
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
   // Query param banners
   const verifiedParam = searchParams.get("verified");
@@ -80,12 +87,14 @@ function AuthForm() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, turnstileToken }),
       });
       const data = await res.json();
 
       if (!res.ok) {
         setError(data.error ?? "Gagal mendaftar.");
+        turnstileRef.current?.reset();
+        setTurnstileToken(null);
         setLoading(false);
         return;
       }
@@ -99,14 +108,19 @@ function AuthForm() {
       const res = await signIn("credentials", {
         email,
         password,
+        turnstileToken: turnstileToken ?? "",
         redirect: false,
       });
 
       if (res?.error) {
+        turnstileRef.current?.reset();
+        setTurnstileToken(null);
         // Cek apakah email belum diverifikasi
         if (res.error.includes("EMAIL_NOT_VERIFIED")) {
           const blockedEmail = res.error.split(":")[1] ?? email;
           setUnverifiedEmail(blockedEmail);
+        } else if (res.error.includes("CAPTCHA_FAILED")) {
+          setError("Verifikasi CAPTCHA gagal. Coba lagi.");
         } else {
           setError("Email atau password salah.");
         }
@@ -280,7 +294,7 @@ function AuthForm() {
         <p className="text-sm text-muted-foreground">
           {tab === "login" ? "Belum punya akun? " : "Sudah punya akun? "}
           <button
-            onClick={() => { setTab(tab === "login" ? "register" : "login"); setError(""); }}
+            onClick={() => { setTab(tab === "login" ? "register" : "login"); setError(""); setTurnstileToken(null); turnstileRef.current?.reset(); }}
             className="font-medium text-primary hover:underline"
           >
             {tab === "login" ? "Daftar" : "Masuk"}
@@ -372,10 +386,24 @@ function AuthForm() {
             </div>
           </div>
 
+          {/* Cloudflare Turnstile CAPTCHA */}
+          {siteKey && (
+            <div className="flex justify-center">
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={siteKey}
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => setTurnstileToken(null)}
+                options={{ theme: "auto", size: "normal" }}
+              />
+            </div>
+          )}
+
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || (!!siteKey && !turnstileToken)}
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />

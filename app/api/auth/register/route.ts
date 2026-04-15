@@ -4,11 +4,21 @@ import bcrypt from "bcryptjs";
 import { seedDefaultCategories } from "@/utils/seed-categories";
 import { generateVerificationToken, getTokenExpiry } from "@/lib/token-utils";
 import { sendVerificationEmail } from "@/lib/email";
+import { verifyTurnstile } from "@/lib/turnstile";
 
 // POST /api/auth/register — daftar dengan email + password
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password } = await req.json();
+    const { name, email, password, turnstileToken } = await req.json();
+
+    // Verifikasi Cloudflare Turnstile CAPTCHA
+    const captchaOk = await verifyTurnstile(turnstileToken);
+    if (!captchaOk) {
+      return NextResponse.json(
+        { error: "Verifikasi CAPTCHA gagal. Coba lagi." },
+        { status: 400 }
+      );
+    }
 
     if (!name?.trim() || !email?.trim() || !password?.trim()) {
       return NextResponse.json(

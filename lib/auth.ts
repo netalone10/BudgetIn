@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createGoogleSheet } from "@/utils/sheets";
 import { seedDefaultCategories } from "@/utils/seed-categories";
 import { isAdmin } from "@/lib/is-admin";
+import { verifyTurnstile } from "@/lib/turnstile";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -34,9 +35,14 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        turnstileToken: { label: "Turnstile Token", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
+
+        // Verifikasi Cloudflare Turnstile CAPTCHA
+        const captchaOk = await verifyTurnstile(credentials.turnstileToken);
+        if (!captchaOk) throw new Error("CAPTCHA_FAILED");
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
