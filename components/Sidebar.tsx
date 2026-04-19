@@ -4,18 +4,20 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { 
-  LayoutGrid, 
-  Menu, 
-  X, 
-  LogOut, 
-  PanelLeftClose, 
-  PanelLeft, 
-  ListPlus, 
+import {
+  LayoutGrid,
+  Menu,
+  X,
+  LogOut,
+  PanelLeftClose,
+  PanelLeft,
+  ListPlus,
   ShieldCheck,
   KeyRound,
   Sparkles,
-  PiggyBank
+  PiggyBank,
+  Wallet,
+  Tags
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -55,6 +57,7 @@ export default function Sidebar() {
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
     { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
+    { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
     { name: "AI Analyst", href: "/dashboard/analyst", icon: Sparkles },
   ];
 
@@ -121,7 +124,20 @@ export default function Sidebar() {
             <ListPlus className="h-5 w-5 shrink-0" />
             {!isCollapsed && <span className="font-medium text-sm">Kategori</span>}
           </button>
-          
+
+          <Link
+            href="/dashboard/settings/account-types"
+            className={cn(
+              "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground",
+              pathname === "/dashboard/settings/account-types" && "bg-primary text-primary-foreground",
+              isCollapsed && "justify-center px-0"
+            )}
+            title={isCollapsed ? "Tipe Akun" : undefined}
+          >
+            <Tags className="h-5 w-5 shrink-0" />
+            {!isCollapsed && <span className="font-medium text-sm">Tipe Akun</span>}
+          </Link>
+
           {isEmailUser && (
             <button
               onClick={() => setShowChangePassword(true)}
@@ -255,6 +271,14 @@ export default function Sidebar() {
                 <ListPlus className="h-5 w-5 shrink-0" />
                 <span className="text-[15px]">Kelola Kategori</span>
               </button>
+              <Link
+                href="/dashboard/settings/account-types"
+                onClick={() => setIsMobileOpen(false)}
+                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
+              >
+                <Tags className="h-5 w-5 shrink-0" />
+                <span className="text-[15px]">Tipe Akun</span>
+              </Link>
               {isEmailUser && (
                 <button
                   onClick={() => { setIsMobileOpen(false); setShowChangePassword(true); }}

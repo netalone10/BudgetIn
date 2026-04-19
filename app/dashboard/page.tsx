@@ -9,6 +9,8 @@ import ReportView from "@/components/ReportView";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp } from "lucide-react";
+import NetWorthSummaryCard from "@/components/NetWorthSummaryCard";
+import ManualTransactionForm from "@/components/ManualTransactionForm";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(new Set());
   const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
   const [customLoading, setCustomLoading] = useState(false);
+  const [accounts, setAccounts] = useState<{ id: string; name: string; currency: string; accountType: { name: string; classification: string } }[]>([]);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
 
@@ -92,6 +95,17 @@ export default function DashboardPage() {
     fetchTransactions();
     fetchBudget();
     fetchCategories();
+    fetchAccounts();
+  }
+
+  async function fetchAccounts() {
+    try {
+      const res = await fetch("/api/accounts");
+      const data = await res.json();
+      setAccounts(data.accounts ?? []);
+    } catch {
+      // skip
+    }
   }
 
   async function fetchTransactions() {
@@ -293,6 +307,9 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Net Worth Summary */}
+        <NetWorthSummaryCard />
+
         {/* Prompt Input */}
         <form onSubmit={handleSubmit} className="space-y-2 mt-2">
           <div className="relative">
@@ -323,6 +340,20 @@ export default function DashboardPage() {
             Enter untuk kirim &middot; Shift+Enter untuk baris baru
           </p>
         </form>
+
+        {/* Manual Input */}
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">atau input manual</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <ManualTransactionForm
+            accounts={accounts}
+            categories={categories}
+            onSuccess={() => { fetchTransactions(); fetchBudget(); fetchAccounts(); }}
+          />
+        </div>
 
         {/* Response Area */}
         {response && (
