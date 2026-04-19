@@ -104,8 +104,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Prompt kosong" }, { status: 400 });
   }
 
-  // Ambil user data + kategori
-  const [user, userCategories] = await Promise.all([
+  // Ambil user data + kategori + akun
+  const [user, userCategories, userAccounts] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: { sheetsId: true },
@@ -115,10 +115,16 @@ export async function POST(req: NextRequest) {
       select: { name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.account.findMany({
+      where: { userId: session.userId, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const useSheets = !!user?.sheetsId;
   const categoryNames = userCategories.map((c) => c.name);
+  const accountNames = userAccounts.map((a) => a.name);
 
   // Token hanya diperlukan untuk Google/Sheets users
   let accessToken = "";
@@ -150,7 +156,7 @@ export async function POST(req: NextRequest) {
   // Classify intent via Groq
   let parsed;
   try {
-    parsed = await classifyIntent(prompt, categoryNames);
+    parsed = await classifyIntent(prompt, categoryNames, accountNames);
   } catch {
     return NextResponse.json(
       { error: "AI sedang tidak tersedia. Coba lagi." },
@@ -164,6 +170,27 @@ export async function POST(req: NextRequest) {
 
   const today = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM-dd");
   const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
+
+  // Helper: match account name dari AI ke account ID
+  function matchAccount(accountName?: string): string | null {
+    if (!accountName) return null;
+    const normalized = accountName.toLowerCase().trim();
+    const found = userAccounts.find((a) => 
+      a.name.toLowerCase().includes(normalized) || 
+      normalized.includes(a.name.toLowerCase())
+    );
+    return found?.id ?? null;
+  }
+
+  // Helper: generate account selection clarification
+  function askAccountSelection(transactionType: "expense" | "income"): string {
+    if (userAccounts.length === 0) {
+      return "Belum ada akun. Buat akun dulu di menu Akun sebelum input transaksi.";
+    }
+    const label = transactionType === "income" ? "masuk ke akun mana" : "dari akun mana";
+    const accountList = userAccounts.map((a) => a.name).join(", ");
+    return `Transaksi ${label}? Pilih salah satu: ${accountList}. Contoh: "${prompt} pakai ${userAccounts[0].name}"`;
+  }
 
   // ── TRANSAKSI ─────────────────────────────────────────────────────────────
   if (parsed.intent === "transaksi") {
@@ -179,12 +206,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Match account dari AI extraction
+    const accountId = matchAccount(parsed.accountName);
+    
+    // Jika tidak ada akun, tanya user
+    if (!accountId) {
+      return NextResponse.json({
+        intent: "unknown",
+        clarification: askAccountSelection("expense"),
+      });
+    }
+
     const txData = {
       date: parsed.date ?? today,
       amount: parsed.amount,
       category: parsed.category,
       note: parsed.note ?? "",
       type: "expense" as const,
+      accountId,
     };
 
     try {
@@ -221,6 +260,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Match account dari AI extraction
+    const accountId = matchAccount(parsed.accountName);
+    
+    // Jika tidak ada akun, tanya user
+    if (!accountId) {
+      return NextResponse.json({
+        intent: "unknown",
+        clarification: askAccountSelection("expense"),
+      });
+    }
+
     try {
       const transactions = [];
       for (const item of items) {
@@ -231,6 +281,7 @@ export async function POST(req: NextRequest) {
           category: item.category,
           note: item.note ?? "",
           type: "expense" as const,
+          accountId,
         };
         const transaction = useSheets
           ? await appendTransaction(user!.sheetsId!, accessToken, txData)
@@ -276,12 +327,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Match account dari AI extraction
+    const accountId = matchAccount(parsed.accountName);
+    
+    // Jika tidak ada akun, tanya user
+    if (!accountId) {
+      return NextResponse.json({
+        intent: "unknown",
+        clarification: askAccountSelection("income"),
+      });
+    }
+
     const txData = {
       date: parsed.date ?? today,
       amount: incomeAmount,
       category: incomeCategory,
       note: parsed.note ?? "",
       type: "income" as const,
+      accountId,
     };
 
     try {

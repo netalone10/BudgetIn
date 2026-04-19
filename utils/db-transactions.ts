@@ -22,6 +22,7 @@ interface CreateInput {
   category: string;
   note: string;
   type: "expense" | "income";
+  accountId?: string;
 }
 
 // ── CREATE ────────────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ export async function appendTransactionDB(
       category: data.category,
       note: data.note,
       type: data.type,
+      accountId: data.accountId ?? null,
     },
   });
 

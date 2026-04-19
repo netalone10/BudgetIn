@@ -74,6 +74,7 @@ export interface Transaction {
   note: string;
   created_at: string;
   type: "expense" | "income"; // kolom G — default "expense" untuk backward compat
+  accountId?: string; // optional, tidak disimpan di Sheets tapi ada di interface untuk compatibility
 }
 
 export async function appendTransaction(
@@ -98,6 +99,16 @@ export async function appendTransaction(
     created_at,
     data.type ?? "expense",
   ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: sheetsId,
+    range: "Transaksi!A:G",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [row] },
+  });
+
+  return { id, ...data, created_at };
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
