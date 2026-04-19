@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
   const [customLoading, setCustomLoading] = useState(false);
   const [accounts, setAccounts] = useState<{ id: string; name: string; currency: string; accountType: { name: string; classification: string } }[]>([]);
+  const [accountVersion, setAccountVersion] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
 
@@ -103,6 +104,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/accounts");
       const data = await res.json();
       setAccounts(data.accounts ?? []);
+      setAccountVersion((v) => v + 1);
     } catch {
       // skip
     }
@@ -173,12 +175,14 @@ export default function DashboardPage() {
         setTransactions((prev) => [data.transaction, ...prev]);
         setPage(1);
         fetchBudget();
+        fetchAccounts();
       }
 
       if (data.intent === "transaksi_bulk" && data.transactions?.length) {
         setTransactions((prev) => [...data.transactions, ...prev]);
         setPage(1);
         fetchBudget();
+        fetchAccounts();
       }
 
       if (data.intent === "budget_setting") {
@@ -308,7 +312,7 @@ export default function DashboardPage() {
         )}
 
         {/* Net Worth Summary */}
-        <NetWorthSummaryCard />
+        <NetWorthSummaryCard refreshTrigger={accountVersion} />
 
         {/* Prompt Input */}
         <form onSubmit={handleSubmit} className="space-y-2 mt-2">

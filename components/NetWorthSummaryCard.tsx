@@ -22,17 +22,22 @@ function formatIDR(value: string | number): string {
   }).format(num);
 }
 
-export default function NetWorthSummaryCard() {
+interface Props {
+  refreshTrigger?: number;
+}
+
+export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
   const [data, setData] = useState<NetWorthData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     fetch("/api/accounts")
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshTrigger]);
 
   if (loading) {
     return (
