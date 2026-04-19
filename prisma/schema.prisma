@@ -29,6 +29,8 @@ model User {
   categories   Category[]
   transactions Transaction[]
   savingsGoals SavingsGoal[]
+  accountTypes AccountType[]
+  accounts     Account[]
 
   @@map("users")
 }
@@ -61,20 +63,27 @@ model Budget {
   @@map("budgets")
 }
 
-// Transaksi di DB — digunakan untuk email/password users (non-Google)
-// Google users tetap pakai Google Sheets
+// Transaksi di DB — digunakan untuk semua users (email/password + Google)
+// Google users tetap punya data di Google Sheets, tapi transaksi DB mendukung akun-based fitur
 model Transaction {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  date      String   // YYYY-MM-DD
-  amount    Float
-  category  String
-  note      String   @default("")
-  type      String   @default("expense") // "expense" | "income"
-  createdAt DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  date             String   // YYYY-MM-DD
+  amount           Decimal  @db.Decimal(19, 4)
+  category         String
+  note             String   @default("")
+  type             String   @default("expense") // "expense" | "income" | "transfer_out" | "transfer_in"
+  accountId        String?  @map("account_id")
+  transferId       String?  @map("transfer_id")  // shared UUID untuk pasangan transfer_out + transfer_in
+  isInitialBalance Boolean  @default(false) @map("is_initial_balance")
+  createdAt        DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
+  @@index([userId, accountId])
+  @@index([userId, date])
+  @@index([transferId])
   @@map("transactions")
 }
 
@@ -89,4 +98,49 @@ model SavingsGoal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("savings_goals")
+}
+
+// ── Account-Based Bookkeeping ─────────────────────────────────────────────────
+
+model AccountType {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  name           String
+  classification String   // "asset" | "liability"
+  icon           String   @default("wallet")
+  color          String   @default("#6366f1")
+  sortOrder      Int      @default(0) @map("sort_order")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts Account[]
+
+  @@unique([userId, name])
+  @@index([userId, isActive])
+  @@map("account_types")
+}
+
+model Account {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  accountTypeId  String   @map("account_type_id")
+  name           String
+  initialBalance Decimal  @default(0) @db.Decimal(19, 4) @map("initial_balance") // metadata display only
+  currency       String   @default("IDR")
+  color          String?
+  icon           String?
+  note           String   @default("")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountType  AccountType   @relation(fields: [accountTypeId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@index([userId, isActive])
+  @@index([accountTypeId])
+  @@map("accounts")
 }

@@ -26,18 +26,38 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // Verifikasi kepemilikan sebelum update
     const existing = await prisma.transaction.findUnique({
       where: { id: recordId },
-      select: { userId: true },
+      select: { userId: true, isInitialBalance: true, transferId: true },
     });
     if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
     if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
+    // Guard: transaksi saldo awal tidak boleh diedit amount-nya via endpoint ini
+    if (existing.isInitialBalance && body.amount !== undefined) {
+      return NextResponse.json(
+        { error: "Gunakan fitur 'Sesuaikan Saldo' di halaman Akun untuk mengubah saldo awal." },
+        { status: 403 }
+      );
+    }
+
     try {
-      await updateTransactionDB(session.userId, recordId, {
-        date: body.date,
-        amount: body.amount,
-        category: body.category,
-        note: body.note,
-      });
+      // Transfer pair: update kedua row sekaligus via transferId
+      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.note !== undefined)) {
+        await prisma.transaction.updateMany({
+          where: { transferId: existing.transferId },
+          data: {
+            ...(body.date !== undefined && { date: body.date }),
+            ...(body.amount !== undefined && { amount: body.amount }),
+            ...(body.note !== undefined && { note: body.note }),
+          },
+        });
+      } else {
+        await updateTransactionDB(session.userId, recordId, {
+          date: body.date,
+          amount: body.amount,
+          category: body.category,
+          note: body.note,
+        });
+      }
       return NextResponse.json({ success: true });
     } catch {
       return NextResponse.json({ error: "Gagal update transaksi." }, { status: 500 });
@@ -82,13 +102,28 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     // Verifikasi kepemilikan sebelum hapus
     const existing = await prisma.transaction.findUnique({
       where: { id: recordId },
-      select: { userId: true },
+      select: { userId: true, isInitialBalance: true, transferId: true },
     });
     if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
     if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
+    // Guard: transaksi saldo awal tidak boleh dihapus via endpoint ini
+    if (existing.isInitialBalance) {
+      return NextResponse.json(
+        { error: "Gunakan fitur 'Sesuaikan Saldo' di halaman Akun untuk mengubah saldo awal." },
+        { status: 403 }
+      );
+    }
+
     try {
-      await deleteTransactionDB(session.userId, recordId);
+      // Transfer pair: hapus kedua row sekaligus
+      if (existing.transferId) {
+        await prisma.transaction.deleteMany({
+          where: { transferId: existing.transferId },
+        });
+      } else {
+        await deleteTransactionDB(session.userId, recordId);
+      }
       return NextResponse.json({ success: true });
     } catch {
       return NextResponse.json({ error: "Gagal hapus transaksi." }, { status: 500 });
