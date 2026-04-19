@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { accountId } = await params;
   const body = await req.json();
-  const { accountTypeId, name, color, icon, note, currency } = body;
+  const { accountTypeId, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
 
   const existing = await prisma.account.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
@@ -41,6 +41,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Nama tidak boleh kosong." }, { status: 400 });
   }
 
+  // Validasi tanggalSettlement dan tanggalJatuhTempo
+  if (tanggalSettlement !== undefined) {
+    if (tanggalSettlement !== null && (tanggalSettlement < 1 || tanggalSettlement > 31)) {
+      return NextResponse.json({ error: "Tanggal Settlement harus antara 1-31." }, { status: 400 });
+    }
+  }
+  if (tanggalJatuhTempo !== undefined) {
+    if (tanggalJatuhTempo !== null && (tanggalJatuhTempo < 1 || tanggalJatuhTempo > 31)) {
+      return NextResponse.json({ error: "Tanggal Jatuh Tempo harus antara 1-31." }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.account.update({
     where: { id: accountId },
     data: {
@@ -50,6 +62,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(icon !== undefined && { icon }),
       ...(note !== undefined && { note }),
       ...(currency !== undefined && { currency }),
+      ...(tanggalSettlement !== undefined && { tanggalSettlement }),
+      ...(tanggalJatuhTempo !== undefined && { tanggalJatuhTempo }),
     },
     include: { accountType: true },
   });

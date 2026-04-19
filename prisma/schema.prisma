@@ -136,6 +136,11 @@ model Account {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
+  // === Kartu Kredit Fields ===
+  // Hanya applicable kalau accountType.name = "Kartu Kredit"
+  tanggalSettlement   Int?  @map("tanggal_settlement")  // 1-31
+  tanggalJatuhTempo   Int?  @map("tanggal_jatuh_tempo") // 1-31
+
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountType  AccountType   @relation(fields: [accountTypeId], references: [id], onDelete: Restrict)
   transactions Transaction[]
