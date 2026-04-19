@@ -54,10 +54,21 @@ export async function createGoogleSheet(
   // Akun sheet headers
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Akun!A1:H1",
+    range: "Akun!A1:J1",
     valueInputOption: "RAW",
     requestBody: {
-      values: [["id", "name", "type", "classification", "balance", "currency", "color", "note"]],
+      values: [[
+        "id",
+        "name",
+        "type",
+        "classification",
+        "balance",
+        "currency",
+        "color",
+        "note",
+        "tanggalSettlement",
+        "tanggalJatuhTempo",
+      ]],
     },
   });
 
@@ -287,6 +298,8 @@ export interface AccountData {
   currency: string;
   color: string | null;
   note: string | null;
+  tanggalSettlement: number | null;
+  tanggalJatuhTempo: number | null;
 }
 
 export async function appendAccount(
@@ -306,11 +319,13 @@ export async function appendAccount(
     data.currency,
     data.color ?? "",
     data.note ?? "",
+    data.tanggalSettlement ?? "",
+    data.tanggalJatuhTempo ?? "",
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Akun!A:H",
+    range: "Akun!A:J",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -327,7 +342,7 @@ export async function getAccounts(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Akun!A2:H",
+    range: "Akun!A2:J",
   });
 
   const rows = res.data.values ?? [];
@@ -338,11 +353,13 @@ export async function getAccounts(
       name: row[1],
       type: row[2],
       classification: row[3],
-      balance: Number(row[4]) || 0,
-      currency: row[5] || "IDR",
-      color: row[6] || null,
-      note: row[7] || null,
-    }));
+        balance: Number(row[4]) || 0,
+        currency: row[5] || "IDR",
+        color: row[6] || null,
+        note: row[7] || null,
+        tanggalSettlement: row[8] ? Number(row[8]) : null,
+        tanggalJatuhTempo: row[9] ? Number(row[9]) : null,
+      }));
 }
 
 export async function updateAccount(
@@ -358,7 +375,7 @@ export async function updateAccount(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Akun!A${rowIndex}:H${rowIndex}`,
+    range: `Akun!A${rowIndex}:J${rowIndex}`,
   });
   const current = res.data.values?.[0] ?? [];
 
@@ -371,11 +388,13 @@ export async function updateAccount(
     data.currency ?? current[5],
     data.color ?? current[6] ?? "",
     data.note ?? current[7] ?? "",
+    data.tanggalSettlement ?? current[8] ?? "",
+    data.tanggalJatuhTempo ?? current[9] ?? "",
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetsId,
-    range: `Akun!A${rowIndex}:H${rowIndex}`,
+    range: `Akun!A${rowIndex}:J${rowIndex}`,
     valueInputOption: "RAW",
     requestBody: { values: [updated] },
   });
@@ -430,6 +449,36 @@ export async function ensureTransaksiHeader(sheetsId: string, accessToken: strin
       valueInputOption: "RAW",
       requestBody: {
         values: [["id", "date", "amount", "category", "note", "created_at", "type", "fromAccountId", "fromAccountName", "toAccountId", "toAccountName"]],
+      },
+    });
+  }
+}
+
+export async function ensureAccountHeader(sheetsId: string, accessToken: string): Promise<void> {
+  const sheets = getSheetsClient(accessToken);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: "Akun!A1:J1",
+  });
+  const header = res.data.values?.[0] ?? [];
+  if (header.length < 10) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetsId,
+      range: "Akun!A1:J1",
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [[
+          "id",
+          "name",
+          "type",
+          "classification",
+          "balance",
+          "currency",
+          "color",
+          "note",
+          "tanggalSettlement",
+          "tanggalJatuhTempo",
+        ]],
       },
     });
   }

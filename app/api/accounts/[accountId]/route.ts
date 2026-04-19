@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getSingleAccountBalance, getAccountBalances } from "@/utils/account-balance";
+import { getSingleAccountBalance } from "@/utils/account-balance";
 import { getValidToken } from "@/utils/token";
-import { google } from "googleapis";
-import { updateAccount as updateAccountSheets, deleteAccount as deleteAccountSheets, getAccounts } from "@/utils/sheets";
+import {
+  updateAccount as updateAccountSheets,
+  deleteAccount as deleteAccountSheets,
+  getAccounts,
+  ensureAccountHeader,
+} from "@/utils/sheets";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -30,9 +34,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     try {
       const accessToken = await getValidToken(session.userId);
-      const auth = new google.auth.OAuth2();
-      auth.setCredentials({ access_token: accessToken });
-      const sheets = google.sheets({ version: "v4", auth });
+      await ensureAccountHeader(user.sheetsId, accessToken).catch(() => {});
 
       // Ambil data akun lama dari Sheets
       const allAccounts = await getAccounts(user.sheetsId, accessToken);
@@ -49,6 +51,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         classification: classification || existingAccount.classification,
         color: color ?? existingAccount.color,
         note: note ?? existingAccount.note,
+        tanggalSettlement: tanggalSettlement ?? existingAccount.tanggalSettlement,
+        tanggalJatuhTempo: tanggalJatuhTempo ?? existingAccount.tanggalJatuhTempo,
       });
 
       return NextResponse.json({ 
@@ -62,8 +66,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           currentBalance: existingAccount.balance.toString(),
           icon: null,
           transactionCount: 0,
-          tanggalSettlement: null,
-          tanggalJatuhTempo: null,
+          tanggalSettlement: tanggalSettlement ?? existingAccount.tanggalSettlement,
+          tanggalJatuhTempo: tanggalJatuhTempo ?? existingAccount.tanggalJatuhTempo,
         } 
       });
     } catch (e) {

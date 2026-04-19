@@ -12,7 +12,15 @@ import {
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { getValidToken } from "@/utils/token";
 import { google } from "googleapis";
-import { appendAccount, appendTransaction, getAccounts, updateAccount, updateAccountBalance, ensureTransaksiHeader, AccountData } from "@/utils/sheets";
+import {
+  appendAccount,
+  appendTransaction,
+  getAccounts,
+  updateAccount,
+  updateAccountBalance,
+  ensureTransaksiHeader,
+  ensureAccountHeader,
+} from "@/utils/sheets";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -44,12 +52,26 @@ export async function GET() {
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: user.sheetsId,
-          range: "Akun!A1:H1",
+          range: "Akun!A1:J1",
           valueInputOption: "RAW",
-          requestBody: { values: [["id", "name", "type", "classification", "balance", "currency", "color", "note"]] },
+          requestBody: {
+            values: [[
+              "id",
+              "name",
+              "type",
+              "classification",
+              "balance",
+              "currency",
+              "color",
+              "note",
+              "tanggalSettlement",
+              "tanggalJatuhTempo",
+            ]],
+          },
         });
       }
 
+      await ensureAccountHeader(user.sheetsId, accessToken).catch(() => {});
       await ensureTransaksiHeader(user.sheetsId, accessToken).catch(() => {});
       const sheetsAccounts = await getAccounts(user.sheetsId, accessToken);
 
@@ -66,8 +88,8 @@ export async function GET() {
         note: a.note,
         icon: null,
         transactionCount: 0,
-        tanggalSettlement: null,
-        tanggalJatuhTempo: null,
+        tanggalSettlement: a.tanggalSettlement,
+        tanggalJatuhTempo: a.tanggalJatuhTempo,
       }));
 
       for (const acc of accounts) {
@@ -165,6 +187,8 @@ export async function POST(req: NextRequest) {
         currency: currency ?? "IDR",
         color: color ?? null,
         note: note ?? "",
+        tanggalSettlement: accountTypeName === "Kartu Kredit" ? tanggalSettlement : null,
+        tanggalJatuhTempo: accountTypeName === "Kartu Kredit" ? tanggalJatuhTempo : null,
       });
 
       // Record initial balance as a transaction so it's auditable and revertable on delete
@@ -203,8 +227,8 @@ export async function POST(req: NextRequest) {
           accountType: { name: accountTypeName, classification: classif },
           icon: null,
           transactionCount: 0,
-          tanggalSettlement: null,
-          tanggalJatuhTempo: null,
+          tanggalSettlement: accountTypeName === "Kartu Kredit" ? tanggalSettlement : null,
+          tanggalJatuhTempo: accountTypeName === "Kartu Kredit" ? tanggalJatuhTempo : null,
         }
       }, { status: 201 });
     } catch (e) {
@@ -307,12 +331,26 @@ export async function PUT(req: NextRequest) {
       });
       await sheets.spreadsheets.values.update({
         spreadsheetId: user.sheetsId,
-        range: "Akun!A1:H1",
+        range: "Akun!A1:J1",
         valueInputOption: "RAW",
-        requestBody: { values: [["id", "name", "type", "classification", "balance", "currency", "color", "note"]] },
+        requestBody: {
+          values: [[
+            "id",
+            "name",
+            "type",
+            "classification",
+            "balance",
+            "currency",
+            "color",
+            "note",
+            "tanggalSettlement",
+            "tanggalJatuhTempo",
+          ]],
+        },
       });
     }
 
+    await ensureAccountHeader(user.sheetsId, accessToken).catch(() => {});
     // Ambil semua akun dari Sheets
     const existingSheetsAccounts = await getAccounts(user.sheetsId, accessToken);
     const existingSheetIds = new Set(existingSheetsAccounts.map((a) => a.id));
@@ -335,6 +373,8 @@ export async function PUT(req: NextRequest) {
           currency: acc.currency,
           color: acc.color,
           note: acc.note,
+          tanggalSettlement: acc.tanggalSettlement,
+          tanggalJatuhTempo: acc.tanggalJatuhTempo,
         });
         migrated++;
       } else {
