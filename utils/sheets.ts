@@ -32,13 +32,13 @@ export async function createGoogleSheet(
 
   const spreadsheetId = spreadsheet.data.spreadsheetId!;
 
-  // Header row: tambah kolom "type" (expense | income)
+  // Header row: tambah kolom "type" (expense | income), "accountId", "accountName"
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Transaksi!A1:G1",
+    range: "Transaksi!A1:I1",
     valueInputOption: "RAW",
     requestBody: {
-      values: [["id", "date", "amount", "category", "note", "created_at", "type"]],
+      values: [["id", "date", "amount", "category", "note", "created_at", "type", "accountId", "accountName"]],
     },
   });
 
@@ -74,7 +74,8 @@ export interface Transaction {
   note: string;
   created_at: string;
   type: "expense" | "income"; // kolom G — default "expense" untuk backward compat
-  accountId?: string; // optional, tidak disimpan di Sheets tapi ada di interface untuk compatibility
+  accountId?: string;   // kolom H — optional untuk backward compat dengan legacy rows
+  accountName?: string; // kolom I — human-readable account name
 }
 
 export async function appendTransaction(
@@ -98,21 +99,13 @@ export async function appendTransaction(
     data.note,
     created_at,
     data.type ?? "expense",
+    data.accountId ?? "",
+    data.accountName ?? "",
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A:G",
-    valueInputOption: "RAW",
-    insertDataOption: "INSERT_ROWS",
-    requestBody: { values: [row] },
-  });
-
-  return { id, ...data, created_at };
-
-  await sheets.spreadsheets.values.append({
-    spreadsheetId: sheetsId,
-    range: "Transaksi!A:G",
+    range: "Transaksi!A:I",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -130,7 +123,7 @@ export async function getTransactions(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A2:G",
+    range: "Transaksi!A2:I",
   });
 
   const rows = res.data.values ?? [];
@@ -144,6 +137,8 @@ export async function getTransactions(
       note: row[4] ?? "",
       created_at: row[5] ?? "",
       type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
+      accountId: row[7] || undefined,
+      accountName: row[8] || undefined,
     }));
 
   if (!period) return transactions;
