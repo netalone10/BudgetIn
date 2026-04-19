@@ -57,11 +57,12 @@ function formatIDR(value: string | number): string {
 interface AccountFormModalProps {
   accountTypes: AccountType[];
   editAccount?: AccountData;
+  isSheets?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-function AccountFormModal({ accountTypes, editAccount, onClose, onSaved }: AccountFormModalProps) {
+function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSaved }: AccountFormModalProps) {
   const [name, setName] = useState(editAccount?.name ?? "");
   const [accountTypeId, setAccountTypeId] = useState(editAccount?.accountType.id ?? (accountTypes[0]?.id ?? ""));
   const [initialBalance, setInitialBalance] = useState("");
@@ -608,6 +609,7 @@ export default function AccountsPage() {
       {showAddModal && (
         <AccountFormModal
           accountTypes={accountTypes}
+          isSheets={isSheets}
           onClose={() => setShowAddModal(false)}
           onSaved={() => { setShowAddModal(false); fetchData(); }}
         />
@@ -616,6 +618,7 @@ export default function AccountsPage() {
         <AccountFormModal
           accountTypes={accountTypes}
           editAccount={editAccount}
+          isSheets={isSheets}
           onClose={() => setEditAccount(null)}
           onSaved={() => { setEditAccount(null); fetchData(); }}
         />
