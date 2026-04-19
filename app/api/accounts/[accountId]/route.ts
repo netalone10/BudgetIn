@@ -103,7 +103,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     where: { id: accountId },
     data: {
       ...(name !== undefined && { name: name.trim() }),
-      ...(accountTypeId !== undefined && { accountTypeId }),
       ...(color !== undefined && { color }),
       ...(icon !== undefined && { icon }),
       ...(note !== undefined && { note }),
