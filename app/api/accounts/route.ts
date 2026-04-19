@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { accountTypeId, name, initialBalance, currency, color, icon, note } = body;
+  const { accountTypeId, name, initialBalance, currency, color, icon, note, tanggalSettlement, tanggalJatuhTempo } = body;
 
   // Validasi
   if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -48,6 +48,16 @@ export async function POST(req: NextRequest) {
   const accountType = await prisma.accountType.findUnique({ where: { id: accountTypeId } });
   if (!accountType || accountType.userId !== session.userId || !accountType.isActive) {
     return NextResponse.json({ error: "Tipe akun tidak valid." }, { status: 400 });
+  }
+
+  // Validasi Kartu Kredit: wajib ada tanggalSettlement dan tanggalJatuhTempo
+  if (accountType.name === "Kartu Kredit") {
+    if (!tanggalSettlement || typeof tanggalSettlement !== "number" || tanggalSettlement < 1 || tanggalSettlement > 31) {
+      return NextResponse.json({ error: "Tanggal Settlement (1-31) wajib diisi untuk Kartu Kredit." }, { status: 400 });
+    }
+    if (!tanggalJatuhTempo || typeof tanggalJatuhTempo !== "number" || tanggalJatuhTempo < 1 || tanggalJatuhTempo > 31) {
+      return NextResponse.json({ error: "Tanggal Jatuh Tempo (1-31) wajib diisi untuk Kartu Kredit." }, { status: 400 });
+    }
   }
 
   // Parse initialBalance
@@ -73,6 +83,11 @@ export async function POST(req: NextRequest) {
         color: color ?? null,
         icon: icon ?? null,
         note: note ?? "",
+        // Kartu Kredit fields
+        ...(accountType.name === "Kartu Kredit" && {
+          tanggalSettlement,
+          tanggalJatuhTempo,
+        }),
       },
     });
 

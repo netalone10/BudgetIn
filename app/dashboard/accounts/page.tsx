@@ -31,6 +31,8 @@ interface AccountData {
   currentBalance: string;
   transactionCount: number;
   accountType: AccountType;
+  tanggalSettlement?: number | null;
+  tanggalJatuhTempo?: number | null;
 }
 
 interface Summary {
@@ -65,11 +67,17 @@ function AccountFormModal({ accountTypes, editAccount, onClose, onSaved }: Accou
   const [initialBalance, setInitialBalance] = useState("");
   const [currency, setCurrency] = useState(editAccount?.currency ?? "IDR");
   const [note, setNote] = useState(editAccount?.note ?? "");
+  const [tanggalSettlement, setTanggalSettlement] = useState<number | "">(editAccount?.tanggalSettlement ?? "");
+  const [tanggalJatuhTempo, setTanggalJatuhTempo] = useState<number | "">(editAccount?.tanggalJatuhTempo ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEdit = !!editAccount;
   const hasTransactions = editAccount ? editAccount.transactionCount > 0 : false;
+  
+  // Check if selected type is Kartu Kredit
+  const selectedType = accountTypes.find(t => t.id === accountTypeId);
+  const isKartuKredit = selectedType?.name === "Kartu Kredit";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -77,16 +85,24 @@ function AccountFormModal({ accountTypes, editAccount, onClose, onSaved }: Accou
     setLoading(true);
 
     try {
+      const payload: Record<string, unknown> = { accountTypeId, name, note, currency };
+      
+      // Add credit card fields if Kartu Kredit
+      if (isKartuKredit) {
+        payload.tanggalSettlement = tanggalSettlement;
+        payload.tanggalJatuhTempo = tanggalJatuhTempo;
+      }
+
       const res = isEdit
         ? await fetch(`/api/accounts/${editAccount!.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accountTypeId, name, note, currency }),
+            body: JSON.stringify(payload),
           })
         : await fetch("/api/accounts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ accountTypeId, name, initialBalance: initialBalance || 0, currency, note }),
+            body: JSON.stringify({ ...payload, initialBalance: initialBalance || 0 }),
           });
 
       const data = await res.json();
@@ -183,6 +199,48 @@ function AccountFormModal({ accountTypes, editAccount, onClose, onSaved }: Accou
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+
+          {/* Kartu Kredit Fields */}
+          {isKartuKredit && (
+            <div className="space-y-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50">
+              <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-2">Pengaturan Kartu Kredit</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Settlement *</label>
+                  <select
+                    value={tanggalSettlement}
+                    onChange={(e) => setTanggalSettlement(e.target.value ? Number(e.target.value) : "")}
+                    required
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Pilih tanggal</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Awal periode tagihan</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Jatuh Tempo *</label>
+                  <select
+                    value={tanggalJatuhTempo}
+                    onChange={(e) => setTanggalJatuhTempo(e.target.value ? Number(e.target.value) : "")}
+                    required
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Pilih tanggal</option>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground mt-1">Batas maksimal pembayaran</p>
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Contoh: Settlement 17, Jatuh Tempo 5 → Perioda 16 Des - 17 Jan, jatuh tempo 5 Feb
+              </p>
+            </div>
+          )}
 
           {error && <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">{error}</p>}
 
