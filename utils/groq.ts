@@ -67,6 +67,7 @@ export interface ParsedRecord {
   category?: string;
   note?: string;
   date?: string; // YYYY-MM-DD
+  accountName?: string; // nama akun yang disebutkan user
 
   // intent: transaksi_bulk (beberapa item sekaligus)
   items?: Array<{ amount: number; category: string; note?: string }>;
@@ -153,22 +154,34 @@ RULES:
    Jika input menggunakan satuan NON-UANG (kg, gram, gr, ons, ton, lot, unit, pcs, ekor, biji, potong, ikat, helai, lusin, botol, kaleng, sachet, kantong, bungkus, kotak, porsi, meter, liter, ml) tanpa menyebut nilai/harga dalam IDR,
    return: {"intent":"unknown","clarification":"Input harus berisi nominal uang (contoh: 35rb, 2jt). Untuk aset non-uang, tulis nilainya: 'jual saham dapat 5jt' atau 'dapat emas senilai 3jt'."}
 
-10. FORMAT JSON WAJIB per intent:
-   - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","note":"STRING","date":"YYYY-MM-DD"}
-   - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"date":"YYYY-MM-DD"}
-   - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","note":"STRING","date":"YYYY-MM-DD"}
+10. EXTRACT AKUN: Jika user menyebut nama akun/bank/dompet/kartu kredit, extract ke field "accountName".
+   Contoh:
+   - "makan 50rb pakai BCA" → accountName: "BCA"
+   - "bayar pakai Mandiri" → accountName: "Mandiri"
+   - "dari cash" → accountName: "cash"
+   - "pakai kartu kredit BNI" → accountName: "BNI"
+   - "dari dompet" → accountName: "dompet"
+   Jika TIDAK disebutkan, JANGAN isi accountName (biarkan undefined/null).
+
+11. FORMAT JSON WAJIB per intent:
+   - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
+   - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"accountName":"STRING","date":"YYYY-MM-DD"}
+   - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
    - budget_setting: {"intent":"budget_setting","budgetCategory":"STRING","budgetAmount":NUMBER}
    - laporan: {"intent":"laporan","period":"STRING","reportType":"summary"}
    - unknown: {"intent":"unknown","clarification":"STRING"}
 
    PENTING: untuk budget_setting WAJIB gunakan key "budgetCategory" dan "budgetAmount" (bukan "category"/"amount").
-   PENTING: untuk pemasukan WAJIB gunakan key "incomeAmount" dan "incomeCategory".`;
+   PENTING: untuk pemasukan WAJIB gunakan key "incomeAmount" dan "incomeCategory".
+   PENTING: accountName hanya diisi jika user MENYEBUTKAN nama akun, jika tidak disebutkan biarkan kosong/undefined.`;
+
 
 // ── Main function ─────────────────────────────────────────────────────────────
 
 export async function classifyIntent(
   prompt: string,
-  userCategories?: string[]
+  userCategories?: string[],
+  userAccounts?: string[]
 ): Promise<ParsedRecord> {
   const jakartaNow = toZonedTime(new Date(), TIMEZONE);
   const today = format(jakartaNow, "yyyy-MM-dd");
@@ -179,7 +192,12 @@ export async function classifyIntent(
       ? `\nKategori user yang sudah ada: [${userCategories.join(", ")}] — PRIORITASKAN salah satu ini jika cocok.`
       : "";
 
-  const userMessage = `Tanggal hari ini: ${today} (bulan: ${currentMonth})${categoryHint}\n\nInput user: "${prompt}"`;
+  const accountHint =
+    userAccounts && userAccounts.length > 0
+      ? `\nAkun user yang tersedia: [${userAccounts.join(", ")}] — jika user menyebut salah satu, extract ke accountName.`
+      : "";
+
+  const userMessage = `Tanggal hari ini: ${today} (bulan: ${currentMonth})${categoryHint}${accountHint}\n\nInput user: "${prompt}"`;
 
   const completion = await callWithRotation((client) =>
     client.chat.completions.create({
