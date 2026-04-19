@@ -10,6 +10,8 @@ import {
   serializeNetWorth,
 } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
+import { getValidToken } from "@/utils/token";
+import { appendAccount, getAccounts, updateAccount, AccountData } from "@/utils/sheets";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -19,6 +21,42 @@ export async function GET() {
 
   const accounts = await getAccountBalances(session.userId);
   const summary = calculateNetWorth(accounts);
+
+  // Sync ke Google Sheets jika user menggunakan Sheets
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+
+  if (user?.sheetsId) {
+    try {
+      const accessToken = await getValidToken(session.userId);
+      const existingSheetsAccounts = await getAccounts(user.sheetsId, accessToken);
+      const existingSheetIds = new Set(existingSheetsAccounts.map((a) => a.id));
+
+      // Sync akun yang ada di DB tapi belum di Sheets
+      for (const acc of accounts) {
+        if (!existingSheetIds.has(acc.id)) {
+          await appendAccount(user.sheetsId, accessToken, {
+            name: acc.name,
+            type: acc.accountType.name,
+            classification: acc.accountType.classification,
+            balance: acc.currentBalance.toNumber(),
+            currency: acc.currency,
+            color: acc.color,
+            note: acc.note,
+          });
+        } else {
+          // Update saldo jika sudah ada di Sheets
+          await updateAccount(user.sheetsId, accessToken, acc.id, {
+            balance: acc.currentBalance.toNumber(),
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to sync accounts to Sheets:", e);
+    }
+  }
 
   return NextResponse.json({
     accounts: accounts.map(serializeAccountWithBalance),
@@ -109,6 +147,29 @@ export async function POST(req: NextRequest) {
 
     return newAccount;
   });
+
+  // Sync ke Google Sheets jika user menggunakan Sheets
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+
+  if (user?.sheetsId) {
+    try {
+      const accessToken = await getValidToken(session.userId);
+      await appendAccount(user.sheetsId, accessToken, {
+        name: account.name,
+        type: accountType.name,
+        classification: accountType.classification,
+        balance: parsedBalance.toNumber(),
+        currency: account.currency,
+        color: account.color,
+        note: account.note,
+      });
+    } catch (e) {
+      console.error("Failed to sync new account to Sheets:", e);
+    }
+  }
 
   return NextResponse.json({ account }, { status: 201 });
 }

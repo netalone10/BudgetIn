@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getSingleAccountBalance } from "@/utils/account-balance";
+import { getSingleAccountBalance, getAccountBalances } from "@/utils/account-balance";
+import { getValidToken } from "@/utils/token";
+import { updateAccount as updateAccountSheets, deleteAccount as deleteAccountSheets } from "@/utils/sheets";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -68,6 +70,32 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     include: { accountType: true },
   });
 
+  // Sync ke Google Sheets jika user menggunakan Sheets
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+
+  if (user?.sheetsId) {
+    try {
+      const accessToken = await getValidToken(session.userId);
+      // Ambil saldo terbaru
+      const accounts = await getAccountBalances(session.userId);
+      const accWithBalance = accounts.find((a) => a.id === accountId);
+
+      await updateAccountSheets(user.sheetsId, accessToken, accountId, {
+        name: name?.trim(),
+        type: updated.accountType.name,
+        classification: updated.accountType.classification,
+        balance: accWithBalance?.currentBalance.toNumber() ?? 0,
+        color: updated.color,
+        note: updated.note,
+      });
+    } catch (e) {
+      console.error("Failed to sync account update to Sheets:", e);
+    }
+  }
+
   return NextResponse.json({ account: updated });
 }
 
@@ -83,6 +111,20 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
   if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
+  // Helper untuk sync delete ke Sheets
+  const syncDeleteToSheets = async (sheetsId: string, accessToken: string, accId: string) => {
+    try {
+      await deleteAccountSheets(sheetsId, accessToken, accId);
+    } catch (e) {
+      console.error("Failed to sync account delete to Sheets:", e);
+    }
+  };
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+
   if (hard) {
     // Hard-delete: hanya boleh kalau tidak ada transaksi sama sekali
     const txCount = await prisma.transaction.count({ where: { accountId } });
@@ -93,6 +135,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
     await prisma.account.delete({ where: { id: accountId } });
+
+    // Sync delete ke Sheets
+    if (user?.sheetsId) {
+      const accessToken = await getValidToken(session.userId);
+      await syncDeleteToSheets(user.sheetsId, accessToken, accountId);
+    }
+
     return NextResponse.json({ message: "Akun dihapus permanen." });
   }
 
@@ -112,5 +161,12 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     where: { id: accountId },
     data: { isActive: false },
   });
+
+  // Sync delete ke Sheets (arsip = hapus dari Sheets juga)
+  if (user?.sheetsId) {
+    const accessToken = await getValidToken(session.userId);
+    await syncDeleteToSheets(user.sheetsId, accessToken, accountId);
+  }
+
   return NextResponse.json({ message: "Akun diarsipkan." });
 }

@@ -25,6 +25,7 @@ export async function createGoogleSheet(
       sheets: [
         { properties: { title: "Transaksi", sheetId: 0, index: 0 } },
         { properties: { title: "Budget", sheetId: 1, index: 1 } },
+        { properties: { title: "Akun", sheetId: 2, index: 2 } },
       ],
     },
   });
@@ -47,6 +48,16 @@ export async function createGoogleSheet(
     valueInputOption: "RAW",
     requestBody: {
       values: [["category", "amount", "month"]],
+    },
+  });
+
+  // Akun sheet headers
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: "Akun!A1:H1",
+    valueInputOption: "RAW",
+    requestBody: {
+      values: [["id", "name", "type", "classification", "balance", "currency", "color", "note"]],
     },
   });
 
@@ -245,6 +256,157 @@ export async function appendBudgetBackup(
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [[category, amount, month]] },
   });
+}
+
+// ─── AKUN / ASSET / LIABILITIES ───────────────────────────────────────────────
+
+export interface AccountData {
+  id: string;
+  name: string;
+  type: string;
+  classification: string; // "asset" | "liability"
+  balance: number;
+  currency: string;
+  color: string | null;
+  note: string | null;
+}
+
+export async function appendAccount(
+  sheetsId: string,
+  accessToken: string,
+  data: Omit<AccountData, "id">
+): Promise<AccountData> {
+  const sheets = getSheetsClient(accessToken);
+
+  const id = uuidv4();
+  const row = [
+    id,
+    data.name,
+    data.type,
+    data.classification,
+    data.balance,
+    data.currency,
+    data.color ?? "",
+    data.note ?? "",
+  ];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: sheetsId,
+    range: "Akun!A:H",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values: [row] },
+  });
+
+  return { id, ...data };
+}
+
+export async function getAccounts(
+  sheetsId: string,
+  accessToken: string
+): Promise<AccountData[]> {
+  const sheets = getSheetsClient(accessToken);
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: "Akun!A2:H",
+  });
+
+  const rows = res.data.values ?? [];
+  return rows
+    .filter((row) => row[0])
+    .map((row) => ({
+      id: row[0],
+      name: row[1],
+      type: row[2],
+      classification: row[3],
+      balance: Number(row[4]) || 0,
+      currency: row[5] || "IDR",
+      color: row[6] || null,
+      note: row[7] || null,
+    }));
+}
+
+export async function updateAccount(
+  sheetsId: string,
+  accessToken: string,
+  id: string,
+  data: Partial<Omit<AccountData, "id">>
+): Promise<void> {
+  const sheets = getSheetsClient(accessToken);
+
+  const rowIndex = await findRowByIdInSheet(sheets, sheetsId, "Akun", id);
+  if (rowIndex === -1) return; // Account not found in sheets, skip
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: `Akun!A${rowIndex}:H${rowIndex}`,
+  });
+  const current = res.data.values?.[0] ?? [];
+
+  const updated = [
+    current[0],
+    data.name ?? current[1],
+    data.type ?? current[2],
+    data.classification ?? current[3],
+    data.balance ?? current[4],
+    data.currency ?? current[5],
+    data.color ?? current[6] ?? "",
+    data.note ?? current[7] ?? "",
+  ];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetsId,
+    range: `Akun!A${rowIndex}:H${rowIndex}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [updated] },
+  });
+}
+
+export async function deleteAccount(
+  sheetsId: string,
+  accessToken: string,
+  id: string
+): Promise<void> {
+  const sheets = getSheetsClient(accessToken);
+
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetsId });
+  const sheet = meta.data.sheets?.find((s) => s.properties?.title === "Akun");
+  const sheetId = sheet?.properties?.sheetId ?? 2;
+
+  const rowIndex = await findRowByIdInSheet(sheets, sheetsId, "Akun", id);
+  if (rowIndex === -1) return;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: sheetsId,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowIndex - 1,
+              endIndex: rowIndex,
+            },
+          },
+        },
+      ],
+    },
+  });
+}
+
+// ─── HELPER ───────────────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findRowByIdInSheet(sheets: any, sheetsId: string, sheetTitle: string, id: string): Promise<number> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: `${sheetTitle}!A:A`,
+  });
+  const rows: string[][] = res.data.values ?? [];
+  const index = rows.findIndex((row) => row[0] === id);
+  return index === -1 ? -1 : index + 1;
 }
 
 // ─── HELPER ───────────────────────────────────────────────────────────────────
