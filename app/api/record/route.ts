@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse, NextResponse as NR } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -53,7 +53,7 @@ function isValidAmount(amount: number): boolean {
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!session?.userId) return NR.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "bulan ini";
@@ -74,9 +74,9 @@ export async function GET(req: NextRequest) {
   if (!user?.sheetsId) {
     try {
       const transactions = await getTransactionsDB(session.userId, resolvedPeriod);
-      return NR.json({ transactions: transactions.slice(0, 200) });
+      return NextResponse.json({ transactions: transactions.slice(0, 200) });
     } catch {
-      return NR.json({ transactions: [] });
+      return NextResponse.json({ transactions: [] });
     }
   }
 
@@ -85,9 +85,9 @@ export async function GET(req: NextRequest) {
     const accessToken = await getValidToken(session.userId);
     const transactions = await getTransactions(user.sheetsId, accessToken, resolvedPeriod);
     transactions.sort((a, b) => (a.date < b.date ? 1 : -1));
-    return NR.json({ transactions: transactions.slice(0, 200) });
+    return NextResponse.json({ transactions: transactions.slice(0, 200) });
   } catch {
-    return NR.json({ transactions: [] });
+    return NextResponse.json({ transactions: [] });
   }
 }
 

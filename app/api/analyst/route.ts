@@ -109,7 +109,7 @@ Target Budget Bulan Ini: ${JSON.stringify(budgetContext)}`;
 
     return NextResponse.json(reportData);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[analyst endpoint]", error);
     return NextResponse.json({ error: "Gagal memproses analisis." }, { status: 500 });
   }

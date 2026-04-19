@@ -7,6 +7,14 @@ import { Loader2, Sparkles, AlertTriangle, CheckCircle2, Download, Printer, Chev
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+interface Transaction {
+  date: string;
+  category: string;
+  type: "expense" | "income";
+  amount: number;
+  note?: string;
+}
+
 interface AIReport {
   summary: string;
   healthScore: number;
@@ -48,8 +56,8 @@ export default function AIAnalystPage() {
       if (!res.ok) throw new Error("Gagal mengambil analisis");
       const data = await res.json();
       setReport(data);
-    } catch (err: any) {
-      setError(err.message || "Terjadi kesalahan sistem.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan sistem.");
     } finally {
       setLoading(false);
     }
@@ -83,7 +91,7 @@ export default function AIAnalystPage() {
       }
 
       const header = "Tanggal,Kategori,Tipe,Nominal,Catatan\n";
-      const rows = txs.map((t: any) => 
+      const rows = txs.map((t: Transaction) =>
         `${t.date},"${t.category}",${t.type},${t.amount},"${(t.note || "").replace(/"/g, '""')}"`
       ).join("\n");
 
