@@ -65,7 +65,11 @@ export async function POST(req: NextRequest) {
           : { toAccountId: accountId, toAccountName: account.name }),
       });
 
-      await updateAccountBalance(user!.sheetsId!, accessToken, accountId, type === "expense" ? -parsedAmount : parsedAmount).catch(() => {});
+      // Asset: expense→−, income→+. Liability: expense→+ (you owe more), income→− (you paid off)
+      const delta = account.classification === "liability"
+        ? (type === "expense" ? parsedAmount : -parsedAmount)
+        : (type === "expense" ? -parsedAmount : parsedAmount);
+      await updateAccountBalance(user!.sheetsId!, accessToken, accountId, delta, sheetsAccounts).catch(() => {});
 
       await prisma.category.upsert({
         where: { userId_name: { userId: session.userId, name: category.trim() } },
@@ -104,9 +108,13 @@ export async function POST(req: NextRequest) {
         toAccountName: toAccount.name,
       });
 
+      // fromAccount sends money: asset→−, liability→+ (using credit)
+      // toAccount receives money: asset→+, liability→− (paying off debt)
+      const fromDelta = fromAccount.classification === "liability" ? parsedAmount : -parsedAmount;
+      const toDelta = toAccount.classification === "liability" ? -parsedAmount : parsedAmount;
       await Promise.all([
-        updateAccountBalance(user!.sheetsId!, accessToken, accountId, -parsedAmount).catch(() => {}),
-        updateAccountBalance(user!.sheetsId!, accessToken, toAccountId, parsedAmount).catch(() => {}),
+        updateAccountBalance(user!.sheetsId!, accessToken, accountId, fromDelta, sheetsAccounts).catch(() => {}),
+        updateAccountBalance(user!.sheetsId!, accessToken, toAccountId, toDelta, sheetsAccounts).catch(() => {}),
       ]);
 
       return NextResponse.json({ transaction, message: "Transfer berhasil dicatat." }, { status: 201 });

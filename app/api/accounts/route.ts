@@ -12,7 +12,7 @@ import {
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { getValidToken } from "@/utils/token";
 import { google } from "googleapis";
-import { appendAccount, getAccounts, updateAccount, ensureTransaksiHeader, AccountData } from "@/utils/sheets";
+import { appendAccount, appendTransaction, getAccounts, updateAccount, updateAccountBalance, ensureTransaksiHeader, AccountData } from "@/utils/sheets";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -154,26 +154,59 @@ export async function POST(req: NextRequest) {
 
     try {
       const accessToken = await getValidToken(session.userId);
+      const classif = classification || "asset";
+
+      // Create with balance 0 — initial balance will be set via Saldo Awal transaction
       const newAccount = await appendAccount(user.sheetsId, accessToken, {
         name: name.trim(),
         type: accountTypeName,
-        classification: classification || "asset",
-        balance: parsedBalance,
+        classification: classif,
+        balance: 0,
         currency: currency ?? "IDR",
         color: color ?? null,
         note: note ?? "",
       });
 
-      return NextResponse.json({ 
-      account: { 
-        ...newAccount, 
-        accountType: { name: accountTypeName, classification: classification || "asset" },
-        icon: null,
-        transactionCount: 0,
-        tanggalSettlement: null,
-        tanggalJatuhTempo: null,
-      } 
-    }, { status: 201 });
+      // Record initial balance as a transaction so it's auditable and revertable on delete
+      if (parsedBalance > 0) {
+        const today = new Date().toISOString().slice(0, 10);
+        // Asset: income (money flows in). Liability: expense (you took on debt).
+        if (classif === "asset") {
+          await appendTransaction(user.sheetsId, accessToken, {
+            date: today,
+            amount: parsedBalance,
+            category: "Saldo Awal",
+            note: `Saldo awal akun ${name.trim()}`,
+            type: "income",
+            toAccountId: newAccount.id,
+            toAccountName: name.trim(),
+          });
+        } else {
+          await appendTransaction(user.sheetsId, accessToken, {
+            date: today,
+            amount: parsedBalance,
+            category: "Saldo Awal",
+            note: `Saldo awal akun ${name.trim()}`,
+            type: "expense",
+            fromAccountId: newAccount.id,
+            fromAccountName: name.trim(),
+          });
+        }
+        // Delta: asset income→+, liability expense→+ (owe more). Both result in +parsedBalance stored.
+        await updateAccountBalance(user.sheetsId, accessToken, newAccount.id, parsedBalance).catch(() => {});
+      }
+
+      return NextResponse.json({
+        account: {
+          ...newAccount,
+          currentBalance: parsedBalance.toString(),
+          accountType: { name: accountTypeName, classification: classif },
+          icon: null,
+          transactionCount: 0,
+          tanggalSettlement: null,
+          tanggalJatuhTempo: null,
+        }
+      }, { status: 201 });
     } catch (e) {
       console.error("Failed to create account in Sheets:", e);
       return NextResponse.json({ error: "Gagal membuat akun di Google Sheets" }, { status: 500 });

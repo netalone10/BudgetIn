@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     }),
     prisma.account.findMany({
       where: { userId: session.userId, isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, accountType: { select: { classification: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -267,7 +267,9 @@ export async function POST(req: NextRequest) {
         : await appendTransactionDB(session.userId, { ...base, accountId });
 
       if (useSheets) {
-        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, -parsed.amount).catch(() => {});
+        const acc = userAccounts.find((a) => a.id === accountId);
+        const expenseDelta = acc?.accountType?.classification === "liability" ? parsed.amount : -parsed.amount;
+        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, expenseDelta).catch(() => {});
       }
 
       await prisma.category.upsert({
@@ -351,7 +353,9 @@ export async function POST(req: NextRequest) {
       const total = transactions.reduce((s, t) => s + t.amount, 0);
 
       if (useSheets) {
-        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, -total).catch(() => {});
+        const acc = userAccounts.find((a) => a.id === accountId);
+        const bulkDelta = acc?.accountType?.classification === "liability" ? total : -total;
+        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, bulkDelta).catch(() => {});
       }
 
       return NextResponse.json({
@@ -410,7 +414,9 @@ export async function POST(req: NextRequest) {
         : await appendTransactionDB(session.userId, { ...base, accountId });
 
       if (useSheets) {
-        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, incomeAmount).catch(() => {});
+        const acc = userAccounts.find((a) => a.id === accountId);
+        const incomeDelta = acc?.accountType?.classification === "liability" ? -incomeAmount : incomeAmount;
+        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, incomeDelta).catch(() => {});
       }
 
       // Simpan kategori income ke DB supaya muncul di dropdown edit

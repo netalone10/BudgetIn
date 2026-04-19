@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
-import { updateTransaction, deleteTransaction } from "@/utils/sheets";
+import { updateTransaction, deleteTransaction, getTransactionRow, getAccounts, updateAccountBalance } from "@/utils/sheets";
 import { updateTransactionDB, deleteTransactionDB } from "@/utils/db-transactions";
 
 type Params = { params: Promise<{ recordId: string }> };
@@ -139,7 +139,36 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   }
 
   try {
+    // Read tx and accounts in parallel before deleting so we can revert balance
+    const [tx, accounts] = await Promise.all([
+      getTransactionRow(user.sheetsId, accessToken, recordId),
+      getAccounts(user.sheetsId, accessToken),
+    ]);
+
     await deleteTransaction(user.sheetsId, accessToken, recordId);
+
+    // Revert balance: only for transactions that recorded account IDs
+    if (tx) {
+      const reversals: Promise<void>[] = [];
+      if (tx.fromAccountId) {
+        const acc = accounts.find((a) => a.id === tx.fromAccountId);
+        if (acc) {
+          // Original delta for fromAccount: asset→−amount, liability→+amount. Revert = opposite.
+          const revertDelta = acc.classification === "liability" ? -tx.amount : tx.amount;
+          reversals.push(updateAccountBalance(user!.sheetsId!, accessToken, tx.fromAccountId, revertDelta, accounts).catch(() => {}));
+        }
+      }
+      if (tx.toAccountId) {
+        const acc = accounts.find((a) => a.id === tx.toAccountId);
+        if (acc) {
+          // Original delta for toAccount: asset→+amount, liability→−amount. Revert = opposite.
+          const revertDelta = acc.classification === "liability" ? tx.amount : -tx.amount;
+          reversals.push(updateAccountBalance(user!.sheetsId!, accessToken, tx.toAccountId, revertDelta, accounts).catch(() => {}));
+        }
+      }
+      await Promise.all(reversals);
+    }
+
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Gagal hapus transaksi." }, { status: 500 });

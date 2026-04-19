@@ -439,12 +439,43 @@ export async function updateAccountBalance(
   sheetsId: string,
   accessToken: string,
   id: string,
-  delta: number
+  delta: number,
+  preloadedAccounts?: AccountData[]
 ): Promise<void> {
-  const accounts = await getAccounts(sheetsId, accessToken);
+  const accounts = preloadedAccounts ?? await getAccounts(sheetsId, accessToken);
   const account = accounts.find((a) => a.id === id);
   if (!account) return;
   await updateAccount(sheetsId, accessToken, id, { balance: account.balance + delta });
+}
+
+export async function getTransactionRow(
+  sheetsId: string,
+  accessToken: string,
+  id: string
+): Promise<Transaction | null> {
+  const sheets = getSheetsClient(accessToken);
+  const rowIndex = await findRowById(sheets, sheetsId, id);
+  if (rowIndex === -1) return null;
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: `Transaksi!A${rowIndex}:K${rowIndex}`,
+  });
+  const row = res.data.values?.[0];
+  if (!row || !row[0]) return null;
+  const isLegacy = row.length <= 9 && !row[9];
+  return {
+    id: row[0],
+    date: row[1],
+    amount: Number(row[2]),
+    category: row[3],
+    note: row[4] ?? "",
+    created_at: row[5] ?? "",
+    type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
+    fromAccountId: row[7] || undefined,
+    fromAccountName: row[8] || undefined,
+    toAccountId: isLegacy ? undefined : (row[9] || undefined),
+    toAccountName: isLegacy ? undefined : (row[10] || undefined),
+  };
 }
 
 // ─── HELPER ───────────────────────────────────────────────────────────────────
