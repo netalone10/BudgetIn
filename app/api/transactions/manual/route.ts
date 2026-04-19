@@ -40,8 +40,14 @@ export async function POST(req: NextRequest) {
 
     // Validasi ownership akun
     const account = await prisma.account.findUnique({ where: { id: accountId } });
-    if (!account || account.userId !== session.userId || !account.isActive) {
-      return NextResponse.json({ error: "Akun tidak valid." }, { status: 404 });
+    if (!account) {
+      return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 400 });
+    }
+    if (account.userId !== session.userId) {
+      return NextResponse.json({ error: "Akun tidak valid" }, { status: 400 });
+    }
+    if (!account.isActive) {
+      return NextResponse.json({ error: "Akun sudah dinonaktifkan" }, { status: 400 });
     }
 
     const transaction = await prisma.transaction.create({
@@ -67,7 +73,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ transaction }, { status: 201 });
+    return NextResponse.json({ transaction, accountName: account.name }, { status: 201 });
   }
 
   if (type === "transfer") {
@@ -87,11 +93,23 @@ export async function POST(req: NextRequest) {
       prisma.account.findUnique({ where: { id: toAccountId } }),
     ]);
 
-    if (!fromAccount || fromAccount.userId !== session.userId || !fromAccount.isActive) {
-      return NextResponse.json({ error: "Akun asal tidak valid." }, { status: 404 });
+    if (!fromAccount) {
+      return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 400 });
     }
-    if (!toAccount || toAccount.userId !== session.userId || !toAccount.isActive) {
-      return NextResponse.json({ error: "Akun tujuan tidak valid." }, { status: 404 });
+    if (fromAccount.userId !== session.userId) {
+      return NextResponse.json({ error: "Akun tidak valid" }, { status: 400 });
+    }
+    if (!fromAccount.isActive) {
+      return NextResponse.json({ error: "Akun sudah dinonaktifkan" }, { status: 400 });
+    }
+    if (!toAccount) {
+      return NextResponse.json({ error: "Akun tujuan tidak ditemukan" }, { status: 400 });
+    }
+    if (toAccount.userId !== session.userId) {
+      return NextResponse.json({ error: "Akun tujuan tidak valid" }, { status: 400 });
+    }
+    if (!toAccount.isActive) {
+      return NextResponse.json({ error: "Akun tujuan sudah dinonaktifkan" }, { status: 400 });
     }
 
     // Guard cross-currency

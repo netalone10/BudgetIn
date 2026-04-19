@@ -172,14 +172,43 @@ export async function POST(req: NextRequest) {
   const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
 
   // Helper: match account name dari AI ke account ID
-  function matchAccount(accountName?: string): string | null {
+  // Returns accountId jika tepat satu match, null jika tidak ada atau lebih dari satu match
+  function matchAccount(accountName?: string): { id: string } | { ambiguous: true; matches: string[] } | null {
     if (!accountName) return null;
     const normalized = accountName.toLowerCase().trim();
-    const found = userAccounts.find((a) => 
-      a.name.toLowerCase().includes(normalized) || 
+    const matches = userAccounts.filter((a) =>
+      a.name.toLowerCase().includes(normalized) ||
       normalized.includes(a.name.toLowerCase())
     );
-    return found?.id ?? null;
+    if (matches.length === 1) return { id: matches[0].id };
+    if (matches.length > 1) return { ambiguous: true, matches: matches.map((a) => a.name) };
+    return null;
+  }
+
+  // Helper: resolve matchAccount result ke accountId string, atau return clarification response
+  function resolveAccount(
+    accountName: string | undefined,
+    transactionType: "expense" | "income"
+  ): { accountId: string } | { clarification: string } {
+    const result = matchAccount(accountName);
+    if (result && "id" in result) return { accountId: result.id };
+    if (result && "ambiguous" in result) {
+      const accountList = result.matches.join(", ");
+      const example = `${prompt} pakai ${result.matches[0]}`;
+      return {
+        clarification: `Akun mana yang dimaksud? Pilih salah satu: ${accountList}. Contoh: "${example}"`,
+      };
+    }
+    return { clarification: askAccountSelection(transactionType) };
+  }
+
+  // Helper: validate accountId ownership & status against DB
+  async function validateAccount(accountId: string): Promise<{ error: string; status: number } | null> {
+    const account = await prisma.account.findUnique({ where: { id: accountId } });
+    if (!account) return { error: "Akun tidak ditemukan", status: 400 };
+    if (account.userId !== session!.userId) return { error: "Akun tidak valid", status: 400 };
+    if (!account.isActive) return { error: "Akun sudah dinonaktifkan", status: 400 };
+    return null;
   }
 
   // Helper: generate account selection clarification
@@ -207,16 +236,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Match account dari AI extraction
-    const accountId = matchAccount(parsed.accountName);
-    
-    // Jika tidak ada akun, tanya user
-    if (!accountId) {
-      return NextResponse.json({
-        intent: "unknown",
-        clarification: askAccountSelection("expense"),
-      });
+    const accountResolution = resolveAccount(parsed.accountName, "expense");
+    if ("clarification" in accountResolution) {
+      return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
+    }
+    const { accountId } = accountResolution;
+
+    // Validasi ownership & status akun
+    const accountError = await validateAccount(accountId);
+    if (accountError) {
+      return NextResponse.json({ error: accountError.error }, { status: accountError.status });
     }
 
+    const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
     const txData = {
       date: parsed.date ?? today,
       amount: parsed.amount,
@@ -224,6 +256,7 @@ export async function POST(req: NextRequest) {
       note: parsed.note ?? "",
       type: "expense" as const,
       accountId,
+      accountName,
     };
 
     try {
@@ -261,15 +294,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Match account dari AI extraction
-    const accountId = matchAccount(parsed.accountName);
-    
-    // Jika tidak ada akun, tanya user
-    if (!accountId) {
-      return NextResponse.json({
-        intent: "unknown",
-        clarification: askAccountSelection("expense"),
-      });
+    const accountResolution = resolveAccount(parsed.accountName, "expense");
+    if ("clarification" in accountResolution) {
+      return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
     }
+    const { accountId } = accountResolution;
+
+    // Validasi ownership & status akun sekali sebelum proses semua item
+    const accountError = await validateAccount(accountId);
+    if (accountError) {
+      return NextResponse.json({ error: accountError.error }, { status: accountError.status });
+    }
+
+    const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
 
     try {
       const transactions = [];
@@ -282,6 +319,7 @@ export async function POST(req: NextRequest) {
           note: item.note ?? "",
           type: "expense" as const,
           accountId,
+          accountName,
         };
         const transaction = useSheets
           ? await appendTransaction(user!.sheetsId!, accessToken, txData)
@@ -328,16 +366,19 @@ export async function POST(req: NextRequest) {
     }
 
     // Match account dari AI extraction
-    const accountId = matchAccount(parsed.accountName);
-    
-    // Jika tidak ada akun, tanya user
-    if (!accountId) {
-      return NextResponse.json({
-        intent: "unknown",
-        clarification: askAccountSelection("income"),
-      });
+    const accountResolution = resolveAccount(parsed.accountName, "income");
+    if ("clarification" in accountResolution) {
+      return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
+    }
+    const { accountId } = accountResolution;
+
+    // Validasi ownership & status akun
+    const accountError = await validateAccount(accountId);
+    if (accountError) {
+      return NextResponse.json({ error: accountError.error }, { status: accountError.status });
     }
 
+    const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
     const txData = {
       date: parsed.date ?? today,
       amount: incomeAmount,
@@ -345,6 +386,7 @@ export async function POST(req: NextRequest) {
       note: parsed.note ?? "",
       type: "income" as const,
       accountId,
+      accountName,
     };
 
     try {

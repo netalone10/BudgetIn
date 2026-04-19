@@ -13,7 +13,8 @@ export interface DbTransaction {
   category: string;
   note: string;
   created_at: string;
-  type: "expense" | "income";
+  type: "expense" | "income" | "transfer_out" | "transfer_in";
+  accountId: string | null;
 }
 
 interface CreateInput {
@@ -22,7 +23,7 @@ interface CreateInput {
   category: string;
   note: string;
   type: "expense" | "income";
-  accountId?: string;
+  accountId: string; // required for new transactions; legacy data may have null in DB
 }
 
 // ── CREATE ────────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ export async function appendTransactionDB(
       category: data.category,
       note: data.note,
       type: data.type,
-      accountId: data.accountId ?? null,
+      accountId: data.accountId,
     },
   });
 
@@ -51,7 +52,8 @@ export async function appendTransactionDB(
     category: tx.category,
     note: tx.note,
     created_at: tx.createdAt.toISOString(),
-    type: tx.type as "expense" | "income",
+    type: tx.type as DbTransaction["type"],
+    accountId: tx.accountId,
   };
 }
 
@@ -125,7 +127,8 @@ export async function getTransactionsDB(
     category: r.category,
     note: r.note,
     created_at: r.createdAt.toISOString(),
-    type: r.type as "expense" | "income",
+    type: r.type as DbTransaction["type"],
+    accountId: r.accountId,
   }));
 }
 

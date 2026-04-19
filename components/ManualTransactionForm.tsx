@@ -49,13 +49,20 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess 
 
   const activeAccounts = accounts.filter((a) => a.id);
 
-  // Grouped accounts for optgroup
-  const accountsByType = activeAccounts.reduce<Record<string, Account[]>>((acc, a) => {
-    const typeName = a.accountType.name;
-    if (!acc[typeName]) acc[typeName] = [];
-    acc[typeName].push(a);
-    return acc;
-  }, {});
+  // Check if user has multiple currencies
+  const currencies = new Set(activeAccounts.map((a) => a.currency));
+  const isMultiCurrency = currencies.size > 1;
+
+  // Grouped accounts for optgroup, sorted alphabetically within each group
+  const accountsByType = activeAccounts
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .reduce<Record<string, Account[]>>((acc, a) => {
+      const typeName = a.accountType.name;
+      if (!acc[typeName]) acc[typeName] = [];
+      acc[typeName].push(a);
+      return acc;
+    }, {});
 
   // Cross-currency warning
   const fromAcc = activeAccounts.find((a) => a.id === accountId);
@@ -185,7 +192,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess 
                   <optgroup key={typeName} label={typeName}>
                     {accs.map((a) => (
                       <option key={a.id} value={a.id} disabled={a.id === toAccountId}>
-                        {a.name}
+                        {isMultiCurrency ? `${a.name} (${a.currency})` : a.name}
                       </option>
                     ))}
                   </optgroup>
@@ -207,7 +214,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess 
                   <optgroup key={typeName} label={typeName}>
                     {accs.map((a) => (
                       <option key={a.id} value={a.id} disabled={a.id === accountId}>
-                        {a.name}
+                        {isMultiCurrency ? `${a.name} (${a.currency})` : a.name}
                       </option>
                     ))}
                   </optgroup>
@@ -231,7 +238,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess 
                 <optgroup key={typeName} label={typeName}>
                   {accs.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.name}
+                      {isMultiCurrency ? `${a.name} (${a.currency})` : a.name}
                     </option>
                   ))}
                 </optgroup>
