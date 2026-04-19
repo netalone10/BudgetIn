@@ -226,3 +226,86 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ account }, { status: 201 });
 }
+
+// Migration endpoint: merge local Prisma accounts to Google Sheets
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+
+  if (!user?.sheetsId) {
+    return NextResponse.json({ error: "Anda tidak menggunakan Google Sheets" }, { status: 400 });
+  }
+
+  try {
+    const accessToken = await getValidToken(session.userId);
+    const auth = new google.auth.OAuth2();
+    auth.setCredentials({ access_token: accessToken });
+    const sheets = google.sheets({ version: "v4", auth });
+
+    // Cek apakah sheet "Akun" sudah ada
+    const meta = await sheets.spreadsheets.get({ spreadsheetId: user.sheetsId });
+    const hasAkunSheet = meta.data.sheets?.some((s: any) => s.properties?.title === "Akun");
+
+    if (!hasAkunSheet) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: user.sheetsId,
+        requestBody: {
+          requests: [{ addSheet: { properties: { title: "Akun", sheetId: 2 } } }],
+        },
+      });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: user.sheetsId,
+        range: "Akun!A1:H1",
+        valueInputOption: "RAW",
+        requestBody: { values: [["id", "name", "type", "classification", "balance", "currency", "color", "note"]] },
+      });
+    }
+
+    // Ambil semua akun dari Sheets
+    const existingSheetsAccounts = await getAccounts(user.sheetsId, accessToken);
+    const existingSheetIds = new Set(existingSheetsAccounts.map((a) => a.id));
+
+    // Ambil semua akun dari Prisma
+    await ensureDefaultAccountTypes(session.userId);
+    const dbAccounts = await getAccountBalances(session.userId);
+
+    let migrated = 0;
+    let updated = 0;
+
+    for (const acc of dbAccounts) {
+      if (!existingSheetIds.has(acc.id)) {
+        // Akun baru: append ke Sheets
+        await appendAccount(user.sheetsId, accessToken, {
+          name: acc.name,
+          type: acc.accountType.name,
+          classification: acc.accountType.classification,
+          balance: acc.currentBalance.toNumber(),
+          currency: acc.currency,
+          color: acc.color,
+          note: acc.note,
+        });
+        migrated++;
+      } else {
+        // Update saldo jika sudah ada
+        await updateAccount(user.sheetsId, accessToken, acc.id, {
+          balance: acc.currentBalance.toNumber(),
+        });
+        updated++;
+      }
+    }
+
+    return NextResponse.json({ 
+      message: `Migrated ${migrated} new accounts, updated ${updated} existing accounts`,
+      migrated,
+      updated,
+    });
+  } catch (e) {
+    console.error("Migration failed:", e);
+    return NextResponse.json({ error: "Gagal melakukan migrasi" }, { status: 500 });
+  }
+}
