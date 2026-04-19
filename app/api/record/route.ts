@@ -249,20 +249,22 @@ export async function POST(req: NextRequest) {
     }
 
     const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
-    const txData = {
+    const base = {
       date: parsed.date ?? today,
       amount: parsed.amount,
       category: parsed.category,
       note: parsed.note ?? "",
       type: "expense" as const,
-      accountId,
-      accountName,
     };
 
     try {
       const transaction = useSheets
-        ? await appendTransaction(user!.sheetsId!, accessToken, txData)
-        : await appendTransactionDB(session.userId, txData);
+        ? await appendTransaction(user!.sheetsId!, accessToken, {
+            ...base,
+            fromAccountId: accountId,
+            fromAccountName: accountName,
+          })
+        : await appendTransactionDB(session.userId, { ...base, accountId });
 
       await prisma.category.upsert({
         where: { userId_name: { userId: session.userId, name: parsed.category } },
@@ -312,18 +314,20 @@ export async function POST(req: NextRequest) {
       const transactions = [];
       for (const item of items) {
         if (!item.amount || !item.category) continue;
-        const txData = {
+        const base = {
           date: txDate,
           amount: item.amount,
           category: item.category,
           note: item.note ?? "",
           type: "expense" as const,
-          accountId,
-          accountName,
         };
         const transaction = useSheets
-          ? await appendTransaction(user!.sheetsId!, accessToken, txData)
-          : await appendTransactionDB(session.userId, txData);
+          ? await appendTransaction(user!.sheetsId!, accessToken, {
+              ...base,
+              fromAccountId: accountId,
+              fromAccountName: accountName,
+            })
+          : await appendTransactionDB(session.userId, { ...base, accountId });
 
         await prisma.category.upsert({
           where: { userId_name: { userId: session.userId, name: item.category } },
@@ -379,20 +383,22 @@ export async function POST(req: NextRequest) {
     }
 
     const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
-    const txData = {
+    const base = {
       date: parsed.date ?? today,
       amount: incomeAmount,
       category: incomeCategory,
       note: parsed.note ?? "",
       type: "income" as const,
-      accountId,
-      accountName,
     };
 
     try {
       const transaction = useSheets
-        ? await appendTransaction(user!.sheetsId!, accessToken, txData)
-        : await appendTransactionDB(session.userId, txData);
+        ? await appendTransaction(user!.sheetsId!, accessToken, {
+            ...base,
+            toAccountId: accountId,
+            toAccountName: accountName,
+          })
+        : await appendTransactionDB(session.userId, { ...base, accountId });
 
       // Simpan kategori income ke DB supaya muncul di dropdown edit
       await prisma.category.upsert({

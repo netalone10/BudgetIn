@@ -32,13 +32,13 @@ export async function createGoogleSheet(
 
   const spreadsheetId = spreadsheet.data.spreadsheetId!;
 
-  // Header row: tambah kolom "type" (expense | income), "accountId", "accountName"
+  // Header row: double-entry columns — fromAccount (debit/kredit sumber) + toAccount (debit/kredit tujuan)
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Transaksi!A1:I1",
+    range: "Transaksi!A1:K1",
     valueInputOption: "RAW",
     requestBody: {
-      values: [["id", "date", "amount", "category", "note", "created_at", "type", "accountId", "accountName"]],
+      values: [["id", "date", "amount", "category", "note", "created_at", "type", "fromAccountId", "fromAccountName", "toAccountId", "toAccountName"]],
     },
   });
 
@@ -73,9 +73,13 @@ export interface Transaction {
   category: string;
   note: string;
   created_at: string;
-  type: "expense" | "income"; // kolom G — default "expense" untuk backward compat
-  accountId?: string;   // kolom H — optional untuk backward compat dengan legacy rows
-  accountName?: string; // kolom I — human-readable account name
+  type: "expense" | "income";
+  // Double-entry columns (H-K). Legacy rows only have H/I as accountId/accountName →
+  // treated as fromAccountId/fromAccountName for backward compat.
+  fromAccountId?: string;   // kolom H — akun sumber (uang keluar / debit)
+  fromAccountName?: string; // kolom I
+  toAccountId?: string;     // kolom J — akun tujuan (uang masuk / kredit)
+  toAccountName?: string;   // kolom K
 }
 
 export async function appendTransaction(
@@ -99,13 +103,15 @@ export async function appendTransaction(
     data.note,
     created_at,
     data.type ?? "expense",
-    data.accountId ?? "",
-    data.accountName ?? "",
+    data.fromAccountId ?? "",
+    data.fromAccountName ?? "",
+    data.toAccountId ?? "",
+    data.toAccountName ?? "",
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A:I",
+    range: "Transaksi!A:K",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -123,23 +129,29 @@ export async function getTransactions(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A2:I",
+    range: "Transaksi!A2:K",
   });
 
   const rows = res.data.values ?? [];
   const transactions: Transaction[] = rows
     .filter((row) => row[0])
-    .map((row) => ({
-      id: row[0],
-      date: row[1],
-      amount: Number(row[2]),
-      category: row[3],
-      note: row[4] ?? "",
-      created_at: row[5] ?? "",
-      type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
-      accountId: row[7] || undefined,
-      accountName: row[8] || undefined,
-    }));
+    .map((row) => {
+      // Legacy rows (9 cols): col H = accountId treated as fromAccountId
+      const isLegacy = row.length <= 9 && !row[9];
+      return {
+        id: row[0],
+        date: row[1],
+        amount: Number(row[2]),
+        category: row[3],
+        note: row[4] ?? "",
+        created_at: row[5] ?? "",
+        type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
+        fromAccountId: row[7] || undefined,
+        fromAccountName: row[8] || undefined,
+        toAccountId: isLegacy ? undefined : (row[9] || undefined),
+        toAccountName: isLegacy ? undefined : (row[10] || undefined),
+      };
+    });
 
   if (!period) return transactions;
 
