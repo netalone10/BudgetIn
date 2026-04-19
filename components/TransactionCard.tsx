@@ -13,12 +13,16 @@ export interface Transaction {
   category: string;
   note: string;
   created_at: string;
-  type?: "expense" | "income";
+  type?: "expense" | "income" | "transfer_out" | "transfer_in";
+  fromAccountName?: string;
+  toAccountName?: string;
+  accountId?: string | null;
 }
 
 interface Props {
   transaction: Transaction;
   categories?: string[];
+  accounts?: { id: string; name: string }[];
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: Partial<Transaction>) => void;
 }
@@ -33,7 +37,7 @@ function formatDate(dateStr: string) {
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
-export default function TransactionCard({ transaction, categories = [], onDelete, onUpdate }: Props) {
+export default function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
   const [editing, setEditing] = useState(false);
   const [editDate, setEditDate] = useState(transaction.date);
   const [editNote, setEditNote] = useState(transaction.note);
@@ -86,7 +90,12 @@ export default function TransactionCard({ transaction, categories = [], onDelete
     setLoading(false);
   }
 
-  const isIncome = transaction.type === "income";
+  const isIncome = transaction.type === "income" || transaction.type === "transfer_in";
+
+  const displayAccount =
+    transaction.fromAccountName ||
+    transaction.toAccountName ||
+    (transaction.accountId ? accounts.find((a) => a.id === transaction.accountId)?.name : undefined);
 
   return (
     <tr className={cn(
@@ -146,6 +155,13 @@ export default function TransactionCard({ transaction, categories = [], onDelete
             {transaction.category}
           </span>
         )}
+      </td>
+
+      {/* Akun */}
+      <td className="py-2.5 pr-3 whitespace-nowrap hidden sm:table-cell">
+        {displayAccount ? (
+          <span className="text-xs text-muted-foreground">{displayAccount}</span>
+        ) : null}
       </td>
 
       {/* Jumlah */}

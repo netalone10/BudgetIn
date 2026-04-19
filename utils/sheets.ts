@@ -414,6 +414,39 @@ export async function deleteAccount(
   });
 }
 
+// ─── MIGRATION ────────────────────────────────────────────────────────────────
+
+export async function ensureTransaksiHeader(sheetsId: string, accessToken: string): Promise<void> {
+  const sheets = getSheetsClient(accessToken);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: "Transaksi!A1:K1",
+  });
+  const header = res.data.values?.[0] ?? [];
+  if (header.length < 11) {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: sheetsId,
+      range: "Transaksi!A1:K1",
+      valueInputOption: "RAW",
+      requestBody: {
+        values: [["id", "date", "amount", "category", "note", "created_at", "type", "fromAccountId", "fromAccountName", "toAccountId", "toAccountName"]],
+      },
+    });
+  }
+}
+
+export async function updateAccountBalance(
+  sheetsId: string,
+  accessToken: string,
+  id: string,
+  delta: number
+): Promise<void> {
+  const accounts = await getAccounts(sheetsId, accessToken);
+  const account = accounts.find((a) => a.id === id);
+  if (!account) return;
+  await updateAccount(sheetsId, accessToken, id, { balance: account.balance + delta });
+}
+
 // ─── HELPER ───────────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

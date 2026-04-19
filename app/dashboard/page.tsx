@@ -459,6 +459,7 @@ export default function DashboardPage() {
                     <th className="py-3 px-5 text-left w-16 label-mono text-muted-foreground">Tgl</th>
                     <th className="py-3 pr-4 text-left label-mono text-muted-foreground">Deskripsi</th>
                     <th className="py-3 pr-4 text-left label-mono text-muted-foreground">Kategori</th>
+                    <th className="py-3 pr-4 text-left label-mono text-muted-foreground hidden sm:table-cell">Akun</th>
                     <th className="py-3 pr-4 text-right label-mono text-muted-foreground">Jumlah</th>
                     <th className="py-3 pr-4 w-16" />
                   </tr>
@@ -469,6 +470,7 @@ export default function DashboardPage() {
                       key={t.id}
                       transaction={t}
                       categories={categories}
+                      accounts={accounts}
                       onDelete={handleDeleteTx}
                       onUpdate={handleUpdateTx}
                     />

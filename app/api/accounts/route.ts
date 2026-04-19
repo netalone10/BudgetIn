@@ -12,7 +12,7 @@ import {
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { getValidToken } from "@/utils/token";
 import { google } from "googleapis";
-import { appendAccount, getAccounts, updateAccount, AccountData } from "@/utils/sheets";
+import { appendAccount, getAccounts, updateAccount, ensureTransaksiHeader, AccountData } from "@/utils/sheets";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -50,6 +50,7 @@ export async function GET() {
         });
       }
 
+      await ensureTransaksiHeader(user.sheetsId, accessToken).catch(() => {});
       const sheetsAccounts = await getAccounts(user.sheetsId, accessToken);
 
       // Hitung total assets dan liabilities dari Sheets

@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classifyIntent, callWithRotation } from "@/utils/groq";
 import { getValidToken } from "@/utils/token";
-import { appendTransaction, getTransactions, appendBudgetBackup } from "@/utils/sheets";
+import { appendTransaction, getTransactions, appendBudgetBackup, updateAccountBalance } from "@/utils/sheets";
 import { appendTransactionDB, getTransactionsDB } from "@/utils/db-transactions";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
@@ -266,6 +266,10 @@ export async function POST(req: NextRequest) {
           })
         : await appendTransactionDB(session.userId, { ...base, accountId });
 
+      if (useSheets) {
+        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, -parsed.amount).catch(() => {});
+      }
+
       await prisma.category.upsert({
         where: { userId_name: { userId: session.userId, name: parsed.category } },
         update: {},
@@ -345,6 +349,11 @@ export async function POST(req: NextRequest) {
       }
 
       const total = transactions.reduce((s, t) => s + t.amount, 0);
+
+      if (useSheets) {
+        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, -total).catch(() => {});
+      }
+
       return NextResponse.json({
         intent: "transaksi_bulk",
         transactions,
@@ -399,6 +408,10 @@ export async function POST(req: NextRequest) {
             toAccountName: accountName,
           })
         : await appendTransactionDB(session.userId, { ...base, accountId });
+
+      if (useSheets) {
+        await updateAccountBalance(user!.sheetsId!, accessToken, accountId, incomeAmount).catch(() => {});
+      }
 
       // Simpan kategori income ke DB supaya muncul di dropdown edit
       await prisma.category.upsert({

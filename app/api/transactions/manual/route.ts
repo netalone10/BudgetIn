@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import { randomUUID } from "crypto";
 import { getValidToken } from "@/utils/token";
-import { appendTransaction, getAccounts } from "@/utils/sheets";
+import { appendTransaction, getAccounts, updateAccountBalance } from "@/utils/sheets";
 
 function isValidAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
@@ -65,6 +65,8 @@ export async function POST(req: NextRequest) {
           : { toAccountId: accountId, toAccountName: account.name }),
       });
 
+      await updateAccountBalance(user!.sheetsId!, accessToken, accountId, type === "expense" ? -parsedAmount : parsedAmount).catch(() => {});
+
       await prisma.category.upsert({
         where: { userId_name: { userId: session.userId, name: category.trim() } },
         update: {},
@@ -101,6 +103,11 @@ export async function POST(req: NextRequest) {
         toAccountId,
         toAccountName: toAccount.name,
       });
+
+      await Promise.all([
+        updateAccountBalance(user!.sheetsId!, accessToken, accountId, -parsedAmount).catch(() => {}),
+        updateAccountBalance(user!.sheetsId!, accessToken, toAccountId, parsedAmount).catch(() => {}),
+      ]);
 
       return NextResponse.json({ transaction, message: "Transfer berhasil dicatat." }, { status: 201 });
     }
