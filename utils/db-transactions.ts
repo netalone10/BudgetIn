@@ -45,7 +45,7 @@ export async function appendTransactionDB(
   return {
     id: tx.id,
     date: tx.date,
-    amount: tx.amount,
+    amount: tx.amount.toNumber(),
     category: tx.category,
     note: tx.note,
     created_at: tx.createdAt.toISOString(),
@@ -119,7 +119,7 @@ export async function getTransactionsDB(
   return rows.map((r) => ({
     id: r.id,
     date: r.date,
-    amount: r.amount,
+    amount: r.amount.toNumber(),
     category: r.category,
     note: r.note,
     created_at: r.createdAt.toISOString(),
