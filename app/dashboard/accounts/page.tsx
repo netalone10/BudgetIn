@@ -85,7 +85,17 @@ function AccountFormModal({ accountTypes, editAccount, onClose, onSaved }: Accou
     setLoading(true);
 
     try {
-      const payload: Record<string, unknown> = { accountTypeId, name, note, currency };
+      // Get the selected account type info
+      const selectedType = accountTypes.find(t => t.id === accountTypeId);
+      
+      // For Sheets users, send accountTypeName and classification instead of accountTypeId
+      const payload: Record<string, unknown> = isSheets ? { 
+        name, 
+        note, 
+        currency,
+        accountTypeName: selectedType?.name,
+        classification: selectedType?.classification,
+      } : { accountTypeId, name, note, currency };
       
       // Add credit card fields if Kartu Kredit
       if (isKartuKredit) {

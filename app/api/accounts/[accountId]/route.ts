@@ -59,6 +59,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           currency: currency || existingAccount.currency,
           color: color ?? existingAccount.color,
           note: note ?? existingAccount.note,
+          currentBalance: existingAccount.balance.toString(),
+          icon: null,
+          transactionCount: 0,
+          tanggalSettlement: null,
+          tanggalJatuhTempo: null,
         } 
       });
     } catch (e) {

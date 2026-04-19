@@ -63,6 +63,10 @@ export async function GET() {
         currency: a.currency,
         color: a.color,
         note: a.note,
+        icon: null,
+        transactionCount: 0,
+        tanggalSettlement: null,
+        tanggalJatuhTempo: null,
       }));
 
       for (const acc of accounts) {
@@ -159,7 +163,16 @@ export async function POST(req: NextRequest) {
         note: note ?? "",
       });
 
-      return NextResponse.json({ account: newAccount }, { status: 201 });
+      return NextResponse.json({ 
+      account: { 
+        ...newAccount, 
+        accountType: { name: accountTypeName, classification: classification || "asset" },
+        icon: null,
+        transactionCount: 0,
+        tanggalSettlement: null,
+        tanggalJatuhTempo: null,
+      } 
+    }, { status: 201 });
     } catch (e) {
       console.error("Failed to create account in Sheets:", e);
       return NextResponse.json({ error: "Gagal membuat akun di Google Sheets" }, { status: 500 });
