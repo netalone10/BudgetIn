@@ -85,10 +85,15 @@ export default function NetWorthSummaryCard() {
             <span className="text-emerald-600 dark:text-emerald-400 font-medium">Aset</span>{" "}
             {formatIDR(assets)}
           </span>
-          <span>·</span>
+          <span>|</span>
           <span>
-            <span className="text-red-500 font-medium">Utang</span>{" "}
+            <span className="text-red-500 font-medium">Liabilitas</span>{" "}
             {formatIDR(liabilities)}
+          </span>
+          <span>|</span>
+          <span>
+            <span className="text-foreground font-medium">Net Asset</span>{" "}
+            {formatIDR(netWorth)}
           </span>
         </div>
       </div>
