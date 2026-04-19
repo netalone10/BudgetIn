@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSingleAccountBalance, getAccountBalances } from "@/utils/account-balance";
 import { getValidToken } from "@/utils/token";
-import { updateAccount as updateAccountSheets, deleteAccount as deleteAccountSheets } from "@/utils/sheets";
+import { google } from "googleapis";
+import { updateAccount as updateAccountSheets, deleteAccount as deleteAccountSheets, getAccounts } from "@/utils/sheets";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -14,13 +15,63 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { accountId } = await params;
   const body = await req.json();
-  const { accountTypeId, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
+  const { accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
 
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+
+  // Jika user Google Sheets, update di Sheets saja
+  if (user?.sheetsId) {
+    if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
+      return NextResponse.json({ error: "Nama tidak boleh kosong." }, { status: 400 });
+    }
+
+    try {
+      const accessToken = await getValidToken(session.userId);
+      const auth = new google.auth.OAuth2();
+      auth.setCredentials({ access_token: accessToken });
+      const sheets = google.sheets({ version: "v4", auth });
+
+      // Ambil data akun lama dari Sheets
+      const allAccounts = await getAccounts(user.sheetsId, accessToken);
+      const existingAccount = allAccounts.find((a) => a.id === accountId);
+
+      if (!existingAccount) {
+        return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
+      }
+
+      // Update di Sheets
+      await updateAccountSheets(user.sheetsId, accessToken, accountId, {
+        name: name?.trim(),
+        type: accountTypeName || existingAccount.type,
+        classification: classification || existingAccount.classification,
+        color: color ?? existingAccount.color,
+        note: note ?? existingAccount.note,
+      });
+
+      return NextResponse.json({ 
+        account: { 
+          id: accountId, 
+          name: name?.trim() || existingAccount.name,
+          accountType: { name: accountTypeName || existingAccount.type, classification: classification || existingAccount.classification },
+          currency: currency || existingAccount.currency,
+          color: color ?? existingAccount.color,
+          note: note ?? existingAccount.note,
+        } 
+      });
+    } catch (e) {
+      console.error("Failed to update account in Sheets:", e);
+      return NextResponse.json({ error: "Gagal mengupdate akun di Google Sheets" }, { status: 500 });
+    }
+  }
+
+  // User non-Google: update di Prisma
   const existing = await prisma.account.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
   if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  // Lock currency jika ada transaksi
   if (currency && currency !== existing.currency) {
     const txCount = await prisma.transaction.count({ where: { accountId } });
     if (txCount > 0) {
@@ -31,19 +82,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
-  // Validasi accountTypeId jika diubah
-  if (accountTypeId) {
-    const accountType = await prisma.accountType.findUnique({ where: { id: accountTypeId } });
-    if (!accountType || accountType.userId !== session.userId || !accountType.isActive) {
-      return NextResponse.json({ error: "Tipe akun tidak valid." }, { status: 400 });
-    }
-  }
+  // accountTypeId validation for Prisma users only
 
   if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
     return NextResponse.json({ error: "Nama tidak boleh kosong." }, { status: 400 });
   }
 
-  // Validasi tanggalSettlement dan tanggalJatuhTempo
   if (tanggalSettlement !== undefined) {
     if (tanggalSettlement !== null && (tanggalSettlement < 1 || tanggalSettlement > 31)) {
       return NextResponse.json({ error: "Tanggal Settlement harus antara 1-31." }, { status: 400 });
@@ -70,32 +114,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     include: { accountType: true },
   });
 
-  // Sync ke Google Sheets jika user menggunakan Sheets
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { sheetsId: true },
-  });
-
-  if (user?.sheetsId) {
-    try {
-      const accessToken = await getValidToken(session.userId);
-      // Ambil saldo terbaru
-      const accounts = await getAccountBalances(session.userId);
-      const accWithBalance = accounts.find((a) => a.id === accountId);
-
-      await updateAccountSheets(user.sheetsId, accessToken, accountId, {
-        name: name?.trim(),
-        type: updated.accountType.name,
-        classification: updated.accountType.classification,
-        balance: accWithBalance?.currentBalance.toNumber() ?? 0,
-        color: updated.color,
-        note: updated.note,
-      });
-    } catch (e) {
-      console.error("Failed to sync account update to Sheets:", e);
-    }
-  }
-
   return NextResponse.json({ account: updated });
 }
 
@@ -107,26 +125,29 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { searchParams } = new URL(req.url);
   const hard = searchParams.get("hard") === "true";
 
-  const existing = await prisma.account.findUnique({ where: { id: accountId } });
-  if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
-  if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-
-  // Helper untuk sync delete ke Sheets
-  const syncDeleteToSheets = async (sheetsId: string, accessToken: string, accId: string) => {
-    try {
-      await deleteAccountSheets(sheetsId, accessToken, accId);
-    } catch (e) {
-      console.error("Failed to sync account delete to Sheets:", e);
-    }
-  };
-
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { sheetsId: true },
   });
 
+  // Jika user Google Sheets, hapus dari Sheets saja
+  if (user?.sheetsId) {
+    try {
+      const accessToken = await getValidToken(session.userId);
+      await deleteAccountSheets(user.sheetsId, accessToken, accountId);
+      return NextResponse.json({ message: "Akun dihapus." });
+    } catch (e) {
+      console.error("Failed to delete account from Sheets:", e);
+      return NextResponse.json({ error: "Gagal menghapus akun dari Google Sheets" }, { status: 500 });
+    }
+  }
+
+  // User non-Google: hapus dari Prisma
+  const existing = await prisma.account.findUnique({ where: { id: accountId } });
+  if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
+  if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
   if (hard) {
-    // Hard-delete: hanya boleh kalau tidak ada transaksi sama sekali
     const txCount = await prisma.transaction.count({ where: { accountId } });
     if (txCount > 0) {
       return NextResponse.json(
@@ -135,17 +156,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
     await prisma.account.delete({ where: { id: accountId } });
-
-    // Sync delete ke Sheets
-    if (user?.sheetsId) {
-      const accessToken = await getValidToken(session.userId);
-      await syncDeleteToSheets(user.sheetsId, accessToken, accountId);
-    }
-
     return NextResponse.json({ message: "Akun dihapus permanen." });
   }
 
-  // Soft-delete: hanya boleh kalau saldo = 0
   const currentBalance = await getSingleAccountBalance(session.userId, accountId);
   if (!currentBalance.isZero()) {
     const formatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(
@@ -161,12 +174,5 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     where: { id: accountId },
     data: { isActive: false },
   });
-
-  // Sync delete ke Sheets (arsip = hapus dari Sheets juga)
-  if (user?.sheetsId) {
-    const accessToken = await getValidToken(session.userId);
-    await syncDeleteToSheets(user.sheetsId, accessToken, accountId);
-  }
-
   return NextResponse.json({ message: "Akun diarsipkan." });
 }
