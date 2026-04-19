@@ -11,6 +11,7 @@ import {
 } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { getValidToken } from "@/utils/token";
+import { google } from "googleapis";
 import { appendAccount, getAccounts, updateAccount, AccountData } from "@/utils/sheets";
 
 export async function GET() {
@@ -31,6 +32,30 @@ export async function GET() {
   if (user?.sheetsId) {
     try {
       const accessToken = await getValidToken(session.userId);
+      const auth = new google.auth.OAuth2();
+      auth.setCredentials({ access_token: accessToken });
+      const sheets = google.sheets({ version: "v4", auth });
+
+      // Cek apakah sheet "Akun" sudah ada, kalau belum buat baru
+      const meta = await sheets.spreadsheets.get({ spreadsheetId: user.sheetsId });
+      const hasAkunSheet = meta.data.sheets?.some((s: any) => s.properties?.title === "Akun");
+
+      if (!hasAkunSheet) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: user.sheetsId,
+          requestBody: {
+            requests: [{ addSheet: { properties: { title: "Akun", sheetId: 2 } } }],
+          },
+        });
+        // Tambah header
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: user.sheetsId,
+          range: "Akun!A1:H1",
+          valueInputOption: "RAW",
+          requestBody: { values: [["id", "name", "type", "classification", "balance", "currency", "color", "note"]] },
+        });
+      }
+
       const existingSheetsAccounts = await getAccounts(user.sheetsId, accessToken);
       const existingSheetIds = new Set(existingSheetsAccounts.map((a) => a.id));
 
