@@ -17,10 +17,10 @@ export async function PATCH(
 
     const { categoryId } = await params;
     const body = await req.json();
-    const { name, isSavings } = body;
+    const { name, isSavings, rolloverEnabled } = body;
 
     // Validate: at least one field must be provided
-    if (name === undefined && isSavings === undefined) {
+    if (name === undefined && isSavings === undefined && rolloverEnabled === undefined) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
@@ -49,9 +49,10 @@ export async function PATCH(
     }
 
     // Build update data
-    const updateData: { name?: string; isSavings?: boolean } = {};
+    const updateData: { name?: string; isSavings?: boolean; rolloverEnabled?: boolean } = {};
     if (name !== undefined) updateData.name = name.trim();
     if (isSavings !== undefined) updateData.isSavings = isSavings;
+    if (rolloverEnabled !== undefined) updateData.rolloverEnabled = rolloverEnabled;
 
     const category = await prisma.category.update({
       where: { 

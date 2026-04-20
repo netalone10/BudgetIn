@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Transaction } from "@/components/TransactionCard";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank, Pencil, Trash2, Check, X } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getDaysInMonth, getDate, startOfWeek, endOfWeek, format } from "date-fns";
 import { isSavingsTransaction } from "@/lib/savings-utils";
@@ -42,9 +42,12 @@ function formatDate(dateStr: string) {
 
 interface BudgetItem {
   id: string;
+  categoryId: string;
   category: string;
   budget: number;
   spent: number;
+  rollover: number;
+  rolloverEnabled: boolean;
 }
 
 export interface BudgetData {
@@ -120,6 +123,15 @@ export default function DashboardTabs({
     } finally {
       setDeleteLoading(false);
     }
+  }
+
+  async function handleToggleRollover(item: BudgetItem) {
+    await fetch(`/api/categories/${item.categoryId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rolloverEnabled: !item.rolloverEnabled }),
+    });
+    onBudgetChange?.();
   }
 
   // Date helpers (WIB)
@@ -430,15 +442,17 @@ export default function DashboardTabs({
                 <tbody>
                   {budgetData.budgets.map((item) => {
                     const fixed = isFixed(item.category);
+                    const effectiveBudget = item.budget + (item.rollover ?? 0);
                     const prorated = fixed
-                      ? item.budget
-                      : Math.round((item.budget * dayOfMonth) / totalDays);
+                      ? effectiveBudget
+                      : Math.round((effectiveBudget * dayOfMonth) / totalDays);
                     const remaining = prorated - item.spent;
                     const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
                     const isOver = pct >= 100;
                     const isNear = pct >= 80 && !isOver;
                     const isEditing = editingId === item.id;
                     const isConfirmDelete = deletingId === item.id;
+                    const hasRollover = (item.rollover ?? 0) > 0;
 
                     return (
                       <tr
@@ -459,7 +473,18 @@ export default function DashboardTabs({
                             >
                               {fixed ? "Fixed" : "Variable"}
                             </span>
+                            {item.rolloverEnabled && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium leading-none bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                                Rollover
+                              </span>
+                            )}
                           </div>
+                          {/* Rollover amount indicator */}
+                          {hasRollover && (
+                            <span className="block text-[10px] text-violet-600 dark:text-violet-400 mt-0.5">
+                              +{fmtCompact(item.rollover)} sisa bulan lalu
+                            </span>
+                          )}
                           {/* Mini progress */}
                           <div className="mt-1.5 h-1 w-full max-w-[120px] rounded-full bg-muted">
                             <div
@@ -491,9 +516,16 @@ export default function DashboardTabs({
                               autoFocus
                             />
                           ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {fmt(item.budget)}
-                            </span>
+                            <div className="text-right">
+                              <span className="text-xs text-muted-foreground">
+                                {fmt(item.budget)}
+                              </span>
+                              {hasRollover && (
+                                <span className="block text-[10px] text-violet-500">
+                                  +{fmtCompact(item.rollover)}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
 
@@ -574,6 +606,18 @@ export default function DashboardTabs({
                           ) : (
                             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
+                                onClick={() => handleToggleRollover(item)}
+                                className={cn(
+                                  "flex h-6 w-6 items-center justify-center rounded-md transition-colors",
+                                  item.rolloverEnabled
+                                    ? "text-violet-600 bg-violet-100 dark:bg-violet-900/30"
+                                    : "text-muted-foreground hover:text-violet-600 hover:bg-violet-100 dark:hover:bg-violet-900/30"
+                                )}
+                                title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover sisa budget"}
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                              </button>
+                              <button
                                 onClick={() => {
                                   setEditingId(item.id);
                                   setEditAmount(item.budget.toString());
@@ -604,10 +648,11 @@ export default function DashboardTabs({
                 {/* Footer: total */}
                 <tfoot>
                   {(() => {
-                    const totalBudget = budgetData.budgets.reduce((s, b) => s + b.budget, 0);
+                    const totalBudget = budgetData.budgets.reduce((s, b) => s + b.budget + (b.rollover ?? 0), 0);
                     const totalProrated = budgetData.budgets.reduce((s, b) => {
                       const fixed = isFixed(b.category);
-                      return s + (fixed ? b.budget : Math.round((b.budget * dayOfMonth) / totalDays));
+                      const eff = b.budget + (b.rollover ?? 0);
+                      return s + (fixed ? eff : Math.round((eff * dayOfMonth) / totalDays));
                     }, 0);
                     const totalRemaining = totalProrated - budgetData.totalExpense;
                     return (

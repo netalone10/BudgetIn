@@ -40,7 +40,8 @@ model Category {
   userId    String  @map("user_id")
   name      String
   type      String  @default("expense") // "expense" | "income"
-  isSavings Boolean @default(false) @map("is_savings")
+  isSavings       Boolean @default(false) @map("is_savings")
+  rolloverEnabled Boolean @default(false) @map("rollover_enabled")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   budgets Budget[]

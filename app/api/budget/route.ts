@@ -10,55 +10,91 @@ import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
 
-// GET /api/budget — ambil semua budget bulan ini + spent per kategori
+// GET /api/budget — ambil semua budget bulan ini + spent + rollover per kategori
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
+  const now = toZonedTime(new Date(), TIMEZONE);
+  const currentMonth = format(now, "yyyy-MM");
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = format(lastMonthDate, "yyyy-MM");
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { sheetsId: true },
   });
 
-  // Ambil budgets dari DB
-  const budgets = await prisma.budget.findMany({
-    where: { userId: session.userId, month: currentMonth },
-    include: { category: true },
-    orderBy: { category: { name: "asc" } },
-  });
+  // Ambil budgets bulan ini + bulan lalu sekaligus
+  const [budgets, lastMonthBudgets] = await Promise.all([
+    prisma.budget.findMany({
+      where: { userId: session.userId, month: currentMonth },
+      include: { category: true },
+      orderBy: { category: { name: "asc" } },
+    }),
+    prisma.budget.findMany({
+      where: { userId: session.userId, month: lastMonth },
+      include: { category: true },
+    }),
+  ]);
 
-  // Hitung spent + income — dari Sheets (Google) atau DB (email)
+  // Hitung spent bulan ini + bulan lalu — dual-path Sheets vs DB
   let spentByCategory: Record<string, number> = {};
+  let lastMonthSpent: Record<string, number> = {};
   let totalIncome = 0;
   let totalExpense = 0;
 
   try {
-    let transactions: { type?: string; amount: number; category: string }[] = [];
-
     if (user?.sheetsId) {
-      // Google user → Sheets
       const accessToken = await getValidToken(session.userId);
-      transactions = await getTransactions(user.sheetsId, accessToken, "bulan ini");
-    } else {
-      // Email user → DB
-      transactions = await getTransactionsDB(session.userId, "bulan ini");
-    }
+      const [txThisMonth, txLastMonth] = await Promise.all([
+        getTransactions(user.sheetsId, accessToken, "bulan ini"),
+        getTransactions(user.sheetsId, accessToken, "bulan lalu"),
+      ]);
 
-    for (const t of transactions) {
-      if (t.type === "income") {
-        totalIncome += t.amount;
-      } else {
-        totalExpense += t.amount;
-        spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
+      for (const t of txThisMonth) {
+        if (t.type === "income") {
+          totalIncome += t.amount;
+        } else {
+          totalExpense += t.amount;
+          spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
+        }
+      }
+      for (const t of txLastMonth) {
+        if (t.type !== "income") {
+          lastMonthSpent[t.category] = (lastMonthSpent[t.category] ?? 0) + t.amount;
+        }
+      }
+    } else {
+      const [txThisMonth, txLastMonth] = await Promise.all([
+        getTransactionsDB(session.userId, "bulan ini"),
+        getTransactionsDB(session.userId, "bulan lalu"),
+      ]);
+
+      for (const t of txThisMonth) {
+        if (t.type === "income") {
+          totalIncome += t.amount;
+        } else {
+          totalExpense += t.amount;
+          spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
+        }
+      }
+      for (const t of txLastMonth) {
+        if (t.type !== "income") {
+          lastMonthSpent[t.category] = (lastMonthSpent[t.category] ?? 0) + t.amount;
+        }
       }
     }
   } catch {
-    // Gagal ambil transaksi — return budgets tanpa spent
+    // Gagal ambil transaksi — return budgets tanpa spent/rollover
   }
+
+  // Index last month budgets by categoryId
+  const lastMonthBudgetByCategoryId = Object.fromEntries(
+    lastMonthBudgets.map((b) => [b.categoryId, b.amount])
+  );
 
   const budgetedCategories = new Set(budgets.map((b) => b.category.name));
   const unbudgeted = Object.entries(spentByCategory)
@@ -71,12 +107,24 @@ export async function GET() {
     totalIncome,
     totalExpense,
     netCashflow: totalIncome - totalExpense,
-    budgets: budgets.map((b) => ({
-      id: b.id,
-      category: b.category.name,
-      budget: b.amount,
-      spent: spentByCategory[b.category.name] ?? 0,
-    })),
+    budgets: budgets.map((b) => {
+      const rolloverEnabled = b.category.rolloverEnabled;
+      let rollover = 0;
+      if (rolloverEnabled) {
+        const lastBudget = lastMonthBudgetByCategoryId[b.categoryId] ?? 0;
+        const lastSpent = lastMonthSpent[b.category.name] ?? 0;
+        rollover = Math.max(0, lastBudget - lastSpent);
+      }
+      return {
+        id: b.id,
+        categoryId: b.categoryId,
+        category: b.category.name,
+        budget: b.amount,
+        spent: spentByCategory[b.category.name] ?? 0,
+        rollover,
+        rolloverEnabled,
+      };
+    }),
     unbudgeted,
   });
 }
