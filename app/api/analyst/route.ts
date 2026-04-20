@@ -68,6 +68,13 @@ export async function GET(req: NextRequest) {
         healthScore: 100,
         anomalies: [],
         recommendations: ["Catat pengeluaran pertama Anda untuk mendapatkan pantauan cerdas."],
+        savingsRate: 0,
+        totalIncome: 0,
+        totalSpent: 0,
+        categoryPercentages: {},
+        topExpenses: [],
+        dailyAvgSpending: 0,
+        fmRecommendations: [],
       });
     }
 
@@ -118,9 +125,51 @@ export async function GET(req: NextRequest) {
         overPct: Math.round(((b.spent - b.budget) / b.budget) * 100),
       }));
 
-    const savingsRate = totalIncome > 0
-      ? ((1 - totalSpent / totalIncome) * 100).toFixed(1)
-      : null;
+    const savingsRateNum = totalIncome > 0 ? (1 - totalSpent / totalIncome) * 100 : 0;
+    const savingsRate = totalIncome > 0 ? savingsRateNum.toFixed(1) : null;
+
+    // ── Finance-manager: category %, top expenses, daily avg, rule-based recs ─
+    const categoryPercentages: Record<string, number> = {};
+    for (const [cat, amt] of Object.entries(spentByCategory)) {
+      categoryPercentages[cat] = totalSpent > 0 ? Math.round((amt / totalSpent) * 1000) / 10 : 0;
+    }
+
+    const expenseTxs = transactions
+      .filter((t) => t.type === "expense" && t.category !== "Saldo Awal")
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5)
+      .map((t) => ({
+        date: t.date,
+        description: (t as { note?: string }).note || t.category,
+        category: t.category,
+        amount: t.amount,
+      }));
+
+    const txDates = transactions
+      .filter((t) => t.type === "expense")
+      .map((t) => t.date.slice(0, 10));
+    const uniqueDays = new Set(txDates).size || 1;
+    const dailyAvgSpending = Math.round(totalSpent / uniqueDays);
+
+    const fmRecommendations: string[] = [];
+    if (savingsRateNum < 10) {
+      fmRecommendations.push("⚠️ Savings rate di bawah 10% — kurangi pengeluaran diskresioner segera.");
+    } else if (savingsRateNum < 20) {
+      fmRecommendations.push("💡 Savings rate masih bisa ditingkatkan ke 20% untuk keamanan finansial lebih baik.");
+    } else {
+      fmRecommendations.push("✅ Savings rate sangat baik! Pertahankan tren positif ini.");
+    }
+    for (const [cat, amt] of Object.entries(spentByCategory)) {
+      const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
+      const lc = cat.toLowerCase();
+      if ((lc.includes("makan") || lc.includes("food") || lc.includes("restoran")) && pct > 15) {
+        fmRecommendations.push(`🍽️ Pengeluaran "${cat}" ${pct.toFixed(1)}% dari total — pertimbangkan meal planning.`);
+      } else if ((lc.includes("belanja") || lc.includes("shopping")) && pct > 10) {
+        fmRecommendations.push(`🛍️ "${cat}" ${pct.toFixed(1)}% dari total — review pembelian yang tidak perlu.`);
+      } else if (lc.includes("transport") && pct > 15) {
+        fmRecommendations.push(`🚗 "${cat}" ${pct.toFixed(1)}% dari total — cari opsi transportasi lebih hemat.`);
+      }
+    }
 
     // ── AI: hanya narasi, skor + anomali sudah dihitung ──────────────────────
 
@@ -177,6 +226,13 @@ ${anomaliText}`;
       healthScore,
       anomalies: narrative.anomalies ?? [],
       recommendations: narrative.recommendations ?? [],
+      savingsRate: savingsRateNum,
+      totalIncome,
+      totalSpent,
+      categoryPercentages,
+      topExpenses: expenseTxs,
+      dailyAvgSpending,
+      fmRecommendations,
     });
 
   } catch (error: unknown) {

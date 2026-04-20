@@ -20,6 +20,13 @@ interface AIReport {
   healthScore: number;
   anomalies: string[];
   recommendations: string[];
+  savingsRate: number;
+  totalIncome: number;
+  totalSpent: number;
+  categoryPercentages: Record<string, number>;
+  topExpenses: { date: string; description: string; category: string; amount: number }[];
+  dailyAvgSpending: number;
+  fmRecommendations: string[];
 }
 
 interface PredictionResult {
@@ -350,6 +357,66 @@ export default function AIAnalystPage() {
                   </ul>
                 </section>
               )}
+
+              {/* Category Breakdown */}
+              {Object.keys(report.categoryPercentages).length > 0 && (
+                <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+                  <span className="label-mono text-muted-foreground mb-4 block">04 / Breakdown Kategori</span>
+                  <div className="space-y-3">
+                    {Object.entries(report.categoryPercentages)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([cat, pct]) => (
+                        <div key={cat}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium text-foreground">{cat}</span>
+                            <span className="text-muted-foreground tabular-nums">{pct.toFixed(1)}%</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all duration-500"
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Top Expenses */}
+              {report.topExpenses.length > 0 && (
+                <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+                  <span className="label-mono text-muted-foreground mb-4 block">05 / Pengeluaran Terbesar</span>
+                  <ul className="divide-y divide-border">
+                    {report.topExpenses.map((tx, i) => (
+                      <li key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-xs font-mono text-muted-foreground w-4 shrink-0">{i + 1}</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{tx.description}</p>
+                            <p className="text-xs text-muted-foreground">{tx.category} · {tx.date}</p>
+                          </div>
+                        </div>
+                        <span className="text-sm font-semibold tabular-nums text-destructive shrink-0 ml-3">
+                          Rp {tx.amount.toLocaleString("id-ID")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* FM Recommendations */}
+              {report.fmRecommendations.length > 0 && (
+                <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+                  <span className="label-mono text-muted-foreground mb-4 block">06 / Rekomendasi Otomatis</span>
+                  <ul className="space-y-3">
+                    {report.fmRecommendations.map((rec, i) => (
+                      <li key={i} className="text-[15px] leading-relaxed text-foreground">{rec}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
 
             {/* Sidebar Stats */}
@@ -372,6 +439,33 @@ export default function AIAnalystPage() {
                 </p>
               </div>
               
+              {/* Savings Rate */}
+              {report.totalIncome > 0 && (
+                <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm space-y-4">
+                  <span className="label-mono text-muted-foreground block">Savings Rate</span>
+                  <div className={cn(
+                    "text-3xl font-bold tabular-nums",
+                    report.savingsRate >= 20 ? "text-[#0fa76e]" : report.savingsRate >= 10 ? "text-yellow-600" : "text-destructive"
+                  )}>
+                    {report.savingsRate.toFixed(1)}%
+                  </div>
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Pemasukan</span>
+                      <span className="tabular-nums font-medium text-[#0fa76e]">Rp {report.totalIncome.toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Pengeluaran</span>
+                      <span className="tabular-nums font-medium text-destructive">Rp {report.totalSpent.toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground pt-1 border-t">
+                      <span>Rata-rata/hari</span>
+                      <span className="tabular-nums font-medium">Rp {report.dailyAvgSpending.toLocaleString("id-ID")}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="print:hidden">
                 <Button onClick={handleGenerate} variant="outline" className="w-full rounded-xl">
                   🔄 Refresh Analisis
