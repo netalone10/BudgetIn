@@ -173,20 +173,23 @@ export async function GET(req: NextRequest) {
 
     // ── AI: hanya narasi, skor + anomali sudah dihitung ──────────────────────
 
-    const systemPrompt = `Kamu adalah AI Financial Analyst. Tugasmu HANYA menulis narasi — semua angka sudah disiapkan, JANGAN ubah atau tambah angka sendiri.
+    const systemPrompt = `Kamu adalah AI Financial Analyst yang berbicara langsung dan jujur. Semua angka sudah disiapkan — JANGAN ubah atau karang angka sendiri.
 
 Kembalikan HANYA JSON valid tanpa backtick atau markdown:
 {
-  "summary": "2-3 kalimat ringkasan kondisi keuangan. JANGAN sebut angka health score.",
-  "anomalies": ["Tulis 1 kalimat per item over-budget dari daftar ANOMALI yang diberikan. Jika daftar kosong, kembalikan array kosong []."],
-  "recommendations": ["Saran 1 (1 kalimat)", "Saran 2 (1 kalimat)", "Saran 3 (1 kalimat)"]
+  "summary": "2-3 kalimat. Sebut kondisi cashflow nyata (surplus/defisit), sebutkan 1-2 kategori pengeluaran terbesar berdasarkan data.",
+  "anomalies": ["1 kalimat per item over-budget dari daftar ANOMALI. Jika kosong, kembalikan []."],
+  "recommendations": ["Saran spesifik 1", "Saran spesifik 2", "Saran spesifik 3"]
 }
 
-ATURAN WAJIB:
-- summary: jangan sebut health score, jangan sebut angka selain yang ada di data
-- anomalies: HANYA dari daftar ANOMALI yang diberikan, jangan tambah anomali baru
-- recommendations: TEPAT 3 string terpisah, masing-masing 1 kalimat pendek
-- Bahasa Indonesia yang natural`;
+ATURAN recommendations — WAJIB DIIKUTI:
+- Setiap saran HARUS menyebut nama kategori atau angka nyata dari data yang diberikan
+- Saran harus ACTIONABLE: kata kerja konkret (kurangi, alokasikan, batasi, pindahkan, evaluasi)
+- DILARANG saran generik seperti "pantau pengeluaran", "perbaiki budget", "tingkatkan kesejahteraan"
+- DILARANG menyebut health score
+- Jika ada anomali over-budget: 1 saran harus address kategori tersebut
+- Jika savings rate rendah (<20%): 1 saran harus sebut nominal yang bisa dipotong
+- Bahasa Indonesia natural, tidak kaku`;
 
     const anomaliText = overBudget.length > 0
       ? overBudget.map((o) =>
@@ -194,16 +197,22 @@ ATURAN WAJIB:
         ).join("\n")
       : "Tidak ada kategori yang melebihi budget.";
 
+    const topCategories = Object.entries(spentByCategory)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([cat, amt]) => `- ${cat}: Rp ${amt.toLocaleString("id-ID")} (${totalSpent > 0 ? ((amt / totalSpent) * 100).toFixed(1) : 0}% dari total)`)
+      .join("\n");
+
     const userPrompt = `PERIODE: ${period}
 PEMASUKAN: Rp ${totalIncome.toLocaleString("id-ID")}
 PENGELUARAN: Rp ${totalSpent.toLocaleString("id-ID")}
-SELISIH: Rp ${(totalIncome - totalSpent).toLocaleString("id-ID")}${savingsRate ? ` (savings rate ${savingsRate}%)` : ""}
-HEALTH SCORE: ${healthScore}/100 (budget compliance ${budgetScore}/50, cashflow ${cashflowScore}/50)
+SELISIH: Rp ${(totalIncome - totalSpent).toLocaleString("id-ID")} → ${totalIncome > totalSpent ? "SURPLUS" : "DEFISIT"}
+SAVINGS RATE: ${savingsRate ? `${savingsRate}% (${Number(savingsRate) >= 20 ? "baik" : Number(savingsRate) >= 10 ? "perlu ditingkatkan" : "kritis — di bawah 10%"})` : "tidak bisa dihitung (tidak ada data pemasukan)"}
 
-RINCIAN PENGELUARAN PER KATEGORI:
-${Object.entries(spentByCategory).map(([cat, amt]) => `- ${cat}: Rp ${amt.toLocaleString("id-ID")}`).join("\n")}
+5 KATEGORI PENGELUARAN TERBESAR:
+${topCategories}
 
-ANOMALI (hanya ini yang boleh masuk field anomalies):
+ANOMALI OVER-BUDGET (hanya ini yang boleh masuk field anomalies):
 ${anomaliText}`;
 
     const summaryRes = await callWithRotation((client) =>
