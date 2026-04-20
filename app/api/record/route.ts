@@ -4,12 +4,27 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { classifyIntent, callWithRotation } from "@/utils/groq";
 import { getValidToken } from "@/utils/token";
-import { appendTransaction, getTransactions, appendBudgetBackup, updateAccountBalance } from "@/utils/sheets";
+import {
+  appendTransaction,
+  getTransactions,
+  appendBudgetBackup,
+  updateAccountBalance,
+  appendAccount,
+  getAccounts,
+  ensureAccountHeader,
+} from "@/utils/sheets";
 import { appendTransactionDB, getTransactionsDB } from "@/utils/db-transactions";
+import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
+
+type RuntimeAccount = {
+  id: string;
+  name: string;
+  classification: "asset" | "liability";
+};
 
 // ── Nominal parser — cross-check AI amount vs raw prompt ──────────────────────
 
@@ -98,46 +113,64 @@ export async function POST(req: NextRequest) {
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.userId;
 
   const { prompt } = await req.json();
   if (!prompt?.trim()) {
     return NextResponse.json({ error: "Prompt kosong" }, { status: 400 });
   }
 
-  // Ambil user data + kategori + akun
-  const [user, userCategories, userAccounts] = await Promise.all([
+  // Ambil user data + kategori
+  const [user, userCategories] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: session.userId },
+      where: { id: userId },
       select: { sheetsId: true },
     }),
     prisma.category.findMany({
-      where: { userId: session.userId },
+      where: { userId },
       select: { name: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.account.findMany({
-      where: { userId: session.userId, isActive: true },
-      select: { id: true, name: true, accountType: { select: { classification: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
 
   const useSheets = !!user?.sheetsId;
+  let userAccounts: RuntimeAccount[] = [];
   const categoryNames = userCategories.map((c) => c.name);
-  const accountNames = userAccounts.map((a) => a.name);
 
   // Token hanya diperlukan untuk Google/Sheets users
   let accessToken = "";
   if (useSheets) {
     try {
-      accessToken = await getValidToken(session.userId);
+      accessToken = await getValidToken(userId);
+      await ensureAccountHeader(user!.sheetsId!, accessToken).catch(() => {});
     } catch {
       return NextResponse.json(
         { error: "Sesi expired. Silakan login ulang." },
         { status: 401 }
       );
     }
+
+    const sheetsAccounts = await getAccounts(user!.sheetsId!, accessToken);
+    userAccounts = sheetsAccounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      classification: account.classification === "liability" ? "liability" : "asset",
+    }));
+  } else {
+    await ensureDefaultAccountTypes(userId);
+    const dbAccounts = await prisma.account.findMany({
+      where: { userId, isActive: true },
+      select: { id: true, name: true, accountType: { select: { classification: true } } },
+      orderBy: { name: "asc" },
+    });
+    userAccounts = dbAccounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      classification: account.accountType.classification === "liability" ? "liability" : "asset",
+    }));
   }
+
+  const accountNames = userAccounts.map((a) => a.name);
 
   // Pre-check: satuan non-uang tanpa nominal IDR → tolak sebelum hit Groq
   if (
@@ -185,11 +218,139 @@ export async function POST(req: NextRequest) {
     return null;
   }
 
+  function getAccountCandidates(accountName?: string): RuntimeAccount[] {
+    if (!accountName) return [];
+
+    const normalized = accountName.toLowerCase().trim();
+    const combined = `${prompt.toLowerCase()} ${normalized}`;
+    const rawTokens = combined.split(/[^a-z0-9]+/).filter(Boolean);
+    const ignoredTokens = new Set([
+      "pakai",
+      "dari",
+      "ke",
+      "rekening",
+      "rek",
+      "bank",
+      "kartu",
+      "kredit",
+      "credit",
+      "card",
+      "cc",
+      "transfer",
+      "bayar",
+      "pake",
+      "via",
+    ]);
+    const tokens = Array.from(new Set(rawTokens.filter((token) => token.length >= 3 && !ignoredTokens.has(token))));
+    const prefersLiability = /(kartu kredit|credit card|\bcc\b|paylater|hutang|utang|cicilan)/.test(combined);
+
+    return userAccounts.filter((account) => {
+      if (prefersLiability && account.classification !== "liability") return false;
+      const name = account.name.toLowerCase();
+      return tokens.some((token) => name.includes(token));
+    });
+  }
+
+  function inferAccountSpec(accountName: string) {
+    const lowerName = accountName.toLowerCase();
+    const lowerPrompt = prompt.toLowerCase();
+    const combined = `${lowerPrompt} ${lowerName}`;
+
+    if (/(kartu kredit|credit card|\bcc\b)/.test(combined)) {
+      return { classification: "liability" as const, typeName: "Kartu Kredit" };
+    }
+    if (/(paylater|hutang|utang|cicilan|pinjaman|loan)/.test(combined)) {
+      return { classification: "liability" as const, typeName: "Hutang" };
+    }
+    if (/(cash|tunai|kas)/.test(combined)) {
+      return { classification: "asset" as const, typeName: "Kas" };
+    }
+    if (/(ovo|gopay|dana|shopeepay|linkaja|e-wallet|ewallet|dompet)/.test(combined)) {
+      return { classification: "asset" as const, typeName: "E-Wallet" };
+    }
+    if (/(bca|bni|bri|mandiri|cimb|permata|jago|seabank|bank)/.test(combined)) {
+      return { classification: "asset" as const, typeName: "Bank" };
+    }
+
+    return { classification: "asset" as const, typeName: "Lainnya" };
+  }
+
+  async function createMissingAccount(accountName: string): Promise<RuntimeAccount> {
+    const trimmedName = accountName.trim().slice(0, 50);
+    const inferred = inferAccountSpec(trimmedName);
+
+    if (useSheets) {
+      const created = await appendAccount(user!.sheetsId!, accessToken, {
+        name: trimmedName,
+        type: inferred.typeName,
+        classification: inferred.classification,
+        balance: 0,
+        currency: "IDR",
+        color: null,
+        note: "Auto-created from transaction input",
+        tanggalSettlement: inferred.typeName === "Kartu Kredit" ? 17 : null,
+        tanggalJatuhTempo: inferred.typeName === "Kartu Kredit" ? 5 : null,
+      });
+
+      const runtimeAccount: RuntimeAccount = {
+        id: created.id,
+        name: created.name,
+        classification: inferred.classification,
+      };
+      userAccounts.push(runtimeAccount);
+      return runtimeAccount;
+    }
+
+    await ensureDefaultAccountTypes(userId);
+    const directType = await prisma.accountType.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        name: inferred.typeName,
+      },
+      select: { id: true },
+    });
+
+    const fallbackType = directType ?? await prisma.accountType.findFirst({
+      where: {
+        userId,
+        isActive: true,
+        classification: inferred.classification,
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true },
+    });
+
+    const created = await prisma.account.create({
+      data: {
+        userId,
+        accountTypeId: fallbackType!.id,
+        name: trimmedName,
+        initialBalance: 0,
+        currency: "IDR",
+        note: "Auto-created from transaction input",
+        ...(inferred.typeName === "Kartu Kredit" && {
+          tanggalSettlement: 17,
+          tanggalJatuhTempo: 5,
+        }),
+      },
+      select: { id: true, name: true },
+    });
+
+    const runtimeAccount: RuntimeAccount = {
+      id: created.id,
+      name: created.name,
+      classification: inferred.classification,
+    };
+    userAccounts.push(runtimeAccount);
+    return runtimeAccount;
+  }
+
   // Helper: resolve matchAccount result ke accountId string, atau return clarification response
-  function resolveAccount(
+  async function resolveAccount(
     accountName: string | undefined,
     transactionType: "expense" | "income"
-  ): { accountId: string } | { clarification: string } {
+  ): Promise<{ accountId: string; accountCreated?: string } | { clarification: string }> {
     const result = matchAccount(accountName);
     if (result && "id" in result) return { accountId: result.id };
     if (result && "ambiguous" in result) {
@@ -199,11 +360,32 @@ export async function POST(req: NextRequest) {
         clarification: `Akun mana yang dimaksud? Pilih salah satu: ${accountList}. Contoh: "${example}"`,
       };
     }
+    const candidates = getAccountCandidates(accountName);
+    if (candidates.length === 1) {
+      return { accountId: candidates[0].id };
+    }
+    if (candidates.length > 1) {
+      const accountList = candidates.map((account) => account.name).join(", ");
+      const example = `${prompt} pakai ${candidates[0].name}`;
+      return {
+        clarification: `Akun mana yang dimaksud? Pilih salah satu: ${accountList}. Contoh: "${example}"`,
+      };
+    }
+    if (accountName?.trim()) {
+      const created = await createMissingAccount(accountName);
+      return { accountId: created.id, accountCreated: created.name };
+    }
     return { clarification: askAccountSelection(transactionType) };
   }
 
-  // Helper: validate accountId ownership & status against DB
+  // Helper: validate accountId ownership & status against source aktif
   async function validateAccount(accountId: string): Promise<{ error: string; status: number } | null> {
+    if (useSheets) {
+      const account = userAccounts.find((a) => a.id === accountId);
+      if (!account) return { error: "Akun tidak ditemukan", status: 400 };
+      return null;
+    }
+
     const account = await prisma.account.findUnique({ where: { id: accountId } });
     if (!account) return { error: "Akun tidak ditemukan", status: 400 };
     if (account.userId !== session!.userId) return { error: "Akun tidak valid", status: 400 };
@@ -236,7 +418,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Match account dari AI extraction
-    const accountResolution = resolveAccount(parsed.accountName, "expense");
+    const accountResolution = await resolveAccount(parsed.accountName, "expense");
     if ("clarification" in accountResolution) {
       return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
     }
@@ -248,7 +430,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: accountError.error }, { status: accountError.status });
     }
 
-    const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
+    const account = userAccounts.find((a) => a.id === accountId);
+    const accountName = account?.name ?? "";
     const base = {
       date: parsed.date ?? today,
       amount: parsed.amount,
@@ -267,8 +450,7 @@ export async function POST(req: NextRequest) {
         : await appendTransactionDB(session.userId, { ...base, accountId });
 
       if (useSheets) {
-        const acc = userAccounts.find((a) => a.id === accountId);
-        const expenseDelta = acc?.accountType?.classification === "liability" ? parsed.amount : -parsed.amount;
+        const expenseDelta = account?.classification === "liability" ? parsed.amount : -parsed.amount;
         await updateAccountBalance(user!.sheetsId!, accessToken, accountId, expenseDelta).catch(() => {});
       }
 
@@ -302,7 +484,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Match account dari AI extraction
-    const accountResolution = resolveAccount(parsed.accountName, "expense");
+    const accountResolution = await resolveAccount(parsed.accountName, "expense");
     if ("clarification" in accountResolution) {
       return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
     }
@@ -314,7 +496,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: accountError.error }, { status: accountError.status });
     }
 
-    const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
+    const account = userAccounts.find((a) => a.id === accountId);
+    const accountName = account?.name ?? "";
 
     try {
       const transactions = [];
@@ -353,8 +536,7 @@ export async function POST(req: NextRequest) {
       const total = transactions.reduce((s, t) => s + t.amount, 0);
 
       if (useSheets) {
-        const acc = userAccounts.find((a) => a.id === accountId);
-        const bulkDelta = acc?.accountType?.classification === "liability" ? total : -total;
+        const bulkDelta = account?.classification === "liability" ? total : -total;
         await updateAccountBalance(user!.sheetsId!, accessToken, accountId, bulkDelta).catch(() => {});
       }
 
@@ -383,7 +565,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Match account dari AI extraction
-    const accountResolution = resolveAccount(parsed.accountName, "income");
+    const accountResolution = await resolveAccount(parsed.accountName, "income");
     if ("clarification" in accountResolution) {
       return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
     }
@@ -395,7 +577,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: accountError.error }, { status: accountError.status });
     }
 
-    const accountName = userAccounts.find((a) => a.id === accountId)?.name ?? "";
+    const account = userAccounts.find((a) => a.id === accountId);
+    const accountName = account?.name ?? "";
     const base = {
       date: parsed.date ?? today,
       amount: incomeAmount,
@@ -414,8 +597,7 @@ export async function POST(req: NextRequest) {
         : await appendTransactionDB(session.userId, { ...base, accountId });
 
       if (useSheets) {
-        const acc = userAccounts.find((a) => a.id === accountId);
-        const incomeDelta = acc?.accountType?.classification === "liability" ? -incomeAmount : incomeAmount;
+        const incomeDelta = account?.classification === "liability" ? -incomeAmount : incomeAmount;
         await updateAccountBalance(user!.sheetsId!, accessToken, accountId, incomeDelta).catch(() => {});
       }
 

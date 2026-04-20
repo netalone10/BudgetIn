@@ -36,6 +36,7 @@ function getDueDate(targetMonth: number, targetYear: number, jatuhTempoDate: num
 function aggregateSheetsCashflow(
   transactions: Transaction[],
   accountId: string,
+  accountName: string,
   startDate: string,
   endDate: string
 ) {
@@ -46,13 +47,23 @@ function aggregateSheetsCashflow(
     if (tx.date < startDate || tx.date > endDate) continue;
 
     const amount = new Decimal(tx.amount || 0);
+    // Match by ID (new format) atau name (legacy format dimana col H simpan nama bukan UUID)
+    const fromMatches =
+      tx.fromAccountId === accountId ||
+      tx.fromAccountName === accountName ||
+      tx.fromAccountId === accountName;
+    const toMatches =
+      tx.toAccountId === accountId ||
+      tx.toAccountName === accountName ||
+      tx.toAccountId === accountName;
+
     const isSpend =
       tx.type === "expense" &&
-      tx.fromAccountId === accountId &&
+      fromMatches &&
       !tx.toAccountId &&
       tx.category !== "Saldo Awal";
 
-    const isPayment = tx.toAccountId === accountId && tx.category !== "Saldo Awal";
+    const isPayment = toMatches && tx.category !== "Saldo Awal";
 
     if (isSpend) totalSpend = totalSpend.plus(amount);
     if (isPayment) totalPayment = totalPayment.plus(amount);
@@ -130,6 +141,7 @@ export async function GET(req: NextRequest) {
       const aggregates = aggregateSheetsCashflow(
         transactions,
         account.id,
+        account.name,
         start.toISOString().slice(0, 10),
         end.toISOString().slice(0, 10)
       );

@@ -715,7 +715,7 @@ function CategorySection({
   const signPrefix = type === "income" ? "+" : "-";
   const valueClass =
     type === "income" ? "text-green-600 dark:text-green-400" : "text-destructive";
-  const barClass = type === "income" ? "bg-green-500" : "bg-primary";
+  const barClass = type === "income" ? "bg-green-500" : "bg-destructive";
 
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
