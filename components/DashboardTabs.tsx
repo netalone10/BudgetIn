@@ -645,7 +645,7 @@ export default function DashboardTabs({
                     );
                   })}
                 </tbody>
-                {/* Footer: total */}
+                {/* Footer: total — hanya kategori yang punya budget */}
                 <tfoot>
                   {(() => {
                     const totalBudget = budgetData.budgets.reduce((s, b) => s + b.budget + (b.rollover ?? 0), 0);
@@ -654,7 +654,8 @@ export default function DashboardTabs({
                       const eff = b.budget + (b.rollover ?? 0);
                       return s + (fixed ? eff : Math.round((eff * dayOfMonth) / totalDays));
                     }, 0);
-                    const totalRemaining = totalProrated - budgetData.totalExpense;
+                    const totalSpentBudgeted = budgetData.budgets.reduce((s, b) => s + b.spent, 0);
+                    const totalRemaining = totalProrated - totalSpentBudgeted;
                     return (
                       <tr className="border-t bg-muted/20">
                         <td className="py-2.5 pl-4 text-xs font-semibold text-muted-foreground">
@@ -667,7 +668,7 @@ export default function DashboardTabs({
                           {fmtCompact(totalProrated)}
                         </td>
                         <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums text-destructive">
-                          {fmt(budgetData.totalExpense)}
+                          {fmt(totalSpentBudgeted)}
                         </td>
                         <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums">
                           <span className={totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}>
@@ -704,6 +705,23 @@ export default function DashboardTabs({
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    {(() => {
+                      const totalSpentBudgeted = budgetData.budgets.reduce((s, b) => s + b.spent, 0);
+                      const totalUnbudgeted = budgetData.unbudgeted!.reduce((s, u) => s + u.spent, 0);
+                      const totalAll = totalSpentBudgeted + totalUnbudgeted;
+                      return (
+                        <tr className="border-t bg-muted/20">
+                          <td className="py-2.5 pl-4 text-xs font-semibold text-muted-foreground">
+                            Total Realisasi
+                          </td>
+                          <td className="py-2.5 pr-4 text-right text-sm font-bold tabular-nums text-destructive" colSpan={4}>
+                            {fmt(totalAll)}
+                          </td>
+                        </tr>
+                      );
+                    })()}
+                  </tfoot>
                 </table>
               </div>
             )}
