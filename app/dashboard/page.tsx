@@ -114,6 +114,13 @@ export default function DashboardPage() {
     setTxLoading(true);
     try {
       const res = await fetch("/api/record?period=bulan+ini");
+      if (res.status === 401) {
+        const data = await res.json();
+        if (data.error === "token_expired") {
+          setResponse({ error: "⚠️ Sesi Google expired. Silakan logout lalu login ulang." });
+        }
+        return;
+      }
       const data = await res.json();
       setTransactions(data.transactions ?? []);
     } catch {
