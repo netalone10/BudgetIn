@@ -18,13 +18,15 @@ import {
   PiggyBank,
   Wallet,
   Tags,
-  TrendingDown
+  TrendingDown,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ThemeToggle from "@/components/ThemeToggle";
 import ManageCategoriesModal from "@/components/ManageCategoriesModal";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
+import OnboardingModal from "@/components/OnboardingModal";
 
 export default function Sidebar() {
   const { data: session } = useSession();
@@ -35,6 +37,23 @@ export default function Sidebar() {
   
   const [showManageCategories, setShowManageCategories] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Tampilkan onboarding sekali per user (localStorage)
+  useEffect(() => {
+    const userId = session?.userId;
+    if (userId) {
+      const key = `budgetin_onboarding_${userId}`;
+      if (!localStorage.getItem(key)) {
+        setShowOnboarding(true);
+        localStorage.setItem(key, "1");
+      }
+    }
+  }, [session?.userId]);
+
+  function handleCloseOnboarding() {
+    setShowOnboarding(false);
+  }
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -138,6 +157,19 @@ export default function Sidebar() {
           >
             <Tags className="h-5 w-5 shrink-0" />
             {!isCollapsed && <span className="font-medium text-sm">Tipe Akun</span>}
+          </Link>
+
+          <Link
+            href="/dashboard/panduan"
+            className={cn(
+              "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground",
+              pathname === "/dashboard/panduan" && "bg-primary text-primary-foreground",
+              isCollapsed && "justify-center px-0"
+            )}
+            title={isCollapsed ? "Panduan" : undefined}
+          >
+            <BookOpen className="h-5 w-5 shrink-0" />
+            {!isCollapsed && <span className="font-medium text-sm">Panduan</span>}
           </Link>
 
           {isEmailUser && (
@@ -281,6 +313,14 @@ export default function Sidebar() {
                 <Tags className="h-5 w-5 shrink-0" />
                 <span className="text-[15px]">Tipe Akun</span>
               </Link>
+              <Link
+                href="/dashboard/panduan"
+                onClick={() => setIsMobileOpen(false)}
+                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-colors text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
+              >
+                <BookOpen className="h-5 w-5 shrink-0" />
+                <span className="text-[15px]">Panduan</span>
+              </Link>
               {isEmailUser && (
                 <button
                   onClick={() => { setIsMobileOpen(false); setShowChangePassword(true); }}
@@ -336,6 +376,10 @@ export default function Sidebar() {
 
       {showChangePassword && (
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
+
+      {showOnboarding && (
+        <OnboardingModal onClose={handleCloseOnboarding} />
       )}
     </>
   );
