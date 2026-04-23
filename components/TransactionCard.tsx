@@ -43,6 +43,7 @@ export default function TransactionCard({ transaction, categories = [], accounts
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
+  const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? "");
   const [loading, setLoading] = useState(false);
 
   // Gabungkan kategori user + kategori transaksi ini (kalau belum ada di list)
@@ -60,6 +61,7 @@ export default function TransactionCard({ transaction, categories = [], accounts
         note: editNote,
         amount: Number(editAmount),
         category: editCategory,
+        accountId: editAccountId || null,
       }),
     });
     if (res.ok) {
@@ -68,6 +70,7 @@ export default function TransactionCard({ transaction, categories = [], accounts
         note: editNote,
         amount: Number(editAmount),
         category: editCategory,
+        accountId: editAccountId || null,
       });
       setEditing(false);
     }
@@ -79,6 +82,7 @@ export default function TransactionCard({ transaction, categories = [], accounts
     setEditNote(transaction.note);
     setEditAmount(String(transaction.amount));
     setEditCategory(transaction.category);
+    setEditAccountId(transaction.accountId ?? "");
     setEditing(false);
   }
 
@@ -159,7 +163,22 @@ export default function TransactionCard({ transaction, categories = [], accounts
 
       {/* Akun */}
       <td className="py-2.5 pr-3 whitespace-nowrap hidden sm:table-cell">
-        {displayAccount ? (
+        {editing ? (
+          <select
+            value={editAccountId}
+            onChange={(e) => setEditAccountId(e.target.value)}
+            className={cn(
+              "h-7 rounded-md border bg-background px-2 text-xs",
+              "focus:outline-none focus:ring-1 focus:ring-ring",
+              "min-w-[120px]"
+            )}
+          >
+            <option value="">— Tanpa Akun —</option>
+            {accounts.map((acc) => (
+              <option key={acc.id} value={acc.id}>{acc.name}</option>
+            ))}
+          </select>
+        ) : displayAccount ? (
           <span className="text-xs text-muted-foreground">{displayAccount}</span>
         ) : null}
       </td>

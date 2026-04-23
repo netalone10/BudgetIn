@@ -137,7 +137,7 @@ export async function getTransactionsDB(
 export async function updateTransactionDB(
   userId: string,
   txId: string,
-  data: Partial<Pick<DbTransaction, "date" | "amount" | "category" | "note">>
+  data: Partial<Pick<DbTransaction, "date" | "amount" | "category" | "note">> & { accountId?: string | null }
 ): Promise<void> {
   await prisma.transaction.updateMany({
     where: { id: txId, userId }, // pastikan milik user ini
@@ -146,6 +146,7 @@ export async function updateTransactionDB(
       ...(data.amount !== undefined && { amount: data.amount }),
       ...(data.category !== undefined && { category: data.category }),
       ...(data.note !== undefined && { note: data.note }),
+      ...(data.accountId !== undefined && { accountId: data.accountId }),
     },
   });
 }

@@ -56,6 +56,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           amount: body.amount,
           category: body.category,
           note: body.note,
+          accountId: body.accountId,
         });
       }
       return NextResponse.json({ success: true });
