@@ -74,11 +74,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   try {
+    let fromAccountId: string | undefined;
+    let fromAccountName: string | undefined;
+    if (body.accountId !== undefined) {
+      if (!body.accountId) {
+        fromAccountId = "";
+        fromAccountName = "";
+      } else {
+        const accounts = await getAccounts(user.sheetsId, accessToken);
+        const acc = accounts.find((a) => a.id === body.accountId);
+        fromAccountId = body.accountId;
+        fromAccountName = acc?.name ?? "";
+      }
+    }
     await updateTransaction(user.sheetsId, accessToken, recordId, {
       date: body.date,
       amount: body.amount,
       category: body.category,
       note: body.note,
+      ...(fromAccountId !== undefined && { fromAccountId, fromAccountName }),
     });
     return NextResponse.json({ success: true });
   } catch {

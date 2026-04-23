@@ -213,7 +213,7 @@ export async function updateTransaction(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:G${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:K${rowIndex}`,
   });
   const current = res.data.values?.[0] ?? [];
 
@@ -225,11 +225,15 @@ export async function updateTransaction(
     data.note ?? current[4],
     current[5],
     data.type ?? current[6] ?? "expense",
+    data.fromAccountId !== undefined ? (data.fromAccountId ?? "") : (current[7] ?? ""),
+    data.fromAccountName !== undefined ? (data.fromAccountName ?? "") : (current[8] ?? ""),
+    current[9] ?? "",
+    current[10] ?? "",
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:G${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:K${rowIndex}`,
     valueInputOption: "RAW",
     requestBody: { values: [updated] },
   });
