@@ -33,6 +33,15 @@ function getDueDate(targetMonth: number, targetYear: number, jatuhTempoDate: num
   return dueDate;
 }
 
+interface TxItem {
+  id: string;
+  date: string;
+  note: string;
+  amount: number;
+  category: string;
+  type: string;
+}
+
 function aggregateSheetsCashflow(
   transactions: Transaction[],
   accountId: string,
@@ -42,12 +51,12 @@ function aggregateSheetsCashflow(
 ) {
   let totalSpend = new Decimal(0);
   let totalPayment = new Decimal(0);
+  const txItems: TxItem[] = [];
 
   for (const tx of transactions) {
     if (tx.date < startDate || tx.date > endDate) continue;
 
     const amount = new Decimal(tx.amount || 0);
-    // Match by ID (new format) atau name (legacy format dimana col H simpan nama bukan UUID)
     const fromMatches =
       tx.fromAccountId === accountId ||
       tx.fromAccountName === accountName ||
@@ -67,9 +76,19 @@ function aggregateSheetsCashflow(
 
     if (isSpend) totalSpend = totalSpend.plus(amount);
     if (isPayment) totalPayment = totalPayment.plus(amount);
+    if (isSpend || isPayment) {
+      txItems.push({
+        id: tx.id,
+        date: tx.date,
+        note: tx.note,
+        amount: Number(tx.amount),
+        category: tx.category,
+        type: isPayment ? "payment" : "expense",
+      });
+    }
   }
 
-  return { totalSpend, totalPayment };
+  return { totalSpend, totalPayment, txItems };
 }
 
 function buildCashflowCard(
@@ -77,7 +96,8 @@ function buildCashflowCard(
   month: number,
   year: number,
   totalSpend: Decimal,
-  totalPayment: Decimal
+  totalPayment: Decimal,
+  transactions: TxItem[] = []
 ) {
   const settlementDate = account.tanggalSettlement || 17;
   const jatuhTempoDate = account.tanggalJatuhTempo || 5;
@@ -100,6 +120,7 @@ function buildCashflowCard(
     totalPayment: totalPayment.toString(),
     outstanding: outstanding.toString(),
     isOverdue,
+    transactions: transactions.sort((a, b) => b.date.localeCompare(a.date)),
   };
 }
 
@@ -146,7 +167,7 @@ export async function GET(req: NextRequest) {
         end.toISOString().slice(0, 10)
       );
 
-      return buildCashflowCard(account, month, year, aggregates.totalSpend, aggregates.totalPayment);
+      return buildCashflowCard(account, month, year, aggregates.totalSpend, aggregates.totalPayment, aggregates.txItems);
     });
   } else {
     const creditCardAccounts = await prisma.account.findMany({
@@ -171,41 +192,49 @@ export async function GET(req: NextRequest) {
         const settlementDate = account.tanggalSettlement || 17;
         const { start, end } = getCreditCardPeriod(settlementDate, month, year);
 
-        const [expenses, payments] = await Promise.all([
+        const dateFilter = {
+          gte: start.toISOString().slice(0, 10),
+          lte: end.toISOString().slice(0, 10),
+        };
+        const baseWhere = {
+          userId: session.userId,
+          accountId: account.id,
+          isInitialBalance: false,
+          date: dateFilter,
+        };
+
+        const [expenses, payments, txRows] = await Promise.all([
           prisma.transaction.aggregate({
-            where: {
-              userId: session.userId,
-              accountId: account.id,
-              type: "expense",
-              isInitialBalance: false,
-              date: {
-                gte: start.toISOString().slice(0, 10),
-                lte: end.toISOString().slice(0, 10),
-              },
-            },
+            where: { ...baseWhere, type: "expense" },
             _sum: { amount: true },
           }),
           prisma.transaction.aggregate({
-            where: {
-              userId: session.userId,
-              accountId: account.id,
-              type: "transfer_in",
-              isInitialBalance: false,
-              date: {
-                gte: start.toISOString().slice(0, 10),
-                lte: end.toISOString().slice(0, 10),
-              },
-            },
+            where: { ...baseWhere, type: "transfer_in" },
             _sum: { amount: true },
+          }),
+          prisma.transaction.findMany({
+            where: { ...baseWhere, type: { in: ["expense", "transfer_in"] } },
+            select: { id: true, date: true, note: true, amount: true, category: true, type: true },
+            orderBy: { date: "desc" },
           }),
         ]);
+
+        const txItems: TxItem[] = txRows.map((t) => ({
+          id: t.id,
+          date: t.date,
+          note: t.note ?? "",
+          amount: Number(t.amount),
+          category: t.category,
+          type: t.type === "transfer_in" ? "payment" : "expense",
+        }));
 
         return buildCashflowCard(
           account,
           month,
           year,
           new Decimal(expenses._sum.amount || 0),
-          new Decimal(payments._sum.amount || 0)
+          new Decimal(payments._sum.amount || 0),
+          txItems
         );
       })
     );

@@ -3,10 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import { Loader2, TrendingDown, AlertCircle, ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
+import { Loader2, TrendingDown, AlertCircle, ChevronLeft, ChevronRight, CreditCard, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format, addMonths, subMonths } from "date-fns";
 import { id } from "date-fns/locale";
+
+interface TxItem {
+  id: string;
+  date: string;
+  note: string;
+  amount: number;
+  category: string;
+  type: string;
+}
 
 interface CreditCardData {
   accountId: string;
@@ -17,6 +26,7 @@ interface CreditCardData {
   totalPayment: string;
   outstanding: string;
   isOverdue: boolean;
+  transactions: TxItem[];
 }
 
 interface CashflowResponse {
@@ -59,6 +69,15 @@ export default function CashflowPage() {
   const [data, setData] = useState<CashflowResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  function toggleCard(accountId: string) {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      next.has(accountId) ? next.delete(accountId) : next.add(accountId);
+      return next;
+    });
+  }
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -251,7 +270,46 @@ export default function CashflowPage() {
                     <span>Settlement: tgl {cc.settlementDate}</span>
                     <span>Jatuh Tempo: tgl {cc.jatuhTempoDate}</span>
                   </div>
+
+                  {/* Toggle transaksi */}
+                  {cc.transactions.length > 0 && (
+                    <button
+                      onClick={() => toggleCard(cc.accountId)}
+                      className="w-full flex items-center justify-center gap-1.5 pt-2 border-t border-border/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {expandedCards.has(cc.accountId) ? (
+                        <><ChevronUp className="h-3.5 w-3.5" /> Sembunyikan transaksi</>
+                      ) : (
+                        <><ChevronDown className="h-3.5 w-3.5" /> {cc.transactions.length} transaksi</>
+                      )}
+                    </button>
+                  )}
                 </div>
+
+                {/* Daftar transaksi */}
+                {expandedCards.has(cc.accountId) && cc.transactions.length > 0 && (
+                  <div className="border-t border-border">
+                    {cc.transactions.map((tx) => (
+                      <div
+                        key={tx.id}
+                        className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 hover:bg-muted/20 transition-colors gap-3"
+                      >
+                        <span className="text-xs text-muted-foreground w-16 shrink-0">
+                          {format(new Date(tx.date), "d MMM", { locale: id })}
+                        </span>
+                        <span className="text-xs flex-1 truncate">{tx.note || "—"}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{tx.category}</span>
+                        <span className={cn(
+                          "text-xs font-semibold tabular-nums shrink-0",
+                          tx.type === "payment" ? "text-emerald-500" : "text-red-500"
+                        )}>
+                          {tx.type === "payment" ? "+" : "-"}
+                          {new Intl.NumberFormat("id-ID").format(tx.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
