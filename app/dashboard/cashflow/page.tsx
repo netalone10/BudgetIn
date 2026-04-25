@@ -219,12 +219,12 @@ export default function CashflowPage() {
                 className="rounded-xl border border-border bg-card overflow-hidden"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-red-500" />
-                    <span className="font-medium text-sm">{cc.accountName}</span>
+                <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <CreditCard className="h-4 w-4 text-red-500 shrink-0" />
+                    <span className="font-medium text-sm truncate">{cc.accountName}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {cc.isOverdue ? (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium">
                         Terlambat
