@@ -458,8 +458,8 @@ export default function DashboardPage() {
               Belum ada transaksi bulan ini.
             </div>
           ) : (
-            <div className="rounded-[24px] border border-border bg-card overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
+            <div className="rounded-[24px] border border-border bg-card shadow-sm">
+              <div className="overflow-x-auto rounded-[24px]">
               <table className="w-full min-w-[480px]">
                 <thead>
                   <tr className="border-b border-border bg-muted/40">
