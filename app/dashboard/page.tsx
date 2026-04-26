@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 
 type ResponseData =
   | { intent: "transaksi"; transaction: Transaction; message: string }
@@ -74,6 +75,13 @@ export default function DashboardPage() {
     fetchAll();
   }, [status]);
 
+  useDataEvent(["transactions", "budget", "accounts", "categories"], (topic) => {
+    if (topic === "transactions") fetchTransactions(true);
+    if (topic === "budget") fetchBudget(true);
+    if (topic === "accounts") fetchAccounts(true);
+    if (topic === "categories") fetchCategories();
+  });
+
   async function fetchCategories() {
     try {
       const r = await fetch("/api/categories");
@@ -92,16 +100,16 @@ export default function DashboardPage() {
     }
   }
 
-  async function fetchAll() {
-    fetchTransactions();
-    fetchBudget();
+  async function fetchAll(noStore = false) {
+    fetchTransactions(noStore);
+    fetchBudget(noStore);
     fetchCategories();
-    fetchAccounts();
+    fetchAccounts(noStore);
   }
 
-  async function fetchAccounts() {
+  async function fetchAccounts(noStore = false) {
     try {
-      const res = await fetch("/api/accounts");
+      const res = await fetch("/api/accounts", noStore ? { cache: "no-store" } : undefined);
       const data = await res.json();
       setAccounts(data.accounts ?? []);
       setAccountVersion((v) => v + 1);
@@ -110,10 +118,10 @@ export default function DashboardPage() {
     }
   }
 
-  async function fetchTransactions() {
+  async function fetchTransactions(noStore = false) {
     setTxLoading(true);
     try {
-      const res = await fetch("/api/record?period=bulan+ini");
+      const res = await fetch("/api/record?period=bulan+ini", noStore ? { cache: "no-store" } : undefined);
       if (res.status === 401) {
         const data = await res.json();
         if (data.error === "token_expired") {
@@ -130,10 +138,10 @@ export default function DashboardPage() {
     }
   }
 
-  async function fetchBudget() {
+  async function fetchBudget(noStore = false) {
     setBudgetLoading(true);
     try {
-      const res = await fetch("/api/budget");
+      const res = await fetch("/api/budget", noStore ? { cache: "no-store" } : undefined);
       const data = await res.json();
       setBudgetData(data);
     } catch {
@@ -183,6 +191,7 @@ export default function DashboardPage() {
         setPage(1);
         fetchBudget();
         fetchAccounts();
+        emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "transaksi_bulk" && data.transactions?.length) {
@@ -190,10 +199,12 @@ export default function DashboardPage() {
         setPage(1);
         fetchBudget();
         fetchAccounts();
+        emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "budget_setting") {
         fetchBudget();
+        emitDataChanged(["budget", "categories"]);
         fetch("/api/categories")
           .then((r) => r.json())
           .then((d) => {
@@ -240,6 +251,8 @@ export default function DashboardPage() {
   function handleDeleteTx(id: string) {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
     fetchBudget();
+    fetchAccounts();
+    emitDataChanged(["transactions", "budget", "accounts"]);
   }
 
   function handleUpdateTx(id: string, data: Partial<Transaction>) {
@@ -247,6 +260,8 @@ export default function DashboardPage() {
       prev.map((t) => (t.id === id ? { ...t, ...data } : t))
     );
     fetchBudget();
+    fetchAccounts();
+    emitDataChanged(["transactions", "budget", "accounts"]);
   }
 
   if (status === "loading") {

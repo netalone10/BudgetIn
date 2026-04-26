@@ -5,6 +5,7 @@ import { Pencil, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { emitDataChanged } from "@/lib/data-events";
 
 export interface Transaction {
   id: string;
@@ -73,6 +74,7 @@ export default function TransactionCard({ transaction, categories = [], accounts
         accountId: editAccountId || null,
       });
       setEditing(false);
+      emitDataChanged(["transactions", "budget", "accounts"]);
     }
     setLoading(false);
   }
@@ -90,7 +92,10 @@ export default function TransactionCard({ transaction, categories = [], accounts
     if (!confirm("Hapus transaksi ini?")) return;
     setLoading(true);
     const res = await fetch(`/api/record/${transaction.id}`, { method: "DELETE" });
-    if (res.ok) onDelete(transaction.id);
+    if (res.ok) {
+      onDelete(transaction.id);
+      emitDataChanged(["transactions", "budget", "accounts"]);
+    }
     setLoading(false);
   }
 

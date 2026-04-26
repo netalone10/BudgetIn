@@ -7,6 +7,7 @@ import { Loader2, TrendingDown, AlertCircle, ChevronLeft, ChevronRight, CreditCa
 import { Button } from "@/components/ui/button";
 import { format, addMonths, subMonths } from "date-fns";
 import { id } from "date-fns/locale";
+import { useDataEvent } from "@/lib/data-events";
 
 interface TxItem {
   id: string;
@@ -79,11 +80,14 @@ export default function CashflowPage() {
     });
   }
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (noStore = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/cashflow?month=${month}&year=${year}`);
+      const res = await fetch(
+        `/api/cashflow?month=${month}&year=${year}`,
+        noStore ? { cache: "no-store" } : undefined
+      );
       if (!res.ok) throw new Error("Gagal memuat data");
       const json = await res.json();
       setData(json);
@@ -97,6 +101,10 @@ export default function CashflowPage() {
   useEffect(() => {
     if (status === "authenticated") fetchData();
   }, [status, fetchData]);
+
+  useDataEvent(["transactions", "accounts"], () => {
+    if (status === "authenticated") fetchData(true);
+  });
 
   function handlePrevMonth() {
     const prev = subMonths(new Date(year, month - 1), 1);

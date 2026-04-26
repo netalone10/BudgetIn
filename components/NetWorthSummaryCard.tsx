@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDataEvent } from "@/lib/data-events";
 
 interface NetWorthData {
   summary: {
@@ -30,14 +31,20 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
   const [data, setData] = useState<NetWorthData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback((noStore = false) => {
     setLoading(true);
-    fetch("/api/accounts")
+    fetch("/api/accounts", noStore ? { cache: "no-store" } : undefined)
       .then((r) => r.json())
       .then((d) => setData(d))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [refreshTrigger]);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [refreshTrigger, load]);
+
+  useDataEvent(["transactions", "accounts"], () => load(true));
 
   if (loading) {
     return (

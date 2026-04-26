@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { emitDataChanged } from "@/lib/data-events";
 
 interface Account {
   id: string;
@@ -114,6 +115,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess 
       setNote("");
       setCategory("");
       onSuccess();
+      emitDataChanged(["transactions", "budget", "accounts"]);
     } catch {
       setError("Terjadi kesalahan. Coba lagi.");
     } finally {

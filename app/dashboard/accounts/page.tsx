@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -435,13 +436,14 @@ export default function AccountsPage() {
 
   const isSheets = !!session?.sheetsId;
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (noStore = false) => {
     setLoading(true);
     setError(null);
     try {
+      const opts = noStore ? { cache: "no-store" as const } : undefined;
       const [accRes, typeRes] = await Promise.all([
-        fetch("/api/accounts"),
-        fetch("/api/account-types"),
+        fetch("/api/accounts", opts),
+        fetch("/api/account-types", opts),
       ]);
       const accData = await accRes.json();
       const typeData = await typeRes.json();
@@ -459,6 +461,10 @@ export default function AccountsPage() {
     if (status === "authenticated") fetchData();
   }, [status, fetchData]);
 
+  useDataEvent(["accounts", "transactions"], () => {
+    if (status === "authenticated") fetchData(true);
+  });
+
   async function handleDelete(account: AccountData) {
     const balance = parseFloat(account.currentBalance);
     if (balance !== 0) {
@@ -467,8 +473,10 @@ export default function AccountsPage() {
     }
     if (!confirm(`Arsipkan akun "${account.name}"? Transaksi tetap tersimpan.`)) return;
     const res = await fetch(`/api/accounts/${account.id}`, { method: "DELETE" });
-    if (res.ok) fetchData();
-    else {
+    if (res.ok) {
+      fetchData();
+      emitDataChanged(["accounts", "transactions"]);
+    } else {
       const d = await res.json();
       alert(d.error || "Gagal mengarsipkan.");
     }
@@ -611,7 +619,7 @@ export default function AccountsPage() {
           accountTypes={accountTypes}
           isSheets={isSheets}
           onClose={() => setShowAddModal(false)}
-          onSaved={() => { setShowAddModal(false); fetchData(); }}
+          onSaved={() => { setShowAddModal(false); fetchData(); emitDataChanged(["accounts"]); }}
         />
       )}
       {editAccount && (
@@ -620,14 +628,14 @@ export default function AccountsPage() {
           editAccount={editAccount}
           isSheets={isSheets}
           onClose={() => setEditAccount(null)}
-          onSaved={() => { setEditAccount(null); fetchData(); }}
+          onSaved={() => { setEditAccount(null); fetchData(); emitDataChanged(["accounts"]); }}
         />
       )}
       {adjustAccount && (
         <AdjustBalanceModal
           account={adjustAccount}
           onClose={() => setAdjustAccount(null)}
-          onSaved={() => { setAdjustAccount(null); fetchData(); }}
+          onSaved={() => { setAdjustAccount(null); fetchData(); emitDataChanged(["accounts", "transactions"]); }}
         />
       )}
     </div>
