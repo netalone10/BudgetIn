@@ -126,7 +126,7 @@ export async function GET() {
       };
     }),
     unbudgeted,
-  });
+  }, { headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=30" } });
 }
 
 // POST /api/budget — set/update budget kategori

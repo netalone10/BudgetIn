@@ -71,8 +71,10 @@ export async function GET() {
         });
       }
 
-      await ensureAccountHeader(user.sheetsId, accessToken).catch(() => {});
-      await ensureTransaksiHeader(user.sheetsId, accessToken).catch(() => {});
+      await Promise.all([
+        ensureAccountHeader(user.sheetsId, accessToken).catch(() => {}),
+        ensureTransaksiHeader(user.sheetsId, accessToken).catch(() => {}),
+      ]);
       const sheetsAccounts = await getAccounts(user.sheetsId, accessToken);
 
       // Hitung total assets dan liabilities dari Sheets

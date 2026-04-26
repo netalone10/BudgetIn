@@ -38,14 +38,15 @@ export async function GET(req: NextRequest) {
   const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
 
   try {
-    const transactions = useSheets
-      ? await getTransactions(user!.sheetsId!, accessToken, period)
-      : await getTransactionsDB(session.userId, period);
-
-    const budgets = await prisma.budget.findMany({
-      where: { userId: session.userId, month: currentMonth },
-      include: { category: true },
-    });
+    const [transactions, budgets] = await Promise.all([
+      useSheets
+        ? getTransactions(user!.sheetsId!, accessToken, period)
+        : getTransactionsDB(session.userId, period),
+      prisma.budget.findMany({
+        where: { userId: session.userId, month: currentMonth },
+        include: { category: true },
+      }),
+    ]);
 
     const spentByCategory: Record<string, number> = {};
     let totalIncome = 0;
@@ -242,7 +243,7 @@ ${anomaliText}`;
       topExpenses: expenseTxs,
       dailyAvgSpending,
       fmRecommendations,
-    });
+    }, { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=60" } });
 
   } catch (error: unknown) {
     console.error("[analyst endpoint]", error);

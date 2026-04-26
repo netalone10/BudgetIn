@@ -113,12 +113,14 @@ export async function POST(req: NextRequest) {
       classification: account.classification === "liability" ? "liability" : "asset",
     }));
   } else {
-    await ensureDefaultAccountTypes(userId);
-    const dbAccounts = await prisma.account.findMany({
-      where: { userId, isActive: true },
-      select: { id: true, name: true, accountType: { select: { classification: true } } },
-      orderBy: { name: "asc" },
-    });
+    const [, dbAccounts] = await Promise.all([
+      ensureDefaultAccountTypes(userId),
+      prisma.account.findMany({
+        where: { userId, isActive: true },
+        select: { id: true, name: true, accountType: { select: { classification: true } } },
+        orderBy: { name: "asc" },
+      }),
+    ]);
     userAccounts = dbAccounts.map((account) => ({
       id: account.id,
       name: account.name,

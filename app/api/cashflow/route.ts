@@ -187,57 +187,64 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    creditCards = await Promise.all(
-      creditCardAccounts.map(async (account) => {
-        const settlementDate = account.tanggalSettlement || 17;
-        const { start, end } = getCreditCardPeriod(settlementDate, month, year);
+    if (creditCardAccounts.length > 0) {
+      const periods = creditCardAccounts.map((account) => {
+        const { start, end } = getCreditCardPeriod(account.tanggalSettlement || 17, month, year);
+        return { accountId: account.id, start, end };
+      });
+      const minStart = periods.reduce((m, p) => (p.start < m ? p.start : m), periods[0].start);
+      const maxEnd = periods.reduce((m, p) => (p.end > m ? p.end : m), periods[0].end);
 
-        const dateFilter = {
-          gte: start.toISOString().slice(0, 10),
-          lte: end.toISOString().slice(0, 10),
-        };
-        const baseWhere = {
+      const allTxRows = await prisma.transaction.findMany({
+        where: {
           userId: session.userId,
-          accountId: account.id,
+          accountId: { in: creditCardAccounts.map((a) => a.id) },
           isInitialBalance: false,
-          date: dateFilter,
-        };
+          type: { in: ["expense", "transfer_in"] },
+          date: {
+            gte: minStart.toISOString().slice(0, 10),
+            lte: maxEnd.toISOString().slice(0, 10),
+          },
+        },
+        select: { id: true, date: true, note: true, amount: true, category: true, type: true, accountId: true },
+        orderBy: { date: "desc" },
+      });
 
-        const [expenses, payments, txRows] = await Promise.all([
-          prisma.transaction.aggregate({
-            where: { ...baseWhere, type: "expense" },
-            _sum: { amount: true },
-          }),
-          prisma.transaction.aggregate({
-            where: { ...baseWhere, type: "transfer_in" },
-            _sum: { amount: true },
-          }),
-          prisma.transaction.findMany({
-            where: { ...baseWhere, type: { in: ["expense", "transfer_in"] } },
-            select: { id: true, date: true, note: true, amount: true, category: true, type: true },
-            orderBy: { date: "desc" },
-          }),
-        ]);
+      const txByAccount = new Map<string, typeof allTxRows>();
+      for (const tx of allTxRows) {
+        if (!txByAccount.has(tx.accountId!)) txByAccount.set(tx.accountId!, []);
+        txByAccount.get(tx.accountId!)!.push(tx);
+      }
 
-        const txItems: TxItem[] = txRows.map((t) => ({
-          id: t.id,
-          date: t.date,
-          note: t.note ?? "",
-          amount: Number(t.amount),
-          category: t.category,
-          type: t.type === "transfer_in" ? "payment" : "expense",
-        }));
-
-        return buildCashflowCard(
-          account,
-          month,
-          year,
-          new Decimal(expenses._sum.amount || 0),
-          new Decimal(payments._sum.amount || 0),
-          txItems
+      creditCards = creditCardAccounts.map((account) => {
+        const { start, end } = getCreditCardPeriod(account.tanggalSettlement || 17, month, year);
+        const dateGte = start.toISOString().slice(0, 10);
+        const dateLte = end.toISOString().slice(0, 10);
+        const accountTxs = (txByAccount.get(account.id) ?? []).filter(
+          (t) => t.date >= dateGte && t.date <= dateLte
         );
-      })
-    );
+
+        let expenseSum = new Decimal(0);
+        let paymentSum = new Decimal(0);
+        const txItems: TxItem[] = [];
+
+        for (const t of accountTxs) {
+          const amount = new Decimal(t.amount);
+          if (t.type === "expense") expenseSum = expenseSum.plus(amount);
+          else paymentSum = paymentSum.plus(amount);
+          txItems.push({
+            id: t.id,
+            date: t.date,
+            note: t.note ?? "",
+            amount: Number(t.amount),
+            category: t.category,
+            type: t.type === "transfer_in" ? "payment" : "expense",
+          });
+        }
+
+        return buildCashflowCard(account, month, year, expenseSum, paymentSum, txItems);
+      });
+    }
   }
 
   if (creditCards.length === 0) {
@@ -283,5 +290,5 @@ export async function GET(req: NextRequest) {
       totalOutstanding: totalOutstandingSum.toString(),
       overdueCount,
     },
-  });
+  }, { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=60" } });
 }
