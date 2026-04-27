@@ -13,7 +13,18 @@
       "mcp__258d7a00-9e6c-46f8-9cd3-5aeba13a77ca__list_deployments",
       "Bash(grep -E \"\\\\.tsx$\")",
       "Bash(ls -la /d/Project/BudgetIn/.env*)",
-      "Bash(rtk next:*)"
+      "Bash(rtk next:*)",
+      "Read(//c/Users/akbar/Downloads/**)",
+      "Bash(unzip -o system-map.skill -d system-map-extracted)",
+      "Bash(mkdir -p /tmp/finance_zip)",
+      "Read(//tmp/**)",
+      "Bash(unzip -o \"C:/Users/akbar/Downloads/finance-manager_20260306020759.zip\" -d .)",
+      "Read(//c/Users/akbar/.claude/plugins/cache/**)",
+      "Read(//c/Users/akbar/.claude/**)",
+      "Bash(mkdir -p \"C:/Users/akbar/.claude/skills/finance-manager/scripts\" \"C:/Users/akbar/.claude/skills/finance-manager/references\")",
+      "Bash(cp /tmp/finance_zip/SKILL.md \"C:/Users/akbar/.claude/skills/finance-manager/\")",
+      "Bash(cp /tmp/finance_zip/scripts/*.py \"C:/Users/akbar/.claude/skills/finance-manager/scripts/\")",
+      "Bash(cp /tmp/finance_zip/references/*.md \"C:/Users/akbar/.claude/skills/finance-manager/references/\")"
     ]
   }
 }
