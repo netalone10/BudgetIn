@@ -459,7 +459,7 @@ function AccountCard({
       {/* View all link */}
       <button
         onClick={() => router.push(`/dashboard/accounts/${account.id}`)}
-        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border text-xs text-primary hover:bg-muted/40 transition-colors"
+        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border text-xs text-primary cursor-pointer hover:bg-muted/40 hover:text-primary/80 active:bg-muted/60 active:scale-[0.98] transition-all"
       >
         <Eye className="h-3 w-3" />
         Lihat semua transaksi
