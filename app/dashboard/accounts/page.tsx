@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Plus, Loader2, Wallet, AlertCircle, Tags, Edit2, Trash2,
-  ChevronDown, ChevronRight, RefreshCw
+  ChevronDown, ChevronRight, RefreshCw, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,14 @@ interface AccountType {
   color: string;
 }
 
+interface RecentTransaction {
+  id: string;
+  date: string;
+  amount: number;
+  note: string;
+  type: "expense" | "income" | "transfer_out" | "transfer_in";
+}
+
 interface AccountData {
   id: string;
   name: string;
@@ -34,6 +42,7 @@ interface AccountData {
   accountType: AccountType;
   tanggalSettlement?: number | null;
   tanggalJatuhTempo?: number | null;
+  recentTransactions?: RecentTransaction[];
 }
 
 interface Summary {
@@ -51,6 +60,16 @@ function formatIDR(value: string | number): string {
     currency: "IDR",
     maximumFractionDigits: 0,
   }).format(num);
+}
+
+function formatShortAmount(amount: number): string {
+  return new Intl.NumberFormat("id-ID").format(amount);
+}
+
+function formatShortDate(dateStr: string): string {
+  const [, month, day] = dateStr.split("-");
+  const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"];
+  return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
 // ── Account Form Modal ────────────────────────────────────────────────────────
@@ -347,70 +366,105 @@ function AccountCard({
   onAdjust: (a: AccountData) => void;
   onDelete: (a: AccountData) => void;
 }) {
+  const router = useRouter();
   const isLiability = account.accountType.classification === "liability";
   const balance = parseFloat(account.currentBalance);
   const color = account.color ?? account.accountType.color;
+  const recent = account.recentTransactions ?? [];
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-background p-4 hover:border-border/80 transition-colors gap-4">
-      <div className="flex items-center gap-3 min-w-0">
-        <div
-          className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-white text-sm font-bold"
-          style={{ backgroundColor: color }}
-        >
-          {account.name.slice(0, 1).toUpperCase()}
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm truncate">{account.name}</span>
-            {isLiability && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium shrink-0">
-                Hutang
-              </span>
-            )}
+    <div className="rounded-xl border border-border bg-background hover:border-border/80 transition-colors overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center justify-between p-4 gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div
+            className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-white text-sm font-bold"
+            style={{ backgroundColor: color }}
+          >
+            {account.name.slice(0, 1).toUpperCase()}
           </div>
-          <span className="text-xs text-muted-foreground">{account.accountType.name}</span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-sm truncate">{account.name}</span>
+              {isLiability && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium shrink-0">
+                  Hutang
+                </span>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">{account.accountType.name}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <span
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              isLiability ? "text-red-500" : balance < 0 ? "text-amber-500" : "text-foreground"
+            )}
+          >
+            {formatIDR(balance)}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onAdjust(account)}
+              title="Sesuaikan Saldo"
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => onEdit(account)}
+              title="Edit"
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => onDelete(account)}
+              title={balance !== 0 ? "Saldo harus 0 untuk mengarsipkan" : "Arsipkan akun"}
+              className={cn(
+                "p-1.5 rounded-md transition-colors",
+                balance !== 0
+                  ? "text-muted-foreground/30 cursor-not-allowed"
+                  : "text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+              )}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        <span
-          className={cn(
-            "text-sm font-semibold tabular-nums",
-            isLiability ? "text-red-500" : balance < 0 ? "text-amber-500" : "text-foreground"
-          )}
-        >
-          {formatIDR(balance)}
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onAdjust(account)}
-            title="Sesuaikan Saldo"
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => onEdit(account)}
-            title="Edit"
-            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-          >
-            <Edit2 className="h-3.5 w-3.5" />
-          </button>
-          <button
-            onClick={() => onDelete(account)}
-            title={balance !== 0 ? "Saldo harus 0 untuk mengarsipkan" : "Arsipkan akun"}
-            className={cn(
-              "p-1.5 rounded-md transition-colors",
-              balance !== 0
-                ? "text-muted-foreground/30 cursor-not-allowed"
-                : "text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-            )}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+      {/* Recent transactions preview */}
+      {recent.length > 0 && (
+        <div className="border-t border-border px-4 py-2.5 space-y-1">
+          {recent.map((t) => {
+            const isIn = t.type === "income" || t.type === "transfer_in";
+            return (
+              <div key={t.id} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-muted-foreground w-12 shrink-0">{formatShortDate(t.date)}</span>
+                  <span className="truncate">{t.note || "—"}</span>
+                </div>
+                <span className={cn("tabular-nums shrink-0 ml-2", isIn ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
+                  {isIn ? "+" : "-"}{formatShortAmount(t.amount)}
+                </span>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
+
+      {/* View all link */}
+      <button
+        onClick={() => router.push(`/dashboard/accounts/${account.id}`)}
+        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border text-xs text-primary hover:bg-muted/40 transition-colors"
+      >
+        <Eye className="h-3 w-3" />
+        Lihat semua transaksi
+        <ChevronRight className="h-3 w-3" />
+      </button>
     </div>
   );
 }
@@ -447,9 +501,34 @@ export default function AccountsPage() {
       ]);
       const accData = await accRes.json();
       const typeData = await typeRes.json();
-      setAccounts(accData.accounts ?? []);
+      const accs: AccountData[] = accData.accounts ?? [];
       setSummary(accData.summary ?? null);
       setAccountTypes(typeData.accountTypes ?? []);
+      setAccounts(accs);
+
+      // Fetch recent 5 transactions per account (non-blocking)
+      const recentPromises = accs.map((a) =>
+        fetch(`/api/accounts/${a.id}/transactions?period=semua&limit=5`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null)
+      );
+      const recentResults = await Promise.all(recentPromises);
+      setAccounts((prev) =>
+        prev.map((acc, i) => {
+          const result = recentResults[i];
+          if (!result?.transactions) return acc;
+          return {
+            ...acc,
+            recentTransactions: result.transactions.slice(0, 5).map((t: any) => ({
+              id: t.id,
+              date: t.date,
+              amount: t.amount,
+              note: t.note,
+              type: t.type,
+            })),
+          };
+        })
+      );
     } catch {
       setError("Gagal memuat data akun.");
     } finally {
