@@ -1,0 +1,12 @@
+# Non-essential directories
+backup1/
+mintlify/
+.claude/
+.codex/
+
+# Documentation (not needed for build)
+*.md
+!README.md
+
+# Editor / tooling
+.vscode/
