@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Pencil, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,7 @@ function formatDate(dateStr: string) {
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
-export default function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
+function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
   const [editing, setEditing] = useState(false);
   const [editDate, setEditDate] = useState(transaction.date);
   const [editNote, setEditNote] = useState(transaction.note);
@@ -237,3 +237,5 @@ export default function TransactionCard({ transaction, categories = [], accounts
     </tr>
   );
 }
+
+export default memo(TransactionCard);

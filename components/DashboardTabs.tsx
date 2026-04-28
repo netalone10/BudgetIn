@@ -4,7 +4,11 @@ import { useState, useMemo } from "react";
 import { Transaction } from "@/components/TransactionCard";
 import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getDaysInMonth, getDate, startOfWeek, endOfWeek, format } from "date-fns";
+import { getDaysInMonth } from "date-fns/getDaysInMonth";
+import { getDate } from "date-fns/getDate";
+import { startOfWeek } from "date-fns/startOfWeek";
+import { endOfWeek } from "date-fns/endOfWeek";
+import { format } from "date-fns/format";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { toZonedTime } from "date-fns-tz";
 

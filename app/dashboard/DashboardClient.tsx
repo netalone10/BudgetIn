@@ -1,21 +1,36 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
-import DashboardTabs, { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
+import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
 import TransactionCard, { Transaction } from "@/components/TransactionCard";
-import ReportView from "@/components/ReportView";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp } from "lucide-react";
 import NetWorthSummaryCard from "@/components/NetWorthSummaryCard";
-import ManualTransactionForm from "@/components/ManualTransactionForm";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
+
+// Dynamic imports for heavy components
+const ManualTransactionForm = dynamic(
+  () => import("@/components/ManualTransactionForm"),
+  { ssr: false, loading: () => <div className="h-32 animate-pulse rounded-xl bg-muted" /> }
+);
+
+const ReportView = dynamic(
+  () => import("@/components/ReportView"),
+  { ssr: false, loading: () => <div className="h-48 animate-pulse rounded-xl bg-muted" /> }
+);
+
+const DashboardTabs = dynamic(
+  () => import("@/components/DashboardTabs"),
+  { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-xl bg-muted" /> }
+);
 
 // Re-export BudgetData type to avoid naming conflict
 type BudgetData = DashboardTabsBudgetData;
@@ -59,6 +74,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [accountVersion, setAccountVersion] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
+
+  // Memoize visible transactions to avoid re-slicing on every render
+  const visibleTransactions = useMemo(() =>
+    transactions.slice((page - 1) * pageSize, page * pageSize),
+    [transactions, page, pageSize]
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -488,7 +509,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.slice((page - 1) * pageSize, page * pageSize).map((t) => (
+                  {visibleTransactions.map((t) => (
                     <TransactionCard
                       key={t.id}
                       transaction={t}
