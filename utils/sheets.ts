@@ -1,4 +1,5 @@
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
+import { OAuth2Client } from "google-auth-library";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { v4 as uuidv4 } from "uuid";
@@ -6,9 +7,9 @@ import { v4 as uuidv4 } from "uuid";
 const TIMEZONE = "Asia/Jakarta";
 
 function getSheetsClient(accessToken: string) {
-  const auth = new google.auth.OAuth2();
+  const auth = new OAuth2Client();
   auth.setCredentials({ access_token: accessToken });
-  return google.sheets({ version: "v4", auth });
+  return googleSheets({ version: "v4", auth });
 }
 
 // ─── ONBOARDING ──────────────────────────────────────────────────────────────

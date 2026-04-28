@@ -11,7 +11,8 @@ import {
 } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { getValidToken } from "@/utils/token";
-import { google } from "googleapis";
+import { sheets as googleSheets } from "@googleapis/sheets";
+import { OAuth2Client } from "google-auth-library";
 import {
   appendAccount,
   appendTransaction,
@@ -35,9 +36,9 @@ export async function GET() {
   if (user?.sheetsId) {
     try {
       const accessToken = await getValidToken(session.userId);
-      const auth = new google.auth.OAuth2();
+      const auth = new OAuth2Client();
       auth.setCredentials({ access_token: accessToken });
-      const sheets = google.sheets({ version: "v4", auth });
+      const sheets = googleSheets({ version: "v4", auth });
 
       // Cek apakah sheet "Akun" sudah ada, kalau belum buat baru
       const meta = await sheets.spreadsheets.get({ spreadsheetId: user.sheetsId });
@@ -316,9 +317,9 @@ export async function PUT(req: NextRequest) {
 
   try {
     const accessToken = await getValidToken(session.userId);
-    const auth = new google.auth.OAuth2();
+    const auth = new OAuth2Client();
     auth.setCredentials({ access_token: accessToken });
-    const sheets = google.sheets({ version: "v4", auth });
+    const sheets = googleSheets({ version: "v4", auth });
 
     // Cek apakah sheet "Akun" sudah ada
     const meta = await sheets.spreadsheets.get({ spreadsheetId: user.sheetsId });
