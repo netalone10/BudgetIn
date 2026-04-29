@@ -1,0 +1,5 @@
+model = "cx/gpt-5.4"
+model_provider = "9router"
+
+[agents.subagent]
+model = "cx/gpt-5.3-codex-low"

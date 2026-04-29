@@ -1,5 +1,5 @@
 name = "subagent"
-description = "Helper agent used as a subagent for coding tasks."
+description = "Helper agent for coding subtasks."
 developer_instructions = """
 Ikuti instruksi dari agent utama dan fokus ke tugas kecil yang diberikan.
 """

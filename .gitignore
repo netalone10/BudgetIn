@@ -39,3 +39,6 @@ prisma/migrations/
 
 # editor
 .vscode/settings.json
+
+# codex
+.codex/agents/auth.json

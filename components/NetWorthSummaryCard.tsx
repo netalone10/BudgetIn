@@ -34,9 +34,15 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
   const load = useCallback((noStore = false) => {
     setLoading(true);
     fetch("/api/accounts", noStore ? { cache: "no-store" } : undefined)
-      .then((r) => r.json())
-      .then((d) => setData(d))
-      .catch(() => {})
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && d.summary && typeof d.summary.netWorth === "string") {
+          setData(d);
+        } else {
+          setData(null);
+        }
+      })
+      .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
 
