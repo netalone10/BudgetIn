@@ -20,6 +20,7 @@ import {
   Tags,
   TrendingDown,
   BookOpen,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,6 +79,7 @@ export default function Sidebar() {
     { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
     { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
     { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
+    { name: "Tagihan", href: "/dashboard/bills", icon: Bell },
     { name: "Arus Kas", href: "/dashboard/cashflow", icon: TrendingDown },
     { name: "AI Analyst", href: "/dashboard/analyst", icon: Sparkles },
   ];
