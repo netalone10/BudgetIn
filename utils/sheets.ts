@@ -142,6 +142,8 @@ export async function getTransactions(
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
     range: "Transaksi!A2:K",
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
   });
 
   const rows = res.data.values ?? [];
@@ -215,6 +217,8 @@ export async function updateTransaction(
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
     range: `Transaksi!A${rowIndex}:K${rowIndex}`,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
   });
   const current = res.data.values?.[0] ?? [];
 
@@ -348,6 +352,8 @@ export async function getAccounts(
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
     range: "Akun!A2:J",
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
   });
 
   const rows = res.data.values ?? [];
@@ -381,6 +387,8 @@ export async function updateAccount(
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
     range: `Akun!A${rowIndex}:J${rowIndex}`,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
   });
   const current = res.data.values?.[0] ?? [];
 
@@ -550,6 +558,8 @@ export async function getTransactionRow(
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
     range: `Transaksi!A${rowIndex}:K${rowIndex}`,
+    valueRenderOption: "UNFORMATTED_VALUE",
+    dateTimeRenderOption: "FORMATTED_STRING",
   });
   const row = res.data.values?.[0];
   if (!row || !row[0]) return null;
