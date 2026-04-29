@@ -8,7 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSingleAccountBalance } from "@/utils/account-balance";
 import { getValidToken } from "@/utils/token";
-import { getTransactions, getAccounts } from "@/utils/sheets";
+import { getTransactions, getAccounts, computeAccountBalancesFromTx } from "@/utils/sheets";
 
 export interface AccountDetailData {
   account: {
@@ -152,6 +152,10 @@ async function fetchSheetsAccountDetail(
   const account = allAccounts.find((a) => a.id === accountId);
   if (!account) return null;
 
+  // Pure-ledger balance (override stale cache from Akun!E)
+  const balances = computeAccountBalancesFromTx(allAccounts, allTxs);
+  const ledgerBalance = balances.get(accountId) ?? 0;
+
   // Filter by account
   let filtered = allTxs.filter(
     (t) => t.fromAccountId === accountId || t.toAccountId === accountId
@@ -192,7 +196,7 @@ async function fetchSheetsAccountDetail(
     account: {
       id: account.id,
       name: account.name,
-      currentBalance: account.balance.toString(),
+      currentBalance: ledgerBalance.toString(),
       currency: account.currency,
       color: account.color,
       note: account.note ?? "",

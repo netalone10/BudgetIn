@@ -489,6 +489,10 @@ export async function ensureAccountHeader(sheetsId: string, accessToken: string)
   }
 }
 
+/**
+ * @deprecated Cache-write helper kept as escape hatch only. App now reads balance
+ * via `computeAccountBalances` (pure-ledger). Avoid calling in new code.
+ */
 export async function updateAccountBalance(
   sheetsId: string,
   accessToken: string,
@@ -500,6 +504,39 @@ export async function updateAccountBalance(
   const account = accounts.find((a) => a.id === id);
   if (!account) return;
   await updateAccount(sheetsId, accessToken, id, { balance: account.balance + delta });
+}
+
+export { computeAccountBalancesFromTx } from "./sheets-ledger";
+import { computeAccountBalancesFromTx as _computeBalances } from "./sheets-ledger";
+
+export async function computeAccountBalances(
+  sheetsId: string,
+  accessToken: string,
+  opts?: { preloadedAccounts?: AccountData[]; preloadedTransactions?: Transaction[] }
+): Promise<Map<string, number>> {
+  const [accounts, transactions] = await Promise.all([
+    opts?.preloadedAccounts ?? getAccounts(sheetsId, accessToken),
+    opts?.preloadedTransactions ?? getTransactions(sheetsId, accessToken),
+  ]);
+  return _computeBalances(accounts, transactions);
+}
+
+/**
+ * Like `getAccounts` but with `balance` overridden by ledger-computed value.
+ * Use this for any read path that displays saldo / networth. The cached
+ * `Akun!E balance` column is intentionally ignored to prevent drift.
+ */
+export async function getAccountsWithBalance(
+  sheetsId: string,
+  accessToken: string,
+  opts?: { preloadedTransactions?: Transaction[] }
+): Promise<AccountData[]> {
+  const [accounts, transactions] = await Promise.all([
+    getAccounts(sheetsId, accessToken),
+    opts?.preloadedTransactions ?? getTransactions(sheetsId, accessToken),
+  ]);
+  const computed = _computeBalances(accounts, transactions);
+  return accounts.map((a) => ({ ...a, balance: computed.get(a.id) ?? 0 }));
 }
 
 export async function getTransactionRow(

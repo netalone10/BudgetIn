@@ -17,8 +17,8 @@ import {
   appendAccount,
   appendTransaction,
   getAccounts,
+  getAccountsWithBalance,
   updateAccount,
-  updateAccountBalance,
   ensureTransaksiHeader,
   ensureAccountHeader,
 } from "@/utils/sheets";
@@ -76,7 +76,8 @@ export async function GET() {
         ensureAccountHeader(user.sheetsId, accessToken).catch(() => {}),
         ensureTransaksiHeader(user.sheetsId, accessToken).catch(() => {}),
       ]);
-      const sheetsAccounts = await getAccounts(user.sheetsId, accessToken);
+      // Pure-ledger: balance dihitung runtime dari sheet Transaksi, kolom Akun!E diabaikan.
+      const sheetsAccounts = await getAccountsWithBalance(user.sheetsId, accessToken);
 
       // Hitung total assets dan liabilities dari Sheets
       let assets = 0;
@@ -219,8 +220,7 @@ export async function POST(req: NextRequest) {
             fromAccountName: name.trim(),
           });
         }
-        // Delta: asset income→+, liability expense→+ (owe more). Both result in +parsedBalance stored.
-        await updateAccountBalance(user.sheetsId, accessToken, newAccount.id, parsedBalance).catch(() => {});
+        // Saldo dihitung dari ledger via getAccountsWithBalance — tidak perlu update cache.
       }
 
       return NextResponse.json({

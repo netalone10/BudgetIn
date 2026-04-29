@@ -26,9 +26,21 @@ export function parseNominalFromPrompt(text: string): number | null {
   return null;
 }
 
+const MONETARY_TOKEN_GLOBAL = /\d+(?:[.,]\d+)?\s*(?:jt|juta|rb|ribu|k\b)/gi;
+
+export function countMonetaryTokens(text: string): number {
+  const matches = text.match(MONETARY_TOKEN_GLOBAL);
+  return matches ? matches.length : 0;
+}
+
 export function correctAmount(prompt: string, aiAmount: number): number {
   const expected = parseNominalFromPrompt(prompt);
   if (!expected || aiAmount === expected) return aiAmount;
+  // Single monetary token in prompt → trust the deterministic regex parse over LLM output.
+  // Handles cases like "bayar 18rb" where AI returns 180.000 (10× error) instead of 18.000.
+  if (countMonetaryTokens(prompt) === 1) return expected;
+  // Multi-token prompts: keep legacy behavior (only fix exact 1000× / 0.001× ratio mistakes)
+  // to avoid wrongly overriding aggregated amounts (e.g. "bayar 18rb tip 2rb" → 20.000).
   const ratio = aiAmount / expected;
   if (Math.round(ratio) === 1000) return expected;
   if (Math.abs(ratio - 0.001) < 0.0001) return expected;

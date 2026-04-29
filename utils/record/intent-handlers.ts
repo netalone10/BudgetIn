@@ -11,7 +11,6 @@ import { prisma } from "@/lib/prisma";
 import {
   appendTransaction,
   appendBudgetBackup,
-  updateAccountBalance,
   getTransactions,
 } from "@/utils/sheets";
 import { appendTransactionDB, getTransactionsDB } from "@/utils/db-transactions";
@@ -61,10 +60,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
       ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
       : await appendTransactionDB(userId, { ...base, accountId });
 
-    if (useSheets) {
-      const delta = account?.classification === "liability" ? parsed.amount : -parsed.amount;
-      await updateAccountBalance(sheetsId!, accessToken, accountId, delta).catch(() => {});
-    }
+    // Sheets: saldo dihitung pure-ledger via getAccountsWithBalance (no cache write).
 
     await prisma.category.upsert({
       where: { userId_name: { userId, name: parsed.category } },
@@ -72,7 +68,17 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
       create: { userId, name: parsed.category },
     });
 
-    return NextResponse.json({ intent: "transaksi", transaction, message: `✓ Dicatat: ${parsed.category} — Rp ${parsed.amount.toLocaleString("id-ID")}` });
+    return NextResponse.json({
+      intent: "transaksi",
+      transaction,
+      message: `✓ Dicatat: ${parsed.category} — Rp ${parsed.amount.toLocaleString("id-ID")}`,
+      details: {
+        date: base.date,
+        category: parsed.category,
+        amount: parsed.amount,
+        accountName,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
   }
@@ -119,12 +125,19 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
     }
 
     const total = transactions.reduce((s, t) => s + t.amount, 0);
-    if (useSheets) {
-      const delta = account?.classification === "liability" ? total : -total;
-      await updateAccountBalance(sheetsId!, accessToken, accountId, delta).catch(() => {});
-    }
+    // Sheets: saldo dihitung pure-ledger (no cache write).
 
-    return NextResponse.json({ intent: "transaksi_bulk", transactions, message: `✓ ${transactions.length} transaksi dicatat (total Rp ${total.toLocaleString("id-ID")})` });
+    return NextResponse.json({
+      intent: "transaksi_bulk",
+      transactions,
+      message: `✓ ${transactions.length} transaksi dicatat (total Rp ${total.toLocaleString("id-ID")})`,
+      details: {
+        date: parsed.date ?? ctx.today,
+        accountName,
+        total,
+        count: transactions.length,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
   }
@@ -158,10 +171,7 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
       ? await appendTransaction(sheetsId!, accessToken, { ...base, toAccountId: accountId, toAccountName: accountName })
       : await appendTransactionDB(userId, { ...base, accountId });
 
-    if (useSheets) {
-      const delta = account?.classification === "liability" ? -incomeAmount : incomeAmount;
-      await updateAccountBalance(sheetsId!, accessToken, accountId, delta).catch(() => {});
-    }
+    // Sheets: saldo dihitung pure-ledger (no cache write).
 
     await prisma.category.upsert({
       where: { userId_name: { userId, name: incomeCategory } },
@@ -169,7 +179,19 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
       create: { userId, name: incomeCategory },
     });
 
-    return NextResponse.json({ intent: "pemasukan", transaction, amount: incomeAmount, category: incomeCategory, message: `✓ Pemasukan dicatat: ${incomeCategory} +Rp ${incomeAmount.toLocaleString("id-ID")}` });
+    return NextResponse.json({
+      intent: "pemasukan",
+      transaction,
+      amount: incomeAmount,
+      category: incomeCategory,
+      message: `✓ Pemasukan dicatat: ${incomeCategory} +Rp ${incomeAmount.toLocaleString("id-ID")}`,
+      details: {
+        date: base.date,
+        category: incomeCategory,
+        amount: incomeAmount,
+        accountName,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan pemasukan. Coba lagi." }, { status: 500 });
   }
@@ -202,7 +224,18 @@ export async function handleBudgetSetting(parsed: ParsedIntent, ctx: RecordConte
       await appendBudgetBackup(sheetsId!, accessToken, budgetCategory, budgetAmount, currentMonth).catch(() => {});
     }
 
-    return NextResponse.json({ intent: "budget_setting", category: budgetCategory, amount: budgetAmount, month: currentMonth, message: `✓ Budget ${budgetCategory} bulan ini: Rp ${budgetAmount.toLocaleString("id-ID")}` });
+    return NextResponse.json({
+      intent: "budget_setting",
+      category: budgetCategory,
+      amount: budgetAmount,
+      month: currentMonth,
+      message: `✓ Budget ${budgetCategory} bulan ini: Rp ${budgetAmount.toLocaleString("id-ID")}`,
+      details: {
+        category: budgetCategory,
+        amount: budgetAmount,
+        month: currentMonth,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan budget. Coba lagi." }, { status: 500 });
   }

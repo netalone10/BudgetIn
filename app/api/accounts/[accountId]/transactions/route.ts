@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
-import { getTransactions, getAccounts } from "@/utils/sheets";
+import { getTransactions, getAccounts, computeAccountBalancesFromTx } from "@/utils/sheets";
 import { getSingleAccountBalance } from "@/utils/account-balance";
 
 type Params = { params: Promise<{ accountId: string }> };
@@ -52,6 +52,10 @@ async function handleSheetsUser(
     return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 404 });
   }
 
+  // Pure-ledger balance (override cached Akun!E to prevent drift)
+  const ledgerBalances = computeAccountBalancesFromTx(allAccounts, allTransactions);
+  const ledgerBalance = ledgerBalances.get(accountId) ?? 0;
+
   // Filter transactions by accountId (fromAccountId or toAccountId)
   let filtered = allTransactions.filter(
     (t) => t.fromAccountId === accountId || t.toAccountId === accountId
@@ -87,7 +91,7 @@ async function handleSheetsUser(
     account: {
       id: account.id,
       name: account.name,
-      currentBalance: account.balance.toString(),
+      currentBalance: ledgerBalance.toString(),
       accountType: { name: account.type, classification: account.classification },
       currency: account.currency,
       color: account.color,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
 import TransactionCard, { Transaction } from "@/components/TransactionCard";
@@ -34,14 +34,43 @@ const DashboardTabs = dynamic(
 // Re-export BudgetData type to avoid naming conflict
 type BudgetData = DashboardTabsBudgetData;
 
+type TxDetails = { date: string; category: string; amount: number; accountName?: string };
+type BulkDetails = { date: string; accountName?: string; total: number; count: number };
+type BudgetDetails = { category: string; amount: number; month: string };
+
 type ResponseData =
-  | { intent: "transaksi"; transaction: Transaction; message: string }
-  | { intent: "transaksi_bulk"; transactions: Transaction[]; message: string }
-  | { intent: "pemasukan"; transaction: Transaction; amount: number; category: string; message: string }
-  | { intent: "budget_setting"; category: string; amount: number; month: string; message: string }
+  | { intent: "transaksi"; transaction: Transaction; message: string; details?: TxDetails }
+  | { intent: "transaksi_bulk"; transactions: Transaction[]; message: string; details?: BulkDetails }
+  | { intent: "pemasukan"; transaction: Transaction; amount: number; category: string; message: string; details?: TxDetails }
+  | { intent: "budget_setting"; category: string; amount: number; month: string; message: string; details?: BudgetDetails }
   | { intent: "laporan"; period: string; totalSpent: number; spentByCategory: Record<string, number>; budgets: { category: string; budget: number; spent: number }[]; summary: string; transactionCount: number }
   | { intent: "unknown"; clarification: string }
   | { error: string };
+
+function formatTanggalID(iso: string): string {
+  // Accept "YYYY-MM-DD" — render as "29 Apr 2026" in id-ID locale.
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d.getTime())) return iso;
+  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d);
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium">{value}</dd>
+    </>
+  );
+}
+
+function DetailsGrid({ children, tone }: { children: ReactNode; tone: "green" | "blue" }) {
+  const colorClass = tone === "blue" ? "text-blue-700 dark:text-blue-400" : "text-green-700 dark:text-green-400";
+  return (
+    <dl className={`mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs ${colorClass}`}>
+      {children}
+    </dl>
+  );
+}
 
 interface DashboardClientProps {
   initialData: DashboardInitialData;
@@ -397,13 +426,36 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             ) : response.intent === "transaksi" ? (
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
-                <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">✓ Transaksi dicatat</p>
+                  {response.details && (
+                    <DetailsGrid tone="green">
+                      <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                      <DetailRow label="Kategori" value={response.details.category} />
+                      <DetailRow label="Nominal" value={`Rp ${response.details.amount.toLocaleString("id-ID")}`} />
+                      {response.details.accountName && (
+                        <DetailRow label="Akun" value={response.details.accountName} />
+                      )}
+                    </DetailsGrid>
+                  )}
+                </div>
               </div>
             ) : response.intent === "transaksi_bulk" ? (
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
-                <div>
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                    ✓ {response.details?.count ?? response.transactions.length} transaksi dicatat
+                  </p>
+                  {response.details && (
+                    <DetailsGrid tone="green">
+                      <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                      {response.details.accountName && (
+                        <DetailRow label="Akun" value={response.details.accountName} />
+                      )}
+                      <DetailRow label="Total" value={`Rp ${response.details.total.toLocaleString("id-ID")}`} />
+                    </DetailsGrid>
+                  )}
                   <ul className="mt-1.5 space-y-0.5">
                     {response.transactions.map((t, i) => (
                       <li key={i} className="text-xs text-green-600 dark:text-green-500">
@@ -417,12 +469,33 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             ) : response.intent === "pemasukan" ? (
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
-                <p className="text-sm font-medium text-green-700 dark:text-green-400">{response.message}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400">✓ Pemasukan dicatat</p>
+                  {response.details && (
+                    <DetailsGrid tone="green">
+                      <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                      <DetailRow label="Kategori" value={response.details.category} />
+                      <DetailRow label="Nominal" value={`+Rp ${response.details.amount.toLocaleString("id-ID")}`} />
+                      {response.details.accountName && (
+                        <DetailRow label="Akun" value={response.details.accountName} />
+                      )}
+                    </DetailsGrid>
+                  )}
+                </div>
               </div>
             ) : response.intent === "budget_setting" ? (
               <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(59,130,246,0.3)", backgroundColor: "rgba(59,130,246,0.05)" }}>
                 <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
-                <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{response.message}</p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">✓ Budget tersimpan</p>
+                  {response.details && (
+                    <DetailsGrid tone="blue">
+                      <DetailRow label="Kategori" value={response.details.category} />
+                      <DetailRow label="Nominal" value={`Rp ${response.details.amount.toLocaleString("id-ID")}`} />
+                      <DetailRow label="Bulan" value={response.details.month} />
+                    </DetailsGrid>
+                  )}
+                </div>
               </div>
             ) : response.intent === "laporan" ? (
               <ReportView data={response} />

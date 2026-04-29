@@ -9,7 +9,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getTransactionsDB } from "@/utils/db-transactions";
 import { getValidToken } from "@/utils/token";
-import { getTransactions, getAccounts } from "@/utils/sheets";
+import { getTransactions, getAccountsWithBalance } from "@/utils/sheets";
 import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { format } from "date-fns";
@@ -315,7 +315,7 @@ async function fetchAccounts(
     if (sheetsId) {
       // Google Sheets user
       const accessToken = await getValidToken(userId);
-      const sheetsAccounts = await getAccounts(sheetsId, accessToken);
+      const sheetsAccounts = await getAccountsWithBalance(sheetsId, accessToken);
       return sheetsAccounts.map((a) => ({
         id: a.id,
         name: a.name,

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import { randomUUID } from "crypto";
 import { getValidToken } from "@/utils/token";
-import { appendTransaction, getAccounts, updateAccountBalance } from "@/utils/sheets";
+import { appendTransaction, getAccounts } from "@/utils/sheets";
 
 function isValidAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
@@ -65,11 +65,7 @@ export async function POST(req: NextRequest) {
           : { toAccountId: accountId, toAccountName: account.name }),
       });
 
-      // Asset: expense→−, income→+. Liability: expense→+ (you owe more), income→− (you paid off)
-      const delta = account.classification === "liability"
-        ? (type === "expense" ? parsedAmount : -parsedAmount)
-        : (type === "expense" ? -parsedAmount : parsedAmount);
-      await updateAccountBalance(user!.sheetsId!, accessToken, accountId, delta, sheetsAccounts).catch(() => {});
+      // Sheets: saldo dihitung pure-ledger via getAccountsWithBalance (no cache write).
 
       await prisma.category.upsert({
         where: { userId_name: { userId: session.userId, name: category.trim() } },
@@ -108,14 +104,9 @@ export async function POST(req: NextRequest) {
         toAccountName: toAccount.name,
       });
 
-      // fromAccount sends money: asset→−, liability→+ (using credit)
-      // toAccount receives money: asset→+, liability→− (paying off debt)
-      const fromDelta = fromAccount.classification === "liability" ? parsedAmount : -parsedAmount;
-      const toDelta = toAccount.classification === "liability" ? -parsedAmount : parsedAmount;
-      await Promise.all([
-        updateAccountBalance(user!.sheetsId!, accessToken, accountId, fromDelta, sheetsAccounts).catch(() => {}),
-        updateAccountBalance(user!.sheetsId!, accessToken, toAccountId, toDelta, sheetsAccounts).catch(() => {}),
-      ]);
+      // Sheets: saldo dihitung pure-ledger (no cache write). Transfer terekam sebagai
+      // 1 row expense dengan from+to terisi; getAccountsWithBalance akan menghitung
+      // delta untuk kedua akun dari ledger.
 
       return NextResponse.json({ transaction, message: "Transfer berhasil dicatat." }, { status: 201 });
     }
