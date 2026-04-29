@@ -72,6 +72,31 @@ function formatShortDate(dateStr: string): string {
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
+// Urutan likuiditas grup akun (asset → liability).
+// Index lebih kecil = lebih liquid / lebih dahulu tampil.
+const LIQUIDITY_ORDER: Record<string, number> = {
+  // Aset (paling liquid → paling tidak liquid)
+  "Kas": 10,
+  "Bank": 20,
+  "E-Wallet": 30,
+  "Investasi": 40,
+  "Kripto": 50,
+  "Piutang": 60,
+  "Properti": 70,
+  "Kendaraan": 80,
+  "Lainnya": 90,
+  // Liabilitas (di-handle terpisah; nilai di sini hanya untuk antar-liability)
+  "Kartu Kredit": 1000,
+  "Hutang": 1010,
+};
+
+function liquidityRank(typeName: string, classification: "asset" | "liability"): number {
+  const known = LIQUIDITY_ORDER[typeName];
+  if (known !== undefined) return known;
+  // Tipe custom: taruh di akhir kelompok klasifikasinya
+  return classification === "liability" ? 9999 : 999;
+}
+
 // ── Account Form Modal ────────────────────────────────────────────────────────
 
 interface AccountFormModalProps {
@@ -561,13 +586,32 @@ export default function AccountsPage() {
     }
   }
 
-  // Group by type
-  const groupedAccounts = accounts.reduce<Record<string, AccountData[]>>((acc, a) => {
+  // Group by type, lalu pisahkan asset vs liability dan urutkan berdasarkan likuiditas.
+  type AccountGroup = {
+    typeName: string;
+    classification: "asset" | "liability";
+    accounts: AccountData[];
+  };
+  const groupMap = accounts.reduce<Record<string, AccountGroup>>((acc, a) => {
     const key = a.accountType.name;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(a);
+    if (!acc[key]) {
+      acc[key] = {
+        typeName: key,
+        classification: a.accountType.classification,
+        accounts: [],
+      };
+    }
+    acc[key].accounts.push(a);
     return acc;
   }, {});
+  const allGroups = Object.values(groupMap).sort((a, b) => {
+    const rankA = liquidityRank(a.typeName, a.classification);
+    const rankB = liquidityRank(b.typeName, b.classification);
+    if (rankA !== rankB) return rankA - rankB;
+    return a.typeName.localeCompare(b.typeName);
+  });
+  const assetGroups = allGroups.filter((g) => g.classification === "asset");
+  const liabilityGroups = allGroups.filter((g) => g.classification === "liability");
 
   const assetTotal = parseFloat(summary?.assets ?? "0");
   const liabTotal = parseFloat(summary?.liabilities ?? "0");
@@ -656,28 +700,78 @@ export default function AccountsPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {Object.entries(groupedAccounts).map(([typeName, accs]) => (
-            <div key={typeName}>
-              <div className="flex items-center justify-between mb-2 px-1">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{typeName}</h3>
-                <span className="text-xs text-muted-foreground">
-                  {formatIDR(accs.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
+        <div className="space-y-8">
+          {assetGroups.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                  Aset
+                </h2>
+                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                  {formatIDR(assetTotal)}
                 </span>
               </div>
-              <div className="space-y-2">
-                {accs.map((a) => (
-                  <AccountCard
-                    key={a.id}
-                    account={a}
-                    onEdit={setEditAccount}
-                    onAdjust={setAdjustAccount}
-                    onDelete={handleDelete}
-                  />
+              <div className="space-y-4">
+                {assetGroups.map((g) => (
+                  <div key={g.typeName}>
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{g.typeName}</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {formatIDR(g.accounts.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {g.accounts.map((a) => (
+                        <AccountCard
+                          key={a.id}
+                          account={a}
+                          onEdit={setEditAccount}
+                          onAdjust={setAdjustAccount}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
-          ))}
+            </section>
+          )}
+
+          {liabilityGroups.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <h2 className="text-xs font-bold text-red-500 uppercase tracking-widest">
+                  Liabilitas
+                </h2>
+                <span className="text-xs font-semibold text-red-500 tabular-nums">
+                  {formatIDR(liabTotal)}
+                </span>
+              </div>
+              <div className="space-y-4">
+                {liabilityGroups.map((g) => (
+                  <div key={g.typeName}>
+                    <div className="flex items-center justify-between mb-2 px-1">
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{g.typeName}</h3>
+                      <span className="text-xs text-muted-foreground">
+                        {formatIDR(g.accounts.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {g.accounts.map((a) => (
+                        <AccountCard
+                          key={a.id}
+                          account={a}
+                          onEdit={setEditAccount}
+                          onAdjust={setAdjustAccount}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
