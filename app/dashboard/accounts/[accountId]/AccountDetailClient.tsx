@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import Link from "next/link";
-import { ArrowLeft, TrendingUp, TrendingDown, Activity, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import TransactionCard from "@/components/TransactionCard";
@@ -113,16 +112,7 @@ export default function AccountDetailClient({ initialData }: Props) {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      {/* Back link */}
-      <Link
-        href="/dashboard/accounts"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Kembali
-      </Link>
-
+    <>
       {/* Account Header */}
       <div className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center gap-4">
@@ -328,6 +318,6 @@ export default function AccountDetailClient({ initialData }: Props) {
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }

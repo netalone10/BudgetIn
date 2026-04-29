@@ -160,38 +160,22 @@ export default function AIAnalystPage() {
   const ScoreColor = report ? getHealthColor(report.healthScore) : "";
 
   return (
-    <div className="flex flex-col w-full print:bg-white print:text-black">
-      <div className="mx-auto w-full max-w-5xl px-4 md:px-8 py-8 space-y-8">
-        
-        {/* Header Region */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mt-4 md:mt-2">
-          <div className="space-y-1">
-            <h2 className="text-3xl font-semibold tracking-tight-h2 text-foreground flex items-center gap-2">
-              <Sparkles className="h-7 w-7 text-primary" />
-              AI Financial Analyst
-            </h2>
-            <p className="text-[15px] text-muted-foreground max-w-md">
-              Evaluasi kinerja keuangan bulan ini dengan analisis AI otomatis. Cari tahu kebiasaan borosmu!
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2 print:hidden flex-wrap">
-            <Button variant="outline" size="sm" onClick={handlePredict} disabled={predLoading} className="h-9">
-              {predLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
-              Prediksi Bulan Depan
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownloadCsv} disabled={downloadingCsv} className="h-9">
-              {downloadingCsv ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              CSV
-            </Button>
-            <Button variant="outline" size="sm" onClick={handlePrintPdf} disabled={downloadingPdf} className="h-9">
-              {downloadingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
-              Unduh PDF
-            </Button>
-          </div>
-        </div>
-
-        <div className="h-px bg-border print:hidden" />
+    <>
+      {/* Action bar — heading dirender di server shell */}
+      <div className="flex items-center justify-end gap-2 print:hidden flex-wrap">
+        <Button variant="outline" size="sm" onClick={handlePredict} disabled={predLoading} className="h-9">
+          {predLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+          Prediksi Bulan Depan
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleDownloadCsv} disabled={downloadingCsv} className="h-9">
+          {downloadingCsv ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+          CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={handlePrintPdf} disabled={downloadingPdf} className="h-9">
+          {downloadingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+          Unduh PDF
+        </Button>
+      </div>
 
         {/* Empty / Loading State */}
         {!report && !loading && !error && (
@@ -475,8 +459,6 @@ export default function AIAnalystPage() {
 
           </div>
         )}
-
-      </div>
-    </div>
+    </>
   );
 }

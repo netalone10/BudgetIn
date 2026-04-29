@@ -1,15 +1,13 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export default async function LandingPage() {
-  const session = await getServerSession(authOptions);
-  if (session?.userId) redirect("/dashboard");
+// Auth-aware redirect ditangani di edge oleh `middleware.ts`.
+// Halaman ini fully static agar LCP optimal (CDN cache, no DB hit).
+export const dynamic = "force-static";
 
+export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background relative overflow-hidden">
       {/* ── Mintlify Atmospheric Hero Gradient Wash ── */}
