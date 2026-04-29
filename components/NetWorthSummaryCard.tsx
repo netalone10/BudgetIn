@@ -9,7 +9,7 @@ import { useDataEvent } from "@/lib/data-events";
 
 const NetWorthSparkline = dynamic(() => import("./NetWorthSparkline"), {
   ssr: false,
-  loading: () => <div className="h-[60px] animate-pulse rounded bg-muted mt-2" />,
+  loading: () => <div className="h-[120px] animate-pulse rounded bg-muted mt-2" />,
 });
 
 interface NetWorthData {
@@ -53,6 +53,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
   const [months, setMonths] = useState<3 | 6 | 12>(6);
   const [history, setHistory] = useState<HistoryPoint[] | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const load = useCallback((noStore = false) => {
     setLoading(true);
@@ -189,27 +190,16 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
       </div>
 
       {historyLoading ? (
-        <div className="h-[60px] animate-pulse rounded bg-muted" />
+        <div className="h-[120px] animate-pulse rounded bg-muted" />
       ) : sparkData && sparkData.length >= 2 ? (
-        <div>
-          <NetWorthSparkline data={sparkData} color={sparkColor} />
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5 px-0.5">
-            {sparkData.map((d, i) => {
-              const show =
-                sparkData.length <= 6 ||
-                i === 0 ||
-                i === sparkData.length - 1 ||
-                i === Math.floor(sparkData.length / 2);
-              return show ? (
-                <span key={i}>{d.label}</span>
-              ) : (
-                <span key={i} />
-              );
-            })}
-          </div>
-        </div>
+        <NetWorthSparkline
+          data={sparkData}
+          color={sparkColor}
+          hoveredIndex={hoveredIndex}
+          onHover={setHoveredIndex}
+        />
       ) : (
-        <div className="h-[60px] flex items-center justify-center text-xs text-muted-foreground">
+        <div className="h-[120px] flex items-center justify-center text-xs text-muted-foreground">
           Data histori belum cukup
         </div>
       )}

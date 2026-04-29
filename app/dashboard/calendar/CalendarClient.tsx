@@ -46,14 +46,16 @@ function formatMonthYear(year: number, month: number): string {
   });
 }
 
-function getDotColor(day: DayData | undefined): "green" | "red" | "yellow" | null {
-  if (!day) return null;
-  const hasIncome = day.income > 0;
-  const hasExpense = day.expense > 0;
-  if (hasIncome && hasExpense) return "yellow";
-  if (hasIncome) return "green";
-  if (hasExpense) return "red";
-  return null;
+function formatCompact(value: number): string {
+  if (value >= 1_000_000) {
+    const v = value / 1_000_000;
+    return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "jt";
+  }
+  if (value >= 1_000) {
+    const v = value / 1_000;
+    return (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)) + "rb";
+  }
+  return value.toFixed(0);
 }
 
 function typeLabel(type: CalendarTransaction["type"]): string {
@@ -181,21 +183,22 @@ export default function CalendarClient() {
         {loading ? (
           <div className="grid grid-cols-7 gap-0.5">
             {Array.from({ length: 35 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="min-h-[52px] rounded-lg bg-muted animate-pulse" />
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-0.5">
             {Array.from({ length: startOffset }).map((_, i) => (
-              <div key={`pad-${i}`} className="aspect-square" />
+              <div key={`pad-${i}`} className="min-h-[52px]" />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dateStr = `${currentMonthStr}-${String(day).padStart(2, "0")}`;
               const dayData = calData?.days[dateStr];
-              const dot = getDotColor(dayData);
               const isToday = dateStr === todayStr;
               const isSelected = dateStr === selectedDay;
+              const hasIncome = (dayData?.income ?? 0) > 0;
+              const hasExpense = (dayData?.expense ?? 0) > 0;
 
               return (
                 <button
@@ -204,7 +207,7 @@ export default function CalendarClient() {
                     setSelectedDay((prev) => (prev === dateStr ? null : dateStr))
                   }
                   className={cn(
-                    "aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 transition-colors text-sm font-medium relative",
+                    "min-h-[52px] rounded-lg flex flex-col items-center justify-start pt-1.5 pb-1 px-0.5 gap-0.5 transition-colors text-sm font-medium",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : isToday
@@ -212,16 +215,26 @@ export default function CalendarClient() {
                       : "hover:bg-muted text-foreground"
                   )}
                 >
-                  <span className="text-xs leading-none">{day}</span>
-                  {dot && (
+                  <span className="text-[11px] font-semibold leading-none">{day}</span>
+                  {hasIncome && (
                     <span
                       className={cn(
-                        "h-1 w-1 rounded-full shrink-0",
-                        dot === "green" && (isSelected ? "bg-white" : "bg-emerald-500"),
-                        dot === "red" && (isSelected ? "bg-white" : "bg-red-500"),
-                        dot === "yellow" && (isSelected ? "bg-white" : "bg-amber-400")
+                        "text-[9px] leading-tight font-medium truncate w-full text-center",
+                        isSelected ? "text-white/90" : "text-emerald-600 dark:text-emerald-400"
                       )}
-                    />
+                    >
+                      +{formatCompact(dayData!.income)}
+                    </span>
+                  )}
+                  {hasExpense && (
+                    <span
+                      className={cn(
+                        "text-[9px] leading-tight font-medium truncate w-full text-center",
+                        isSelected ? "text-white/80" : "text-red-500"
+                      )}
+                    >
+                      -{formatCompact(dayData!.expense)}
+                    </span>
                   )}
                 </button>
               );
@@ -231,16 +244,12 @@ export default function CalendarClient() {
 
         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/60">
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" />
+            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">+</span>
             Pemasukan
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-red-500 inline-block" />
+            <span className="text-red-500 font-semibold">-</span>
             Pengeluaran
-          </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-amber-400 inline-block" />
-            Keduanya
           </div>
         </div>
       </div>
