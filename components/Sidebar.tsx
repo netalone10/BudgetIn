@@ -21,6 +21,7 @@ import {
   TrendingDown,
   BookOpen,
   Bell,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -81,6 +82,7 @@ export default function Sidebar() {
     { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
     { name: "Tagihan", href: "/dashboard/bills", icon: Bell },
     { name: "Arus Kas", href: "/dashboard/cashflow", icon: TrendingDown },
+    { name: "Kalender", href: "/dashboard/calendar", icon: CalendarDays },
     { name: "AI Analyst", href: "/dashboard/analyst", icon: Sparkles },
   ];
 
