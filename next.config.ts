@@ -42,6 +42,18 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Tree-shake heavy icon/date packages on the client.
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns", "date-fns-tz"],
+  },
+
+  // Strip console.* (except errors/warnings) in production builds.
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production"
+      ? { exclude: ["error", "warn"] }
+      : false,
+  },
+
   async headers() {
     return [
       {

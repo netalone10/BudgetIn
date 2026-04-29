@@ -52,16 +52,30 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
 
   useDataEvent(["transactions", "accounts"], () => load(true));
 
+  // Match the rendered card height (~108px) to keep layout stable & avoid CLS.
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4 animate-pulse">
-        <div className="h-4 w-32 bg-muted rounded mb-2" />
-        <div className="h-7 w-48 bg-muted rounded" />
+      <div className="rounded-xl border border-border bg-card p-4 animate-pulse" style={{ minHeight: 108 }}>
+        <div className="h-3.5 w-32 bg-muted rounded mb-2" />
+        <div className="h-7 w-48 bg-muted rounded mb-3" />
+        <div className="h-3 w-3/4 bg-muted rounded" />
       </div>
     );
   }
 
-  if (!data) return null;
+  // On error, render a placeholder card instead of null so height stays consistent.
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-4" style={{ minHeight: 108 }}>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <Wallet className="h-3.5 w-3.5" />
+          <span>Kekayaan Bersih</span>
+        </div>
+        <div className="text-2xl font-bold tracking-tight text-muted-foreground">—</div>
+        <div className="text-xs text-muted-foreground mt-2">Data belum tersedia</div>
+      </div>
+    );
+  }
 
   const netWorth = parseFloat(data.summary.netWorth);
   const assets = parseFloat(data.summary.assets);

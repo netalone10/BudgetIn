@@ -2,8 +2,6 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
 import TransactionCard, { Transaction } from "@/components/TransactionCard";
 import { Button } from "@/components/ui/button";
@@ -17,19 +15,20 @@ import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
 
 // Dynamic imports for heavy components
+// Skeleton heights matched to actual rendered content to minimize CLS.
 const ManualTransactionForm = dynamic(
   () => import("@/components/ManualTransactionForm"),
-  { ssr: false, loading: () => <div className="h-32 animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-xl bg-muted" /> }
 );
 
 const ReportView = dynamic(
   () => import("@/components/ReportView"),
-  { ssr: false, loading: () => <div className="h-48 animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-[320px] animate-pulse rounded-xl bg-muted" /> }
 );
 
 const DashboardTabs = dynamic(
   () => import("@/components/DashboardTabs"),
-  { ssr: false, loading: () => <div className="h-64 animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-[420px] animate-pulse rounded-xl bg-muted" /> }
 );
 
 // Re-export BudgetData type to avoid naming conflict
@@ -49,7 +48,6 @@ interface DashboardClientProps {
 }
 
 export default function DashboardClient({ initialData }: DashboardClientProps) {
-  const { data: session, status } = useSession();
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ResponseData | null>(null);
@@ -93,10 +91,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     const count = todayTxs.filter((t) => t.type !== "income").length;
     return { expense, income, count };
   }, [transactions, todayStr]);
-
-  useEffect(() => {
-    if (status === "unauthenticated") redirect("/");
-  }, [status]);
 
   useEffect(() => {
     const handleCategoryChange = () => fetchCategories();
@@ -286,33 +280,21 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     emitDataChanged(["transactions", "budget", "accounts"]);
   }
 
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin" style={{ color: "var(--muted-foreground)" }} />
-      </div>
-    );
-  }
-
   const dataLoading = txLoading || budgetLoading;
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="mx-auto w-full max-w-5xl px-4 md:px-8 py-8 space-y-6">
-
-        {/* Greeting */}
-        <div className="space-y-1 pb-2 mt-4 md:mt-2">
-          <h2 className="text-3xl font-semibold tracking-tight-h2 text-foreground">
-            Halo, {session?.user?.name?.split(" ")[0]}
-          </h2>
-          <p className="text-[15px] text-muted-foreground">
-            Ketik transaksi, set budget, atau minta laporan.
-          </p>
-        </div>
-
-        {/* Today&apos;s Summary */}
-        {!txLoading && (
-          <div className="flex gap-4">
+    <>
+        {/* Today's Summary — always render the shell to keep layout stable (avoid CLS) */}
+        <div className="flex gap-4" style={{ minHeight: 96 }}>
+          {txLoading ? (
+            <>
+              <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm animate-pulse">
+                <div className="h-4 w-24 bg-muted rounded mb-2" />
+                <div className="h-7 w-32 bg-muted rounded" />
+              </div>
+            </>
+          ) : (
+          <>
             {/* Pengeluaran hari ini */}
             <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between shadow-sm">
               <div>
@@ -352,8 +334,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 </div>
               </div>
             )}
-          </div>
-        )}
+          </>
+          )}
+        </div>
 
         {/* Net Worth Summary */}
         <NetWorthSummaryCard refreshTrigger={accountVersion} />
@@ -565,7 +548,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </>
   );
 }

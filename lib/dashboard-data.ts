@@ -2,6 +2,7 @@
  * Server-side data fetching for Dashboard
  * Used by Server Components to fetch initial data
  */
+import "server-only";
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { getTransactionsDB } from "@/utils/db-transactions";
 import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccounts } from "@/utils/sheets";
-import { getAccountBalances, calculateNetWorth } from "@/utils/account-balance";
+import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
@@ -108,24 +109,46 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonth = format(lastMonthDate, "yyyy-MM");
 
-  // Get user info
+  // Get user info first (needed to know sheetsId for downstream fetches)
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { sheetsId: true, name: true, email: true, image: true },
   });
+  const sheetsId = user?.sheetsId ?? null;
 
-  // Fetch all data in parallel where possible
+  // Fetch raw transactions ONCE for both list display and budget calculation.
+  // Run all independent fetches in parallel.
   const [
-    transactions,
-    budgetData,
+    txThisMonthRaw,
+    txLastMonthRaw,
     accounts,
     categories,
+    budgets,
+    lastMonthBudgets,
   ] = await Promise.all([
-    fetchTransactions(userId, user?.sheetsId),
-    fetchBudgetData(userId, user?.sheetsId, currentMonth, lastMonth),
-    fetchAccounts(userId, user?.sheetsId),
+    fetchRawTransactions(userId, sheetsId, "bulan ini"),
+    fetchRawTransactions(userId, sheetsId, "bulan lalu"),
+    fetchAccounts(userId, sheetsId),
     fetchCategories(userId),
+    prisma.budget.findMany({
+      where: { userId, month: currentMonth },
+      include: { category: true },
+      orderBy: { category: { name: "asc" } },
+    }).catch(() => []),
+    prisma.budget.findMany({
+      where: { userId, month: lastMonth },
+      include: { category: true },
+    }).catch(() => []),
   ]);
+
+  const transactions = mapTxnsForDisplay(txThisMonthRaw);
+  const budgetData = computeBudgetData(
+    txThisMonthRaw,
+    txLastMonthRaw,
+    budgets,
+    lastMonthBudgets,
+    currentMonth
+  );
 
   // Build savings category names set
   const savingsCategoryNames = categories
@@ -146,118 +169,103 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
   };
 }
 
-async function fetchTransactions(
+// Common shape after normalization (works for both Sheets and DB sources).
+interface RawTxn {
+  id: string;
+  date: string;
+  amount: number;
+  category: string;
+  note: string;
+  type: "expense" | "income" | "transfer_out" | "transfer_in";
+  accountId: string | null;
+  created_at: string;
+}
+
+async function fetchRawTransactions(
   userId: string,
-  sheetsId: string | null | undefined
-): Promise<Transaction[]> {
+  sheetsId: string | null,
+  period: "bulan ini" | "bulan lalu"
+): Promise<RawTxn[]> {
   try {
     if (sheetsId) {
-      // Google Sheets user
       const accessToken = await getValidToken(userId);
-      const txs = await getTransactions(sheetsId, accessToken, "bulan ini");
-      txs.sort((a, b) => (a.date < b.date ? 1 : -1));
-      return txs.slice(0, 200).map((t) => ({
+      const txs = await getTransactions(sheetsId, accessToken, period);
+      return txs.map((t) => ({
         id: t.id,
         date: t.date,
         amount: t.amount,
         category: t.category,
         note: t.note,
-        type: (t.type === "income" ? "income" : "expense") as Transaction["type"],
+        type: (t.type === "income" ? "income" : "expense") as RawTxn["type"],
         accountId: t.fromAccountId ?? t.toAccountId ?? null,
         created_at: t.created_at ?? new Date().toISOString(),
       }));
-    } else {
-      // DB user
-      const txs = await getTransactionsDB(userId, "bulan ini");
-      return txs.slice(0, 200).map((t) => ({
-        id: t.id,
-        date: t.date,
-        amount: t.amount,
-        category: t.category,
-        note: t.note,
-        type: t.type,
-        accountId: t.accountId,
-        created_at: t.created_at ?? new Date().toISOString(),
-      }));
     }
+    const txs = await getTransactionsDB(userId, period);
+    return txs.map((t) => ({
+      id: t.id,
+      date: t.date,
+      amount: t.amount,
+      category: t.category,
+      note: t.note,
+      type: t.type,
+      accountId: t.accountId,
+      created_at: t.created_at ?? new Date().toISOString(),
+    }));
   } catch (error) {
-    console.error("Failed to fetch transactions:", error);
+    console.error(`Failed to fetch transactions (${period}):`, error);
     return [];
   }
 }
 
-async function fetchBudgetData(
-  userId: string,
-  sheetsId: string | null | undefined,
-  currentMonth: string,
-  lastMonth: string
-): Promise<BudgetData | null> {
-  try {
-    // Get budgets for current and last month
-    const [budgets, lastMonthBudgets] = await Promise.all([
-      prisma.budget.findMany({
-        where: { userId, month: currentMonth },
-        include: { category: true },
-        orderBy: { category: { name: "asc" } },
-      }),
-      prisma.budget.findMany({
-        where: { userId, month: lastMonth },
-        include: { category: true },
-      }),
-    ]);
+function mapTxnsForDisplay(raw: RawTxn[]): Transaction[] {
+  const sorted = [...raw].sort((a, b) => (a.date < b.date ? 1 : -1));
+  return sorted.slice(0, 200).map((t) => ({
+    id: t.id,
+    date: t.date,
+    amount: t.amount,
+    category: t.category,
+    note: t.note,
+    type: t.type,
+    accountId: t.accountId,
+    created_at: t.created_at,
+  }));
+}
 
-    // Get transactions for spent calculation
-    let spentByCategory: Record<string, number> = {};
-    let lastMonthSpent: Record<string, number> = {};
+type BudgetWithCategory = {
+  id: string;
+  categoryId: string;
+  amount: number;
+  category: { name: string; rolloverEnabled: boolean };
+};
+
+function computeBudgetData(
+  txThisMonth: RawTxn[],
+  txLastMonth: RawTxn[],
+  budgets: BudgetWithCategory[],
+  lastMonthBudgets: BudgetWithCategory[],
+  currentMonth: string
+): BudgetData | null {
+  try {
+    const spentByCategory: Record<string, number> = {};
+    const lastMonthSpent: Record<string, number> = {};
     let totalIncome = 0;
     let totalExpense = 0;
 
-    try {
-      if (sheetsId) {
-        const accessToken = await getValidToken(userId);
-        const [txThisMonth, txLastMonth] = await Promise.all([
-          getTransactions(sheetsId, accessToken, "bulan ini"),
-          getTransactions(sheetsId, accessToken, "bulan lalu"),
-        ]);
-
-        for (const t of txThisMonth) {
-          if (t.type === "income") {
-            totalIncome += t.amount;
-          } else {
-            totalExpense += t.amount;
-            spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
-          }
-        }
-        for (const t of txLastMonth) {
-          if (t.type !== "income") {
-            lastMonthSpent[t.category] = (lastMonthSpent[t.category] ?? 0) + t.amount;
-          }
-        }
+    for (const t of txThisMonth) {
+      if (t.type === "income") {
+        totalIncome += t.amount;
       } else {
-        const [txThisMonth, txLastMonth] = await Promise.all([
-          getTransactionsDB(userId, "bulan ini"),
-          getTransactionsDB(userId, "bulan lalu"),
-        ]);
-
-        for (const t of txThisMonth) {
-          if (t.type === "income") {
-            totalIncome += t.amount;
-          } else {
-            totalExpense += t.amount;
-            spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
-          }
-        }
-        for (const t of txLastMonth) {
-          if (t.type !== "income") {
-            lastMonthSpent[t.category] = (lastMonthSpent[t.category] ?? 0) + t.amount;
-          }
-        }
+        totalExpense += t.amount;
+        spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
       }
-    } catch {
-      // Continue without spent data
+    }
+    for (const t of txLastMonth) {
+      if (t.type !== "income") {
+        lastMonthSpent[t.category] = (lastMonthSpent[t.category] ?? 0) + t.amount;
+      }
     }
 
-    // Index last month budgets by categoryId
     const lastMonthBudgetByCategoryId = Object.fromEntries(
       lastMonthBudgets.map((b) => [b.categoryId, b.amount])
     );
@@ -294,14 +302,14 @@ async function fetchBudgetData(
       unbudgeted,
     };
   } catch (error) {
-    console.error("Failed to fetch budget data:", error);
+    console.error("Failed to compute budget data:", error);
     return null;
   }
 }
 
 async function fetchAccounts(
   userId: string,
-  sheetsId: string | null | undefined
+  sheetsId: string | null
 ): Promise<Account[]> {
   try {
     if (sheetsId) {
