@@ -72,6 +72,14 @@ function DetailsGrid({ children, tone }: { children: ReactNode; tone: "green" | 
   );
 }
 
+const PROMPT_EXAMPLES = [
+  "beli makan siang 35rb dari BCA",
+  "gaji 8jt masuk ke BNI",
+  "bayar listrik 250rb cash",
+  "transfer 1jt dari BCA ke BNI",
+  "rekap bulan ini",
+];
+
 interface DashboardClientProps {
   initialData: DashboardInitialData;
 }
@@ -399,6 +407,23 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           <p className="text-[12px] font-medium text-muted-foreground px-2">
             Enter untuk kirim &middot; Shift+Enter untuk baris baru
           </p>
+          <div className="flex flex-wrap items-center gap-1.5 px-2">
+            <span className="text-[11px] text-muted-foreground shrink-0">Coba:</span>
+            {PROMPT_EXAMPLES.map((example) => (
+              <button
+                key={example}
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setPrompt(example);
+                  textareaRef.current?.focus();
+                }}
+                className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {example}
+              </button>
+            ))}
+          </div>
         </form>
 
         {/* Manual Input */}
