@@ -86,21 +86,21 @@ export default function AccountDetailClient({ initialData }: Props) {
 
   // ── Transaction CRUD handlers ───────────────────────────────────────────
 
-  function handleDeleteTx(id: string) {
+  const handleDeleteTx = useCallback((id: string) => {
     setData((prev) => ({
       ...prev,
       transactions: prev.transactions.filter((t) => t.id !== id),
     }));
-  }
+  }, []);
 
-  function handleUpdateTx(id: string, updates: Partial<AccountTransaction>) {
+  const handleUpdateTx = useCallback((id: string, updates: Partial<AccountTransaction>) => {
     setData((prev) => ({
       ...prev,
       transactions: prev.transactions.map((t) =>
         t.id === id ? { ...t, ...updates } : t
       ),
     }));
-  }
+  }, []);
 
   // ── Render ──────────────────────────────────────────────────────────────
 

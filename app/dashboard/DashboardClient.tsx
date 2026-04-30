@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
 import TransactionCard, { Transaction } from "@/components/TransactionCard";
@@ -301,21 +301,17 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     }
   }
 
-  function handleDeleteTx(id: string) {
+  const handleDeleteTx = useCallback((id: string) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
-    fetchBudget();
-    fetchAccounts();
     emitDataChanged(["transactions", "budget", "accounts"]);
-  }
+  }, []);
 
-  function handleUpdateTx(id: string, data: Partial<Transaction>) {
+  const handleUpdateTx = useCallback((id: string, data: Partial<Transaction>) => {
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...data } : t))
     );
-    fetchBudget();
-    fetchAccounts();
     emitDataChanged(["transactions", "budget", "accounts"]);
-  }
+  }, []);
 
   const dataLoading = txLoading || budgetLoading;
 

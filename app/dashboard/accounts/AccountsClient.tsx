@@ -524,6 +524,11 @@ export default function AccountsPage() {
         fetch("/api/accounts", opts),
         fetch("/api/account-types", opts),
       ]);
+      if (!accRes.ok) {
+        const errData = await accRes.json().catch(() => ({}));
+        setError((errData as { error?: string }).error || "Gagal memuat data akun.");
+        return;
+      }
       const accData = await accRes.json();
       const typeData = await typeRes.json();
       const accs: AccountData[] = accData.accounts ?? [];

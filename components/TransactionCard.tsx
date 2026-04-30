@@ -1,9 +1,9 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Pencil, Trash2, Check, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { emitDataChanged } from "@/lib/data-events";
 
@@ -28,8 +28,12 @@ interface Props {
   onUpdate: (id: string, data: Partial<Transaction>) => void;
 }
 
+const INPUT_CLS = "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+const LABEL_CLS = "block text-xs font-medium text-muted-foreground mb-1";
+
+const idFormat = new Intl.NumberFormat("id-ID");
 function formatRupiah(amount: number) {
-  return new Intl.NumberFormat("id-ID").format(amount);
+  return idFormat.format(amount);
 }
 
 function formatDate(dateStr: string) {
@@ -38,22 +42,34 @@ function formatDate(dateStr: string) {
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
-function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
-  const [editing, setEditing] = useState(false);
+// ── Edit Modal ────────────────────────────────────────────────────────────────
+
+interface EditModalProps {
+  transaction: Transaction;
+  categories: string[];
+  accounts: { id: string; name: string }[];
+  onClose: () => void;
+  onSaved: (updates: Partial<Transaction>) => void;
+}
+
+function EditModal({ transaction, categories, accounts, onClose, onSaved }: EditModalProps) {
   const [editDate, setEditDate] = useState(transaction.date);
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
   const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? "");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Gabungkan kategori user + kategori transaksi ini (kalau belum ada di list)
   const categoryOptions = categories.includes(transaction.category)
     ? categories
     : [...categories, transaction.category].sort();
 
-  async function handleSave() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     setLoading(true);
+    setError(null);
     const res = await fetch(`/api/record/${transaction.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -66,37 +82,149 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
       }),
     });
     if (res.ok) {
-      onUpdate(transaction.id, {
+      onSaved({
         date: editDate,
         note: editNote,
         amount: Number(editAmount),
         category: editCategory,
         accountId: editAccountId || null,
       });
-      setEditing(false);
-      emitDataChanged(["transactions", "budget", "accounts"]);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setError((data as { error?: string }).error || "Gagal menyimpan.");
     }
     setLoading(false);
   }
 
-  function handleCancel() {
-    setEditDate(transaction.date);
-    setEditNote(transaction.note);
-    setEditAmount(String(transaction.amount));
-    setEditCategory(transaction.category);
-    setEditAccountId(transaction.accountId ?? "");
-    setEditing(false);
-  }
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b border-border">
+          <h2 className="text-base font-semibold">Edit Transaksi</h2>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL_CLS}>Tanggal</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                required
+                className={INPUT_CLS}
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLS}>Nominal (Rp)</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                required
+                className={INPUT_CLS}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Catatan</label>
+            <input
+              type="text"
+              value={editNote}
+              onChange={(e) => setEditNote(e.target.value)}
+              placeholder="Tulis catatan..."
+              className={INPUT_CLS}
+            />
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Kategori</label>
+            <select
+              value={editCategory}
+              onChange={(e) => setEditCategory(e.target.value)}
+              className={INPUT_CLS}
+            >
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+              {!categoryOptions.includes(editCategory) && (
+                <option value={editCategory}>{editCategory}</option>
+              )}
+            </select>
+          </div>
+
+          {accounts.length > 0 && (
+            <div>
+              <label className={LABEL_CLS}>Akun</label>
+              <select
+                value={editAccountId}
+                onChange={(e) => setEditAccountId(e.target.value)}
+                className={INPUT_CLS}
+              >
+                <option value="">— Tanpa Akun —</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>{acc.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-3 pt-1">
+            <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+              Batal
+            </Button>
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Simpan"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// ── Transaction Row ───────────────────────────────────────────────────────────
+
+function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
+  const [showModal, setShowModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
 
   async function handleDelete() {
     if (!confirm("Hapus transaksi ini?")) return;
-    setLoading(true);
+    setDeleting(true);
     const res = await fetch(`/api/record/${transaction.id}`, { method: "DELETE" });
     if (res.ok) {
       onDelete(transaction.id);
       emitDataChanged(["transactions", "budget", "accounts"]);
     }
-    setLoading(false);
+    setDeleting(false);
+  }
+
+  function handleSaved(updates: Partial<Transaction>) {
+    onUpdate(transaction.id, updates);
+    setShowModal(false);
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 1500);
+    emitDataChanged(["transactions", "budget", "accounts"]);
   }
 
   const isIncome = transaction.type === "income" || transaction.type === "transfer_in";
@@ -107,134 +235,82 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
     (transaction.accountId ? accounts.find((a) => a.id === transaction.accountId)?.name : undefined);
 
   return (
-    <tr className={cn(
-      "group border-b last:border-0 transition-colors hover:bg-muted/30",
-      editing && "bg-muted/40"
-    )}>
-      {/* Tanggal */}
-      <td className="py-2.5 pl-4 pr-3 text-xs text-muted-foreground whitespace-nowrap w-20">
-        {editing ? (
-          <Input
-            type="date"
-            className="h-7 text-xs px-2 w-32"
-            value={editDate}
-            onChange={(e) => setEditDate(e.target.value)}
-          />
-        ) : (
-          formatDate(transaction.date)
-        )}
-      </td>
+    <>
+      <tr className={cn(
+        "group border-b last:border-0 transition-colors hover:bg-muted/30",
+        justSaved && "bg-green-50/70 dark:bg-green-950/20"
+      )}>
+        {/* Tanggal */}
+        <td className="py-2.5 pl-4 pr-3 text-xs text-muted-foreground whitespace-nowrap w-20">
+          {formatDate(transaction.date)}
+        </td>
 
-      {/* Deskripsi */}
-      <td className="py-2.5 pr-3 min-w-0">
-        {editing ? (
-          <Input
-            className="h-7 text-xs px-2"
-            value={editNote}
-            onChange={(e) => setEditNote(e.target.value)}
-          />
-        ) : (
+        {/* Deskripsi */}
+        <td className="py-2.5 pr-3 min-w-0">
           <span className="text-sm block">
             {transaction.note || <span className="text-muted-foreground">—</span>}
           </span>
-        )}
-      </td>
+        </td>
 
-      {/* Kategori */}
-      <td className="py-2.5 pr-3 whitespace-nowrap">
-        {editing ? (
-          <select
-            value={editCategory}
-            onChange={(e) => setEditCategory(e.target.value)}
-            className={cn(
-              "h-7 rounded-md border bg-background px-2 text-xs",
-              "focus:outline-none focus:ring-1 focus:ring-ring",
-              "min-w-[100px]"
-            )}
-          >
-            {categoryOptions.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-            {!categoryOptions.includes(editCategory) && (
-              <option value={editCategory}>{editCategory}</option>
-            )}
-          </select>
-        ) : (
+        {/* Kategori */}
+        <td className="py-2.5 pr-3 whitespace-nowrap">
           <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
             {transaction.category}
           </span>
-        )}
-      </td>
+        </td>
 
-      {/* Akun */}
-      <td className="py-2.5 pr-3 whitespace-nowrap hidden sm:table-cell">
-        {editing ? (
-          <select
-            value={editAccountId}
-            onChange={(e) => setEditAccountId(e.target.value)}
-            className={cn(
-              "h-7 rounded-md border bg-background px-2 text-xs",
-              "focus:outline-none focus:ring-1 focus:ring-ring",
-              "min-w-[120px]"
-            )}
-          >
-            <option value="">— Tanpa Akun —</option>
-            {accounts.map((acc) => (
-              <option key={acc.id} value={acc.id}>{acc.name}</option>
-            ))}
-          </select>
-        ) : displayAccount ? (
-          <span className="text-xs text-muted-foreground">{displayAccount}</span>
-        ) : null}
-      </td>
+        {/* Akun */}
+        <td className="py-2.5 pr-3 whitespace-nowrap hidden sm:table-cell">
+          {displayAccount ? (
+            <span className="text-xs text-muted-foreground">{displayAccount}</span>
+          ) : null}
+        </td>
 
-      {/* Jumlah */}
-      <td className="py-2.5 pr-2 text-right whitespace-nowrap">
-        {editing ? (
-          <Input
-            className="h-7 w-28 text-xs px-2 text-right"
-            value={editAmount}
-            onChange={(e) => setEditAmount(e.target.value)}
-            type="number"
-          />
-        ) : (
+        {/* Jumlah */}
+        <td className="py-2.5 pr-2 text-right whitespace-nowrap">
           <span className={cn(
             "text-sm font-semibold tabular-nums",
             isIncome ? "text-green-600 dark:text-green-400" : ""
           )}>
             {isIncome ? "+" : "-"}{formatRupiah(transaction.amount)}
           </span>
-        )}
-      </td>
+        </td>
 
-      {/* Actions */}
-      <td className="py-2.5 pr-3 w-16">
-        <div className={cn(
-          "flex items-center justify-end gap-0.5 transition-opacity",
-          editing ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        )}>
-          {editing ? (
-            <>
-              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleSave} disabled={loading}>
-                <Check className="h-3 w-3 text-green-600" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCancel} disabled={loading}>
-                <X className="h-3 w-3" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setEditing(true)} disabled={loading}>
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button size="icon" variant="ghost" className="h-6 w-6 hover:text-destructive" onClick={handleDelete} disabled={loading}>
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
+        {/* Actions */}
+        <td className="py-2.5 pr-3 w-16">
+          <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={() => setShowModal(true)}
+              disabled={deleting}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6 hover:text-destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+
+      {showModal && (
+        <EditModal
+          transaction={transaction}
+          categories={categories}
+          accounts={accounts}
+          onClose={() => setShowModal(false)}
+          onSaved={handleSaved}
+        />
+      )}
+    </>
   );
 }
 
