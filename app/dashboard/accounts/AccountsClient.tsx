@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useSession } from "next-auth/react";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
+import AccountsSkeleton from "./AccountsSkeleton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -380,7 +381,7 @@ function AdjustBalanceModal({ account, onClose, onSaved }: { account: AccountDat
 
 // ── Account Card ──────────────────────────────────────────────────────────────
 
-function AccountCard({
+const AccountCard = memo(function AccountCard({
   account,
   onEdit,
   onAdjust,
@@ -492,7 +493,8 @@ function AccountCard({
       </button>
     </div>
   );
-}
+});
+AccountCard.displayName = "AccountCard";
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
@@ -535,8 +537,10 @@ export default function AccountsPage() {
       setSummary(accData.summary ?? null);
       setAccountTypes(typeData.accountTypes ?? []);
       setAccounts(accs);
+      // Defer recent transactions — render main content first
+      setLoading(false);
 
-      // Fetch recent 5 transactions per account (non-blocking)
+      // Fetch recent 5 transactions per account (low-priority, non-blocking)
       const recentPromises = accs.map((a) =>
         fetch(`/api/accounts/${a.id}/transactions?period=semua&limit=5`)
           .then((r) => (r.ok ? r.json() : null))
@@ -561,7 +565,6 @@ export default function AccountsPage() {
       );
     } catch {
       setError("Gagal memuat data akun.");
-    } finally {
       setLoading(false);
     }
   }, []);
@@ -597,33 +600,37 @@ export default function AccountsPage() {
     classification: "asset" | "liability";
     accounts: AccountData[];
   };
-  const groupMap = accounts.reduce<Record<string, AccountGroup>>((acc, a) => {
-    const key = a.accountType.name;
-    if (!acc[key]) {
-      acc[key] = {
-        typeName: key,
-        classification: a.accountType.classification,
-        accounts: [],
-      };
-    }
-    acc[key].accounts.push(a);
-    return acc;
-  }, {});
-  const allGroups = Object.values(groupMap).sort((a, b) => {
-    const rankA = liquidityRank(a.typeName, a.classification);
-    const rankB = liquidityRank(b.typeName, b.classification);
-    if (rankA !== rankB) return rankA - rankB;
-    return a.typeName.localeCompare(b.typeName);
-  });
-  const assetGroups = allGroups.filter((g) => g.classification === "asset");
-  const liabilityGroups = allGroups.filter((g) => g.classification === "liability");
+  const { assetGroups, liabilityGroups, assetTotal, liabTotal, netWorth, isPositive } = useMemo(() => {
+    const groupMap = accounts.reduce<Record<string, AccountGroup>>((acc, a) => {
+      const key = a.accountType.name;
+      if (!acc[key]) {
+        acc[key] = {
+          typeName: key,
+          classification: a.accountType.classification,
+          accounts: [],
+        };
+      }
+      acc[key].accounts.push(a);
+      return acc;
+    }, {});
+    const allGroups = Object.values(groupMap).sort((a, b) => {
+      const rankA = liquidityRank(a.typeName, a.classification);
+      const rankB = liquidityRank(b.typeName, b.classification);
+      if (rankA !== rankB) return rankA - rankB;
+      return a.typeName.localeCompare(b.typeName);
+    });
+    const assetGroups = allGroups.filter((g) => g.classification === "asset");
+    const liabilityGroups = allGroups.filter((g) => g.classification === "liability");
 
-  const assetTotal = parseFloat(summary?.assets ?? "0");
-  const liabTotal = parseFloat(summary?.liabilities ?? "0");
-  const netWorth = parseFloat(summary?.netWorth ?? "0");
-  const isPositive = netWorth >= 0;
+    const assetTotal = parseFloat(summary?.assets ?? "0");
+    const liabTotal = parseFloat(summary?.liabilities ?? "0");
+    const netWorth = parseFloat(summary?.netWorth ?? "0");
+    const isPositive = netWorth >= 0;
 
-  if (status === "loading" || loading) {
+    return { assetGroups, liabilityGroups, assetTotal, liabTotal, netWorth, isPositive };
+  }, [accounts, summary]);
+
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -652,7 +659,9 @@ export default function AccountsPage() {
       )}
 
       {/* Net Worth Hero */}
-      {summary && (
+      {loading && !summary ? (
+        <AccountsSkeleton />
+      ) : summary ? (
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
@@ -678,7 +687,7 @@ export default function AccountsPage() {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl p-4">
@@ -687,7 +696,9 @@ export default function AccountsPage() {
       )}
 
       {/* Account list */}
-      {accounts.length === 0 && !loading ? (
+      {loading && accounts.length === 0 ? (
+        <AccountsSkeleton />
+      ) : accounts.length === 0 && !loading ? (
         <div className="text-center py-12 border border-dashed border-border rounded-2xl">
           <Wallet className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-4">Belum ada akun. Tambahkan akun pertamamu!</p>

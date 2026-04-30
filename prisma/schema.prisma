@@ -88,6 +88,7 @@ model Transaction {
   @@index([userId, date])
   @@index([userId, type, date])
   @@index([userId, accountId, date])
+  @@index([userId, accountId, type])
   @@index([transferId])
   @@map("transactions")
 }

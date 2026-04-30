@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccounts, computeAccountBalancesFromTx } from "@/utils/sheets";
 import { getSingleAccountBalance } from "@/utils/account-balance";
+import { Decimal } from "@prisma/client/runtime/library";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest, { params }: Params) {
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") || "bulan ini";
   const limit = Math.min(Number(searchParams.get("limit") || "200"), 500);
+  const skipBalance = searchParams.get("skipBalance") === "1";
+  const skipAccount = searchParams.get("skipAccount") === "1";
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -24,9 +27,9 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   try {
     if (user?.sheetsId) {
-      return await handleSheetsUser(session.userId, user.sheetsId, accountId, period, limit);
+      return await handleSheetsUser(session.userId, user.sheetsId, accountId, period, limit, skipAccount);
     } else {
-      return await handleDbUser(session.userId, accountId, period, limit);
+      return await handleDbUser(session.userId, accountId, period, limit, skipBalance);
     }
   } catch (e) {
     console.error("Failed to fetch account transactions:", e);
@@ -39,22 +42,25 @@ async function handleSheetsUser(
   sheetsId: string,
   accountId: string,
   period: string,
-  limit: number
+  limit: number,
+  skipAccount = false
 ) {
   const accessToken = await getValidToken(userId);
-  const [allAccounts, allTransactions] = await Promise.all([
-    getAccounts(sheetsId, accessToken),
-    getTransactions(sheetsId, accessToken),
-  ]);
+  const allTransactions = await getTransactions(sheetsId, accessToken);
 
-  const account = allAccounts.find((a) => a.id === accountId);
-  if (!account) {
-    return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 404 });
+  // Only fetch accounts if client needs them (initial load); skip on period toggle
+  let account: Awaited<ReturnType<typeof getAccounts>>[number] | undefined;
+  let ledgerBalance = 0;
+  if (!skipAccount) {
+    const allAccounts = await getAccounts(sheetsId, accessToken);
+    account = allAccounts.find((a) => a.id === accountId);
+    if (!account) {
+      return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 404 });
+    }
+    // Pure-ledger balance (override cached Akun!E to prevent drift)
+    const ledgerBalances = computeAccountBalancesFromTx(allAccounts, allTransactions);
+    ledgerBalance = ledgerBalances.get(accountId) ?? 0;
   }
-
-  // Pure-ledger balance (override cached Akun!E to prevent drift)
-  const ledgerBalances = computeAccountBalancesFromTx(allAccounts, allTransactions);
-  const ledgerBalance = ledgerBalances.get(accountId) ?? 0;
 
   // Filter transactions by accountId (fromAccountId or toAccountId)
   let filtered = allTransactions.filter(
@@ -87,8 +93,9 @@ async function handleSheetsUser(
     toAccountName: t.toAccountName,
   }));
 
-  return NextResponse.json({
-    account: {
+  const response: Record<string, unknown> = { transactions, summary };
+  if (account) {
+    response.account = {
       id: account.id,
       name: account.name,
       currentBalance: ledgerBalance.toString(),
@@ -98,17 +105,17 @@ async function handleSheetsUser(
       note: account.note,
       tanggalSettlement: account.tanggalSettlement,
       tanggalJatuhTempo: account.tanggalJatuhTempo,
-    },
-    transactions,
-    summary,
-  });
+    };
+  }
+  return NextResponse.json(response);
 }
 
 async function handleDbUser(
   userId: string,
   accountId: string,
   period: string,
-  limit: number
+  limit: number,
+  skipBalance = false
 ) {
   // Verify account ownership
   const account = await prisma.account.findUnique({
@@ -144,8 +151,8 @@ async function handleDbUser(
     }
   }
 
-  // Get current balance
-  const currentBalance = await getSingleAccountBalance(userId, accountId);
+  // Get current balance (skip if client already has it to avoid extra groupBy)
+  const currentBalance = skipBalance ? new Decimal(0) : await getSingleAccountBalance(userId, accountId);
 
   const transactions = rows.slice(0, limit).map((r) => ({
     id: r.id,

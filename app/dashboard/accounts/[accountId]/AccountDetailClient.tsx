@@ -50,19 +50,25 @@ export default function AccountDetailClient({ initialData }: Props) {
   // ── Fetch on period change ──────────────────────────────────────────────
 
   const fetchData = useCallback(
-    async (p: Period) => {
+    async (p: Period, opts?: { skipBalance?: boolean; skipAccount?: boolean }) => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/accounts/${account.id}/transactions?period=${encodeURIComponent(p)}&limit=500`
-        );
+        const qs = new URLSearchParams();
+        qs.set("period", p);
+        qs.set("limit", "500");
+        if (opts?.skipBalance) qs.set("skipBalance", "1");
+        if (opts?.skipAccount) qs.set("skipAccount", "1");
+
+        const res = await fetch(`/api/accounts/${account.id}/transactions?${qs.toString()}`);
         if (res.ok) {
           const json = await res.json();
-          setData({
-            account: json.account,
+          setData((prev) => ({
+            ...prev,
+            // On period change balance/account don't change; on data refresh we want updated values.
+            account: json.account ?? prev.account,
             transactions: json.transactions,
             summary: json.summary,
-          });
+          }));
           setPage(1);
         }
       } catch {
@@ -76,10 +82,11 @@ export default function AccountDetailClient({ initialData }: Props) {
 
   function handlePeriodChange(p: Period) {
     setPeriod(p);
-    fetchData(p);
+    // Period change doesn't affect account metadata or balance — skip re-fetching them.
+    fetchData(p, { skipBalance: true, skipAccount: true });
   }
 
-  // Refresh when other tabs emit data changes
+  // Refresh when other tabs emit data changes — fetch everything since balance may have changed.
   useDataEvent(["transactions", "accounts"], () => {
     fetchData(period);
   });

@@ -5,6 +5,25 @@ import { toZonedTime } from "date-fns-tz";
 import { v4 as uuidv4 } from "uuid";
 
 const TIMEZONE = "Asia/Jakarta";
+const SHEETS_CACHE_TTL_MS = 15_000;
+
+// Simple in-memory TTL cache for Sheets API calls (helps rapid period toggling)
+type CacheEntry<T> = { data: T; ts: number };
+const sheetsCache = new Map<string, CacheEntry<unknown>>();
+
+function getCached<T>(key: string): T | undefined {
+  const entry = sheetsCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() - entry.ts > SHEETS_CACHE_TTL_MS) {
+    sheetsCache.delete(key);
+    return undefined;
+  }
+  return entry.data as T;
+}
+
+function setCached<T>(key: string, data: T) {
+  sheetsCache.set(key, { data, ts: Date.now() });
+}
 
 function getSheetsClient(accessToken: string) {
   const auth = new OAuth2Client();
@@ -137,35 +156,41 @@ export async function getTransactions(
   accessToken: string,
   period?: string
 ): Promise<Transaction[]> {
-  const sheets = getSheetsClient(accessToken);
+  const cacheKey = `tx:${sheetsId}:${accessToken.slice(0, 20)}`;
+  let transactions = getCached<Transaction[]>(cacheKey);
+  if (!transactions) {
+    const sheets = getSheetsClient(accessToken);
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: sheetsId,
-    range: "Transaksi!A2:K",
-    valueRenderOption: "UNFORMATTED_VALUE",
-    dateTimeRenderOption: "FORMATTED_STRING",
-  });
-
-  const rows = res.data.values ?? [];
-  const transactions: Transaction[] = rows
-    .filter((row) => row[0])
-    .map((row) => {
-      // Legacy rows (9 cols): col H = accountId treated as fromAccountId
-      const isLegacy = row.length <= 9 && !row[9];
-      return {
-        id: row[0],
-        date: row[1],
-        amount: Number(row[2]),
-        category: row[3],
-        note: row[4] ?? "",
-        created_at: row[5] ?? "",
-        type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
-        fromAccountId: row[7] || undefined,
-        fromAccountName: row[8] || undefined,
-        toAccountId: isLegacy ? undefined : (row[9] || undefined),
-        toAccountName: isLegacy ? undefined : (row[10] || undefined),
-      };
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetsId,
+      range: "Transaksi!A2:K",
+      valueRenderOption: "UNFORMATTED_VALUE",
+      dateTimeRenderOption: "FORMATTED_STRING",
     });
+
+    const rows = res.data.values ?? [];
+    transactions = rows
+      .filter((row) => row[0])
+      .map((row) => {
+        // Legacy rows (9 cols): col H = accountId treated as fromAccountId
+        const isLegacy = row.length <= 9 && !row[9];
+        return {
+          id: row[0],
+          date: row[1],
+          amount: Number(row[2]),
+          category: row[3],
+          note: row[4] ?? "",
+          created_at: row[5] ?? "",
+          type: (row[6] === "income" ? "income" : "expense") as "expense" | "income",
+          fromAccountId: row[7] || undefined,
+          fromAccountName: row[8] || undefined,
+          toAccountId: isLegacy ? undefined : (row[9] || undefined),
+          toAccountName: isLegacy ? undefined : (row[10] || undefined),
+        };
+      });
+
+    setCached(cacheKey, transactions);
+  }
 
   if (!period) return transactions;
 
@@ -347,6 +372,10 @@ export async function getAccounts(
   sheetsId: string,
   accessToken: string
 ): Promise<AccountData[]> {
+  const cacheKey = `acc:${sheetsId}:${accessToken.slice(0, 20)}`;
+  let accounts = getCached<AccountData[]>(cacheKey);
+  if (accounts) return accounts;
+
   const sheets = getSheetsClient(accessToken);
 
   const res = await sheets.spreadsheets.values.get({
@@ -357,20 +386,23 @@ export async function getAccounts(
   });
 
   const rows = res.data.values ?? [];
-  return rows
+  accounts = rows
     .filter((row) => row[0])
     .map((row) => ({
       id: row[0],
       name: row[1],
       type: row[2],
       classification: row[3],
-        balance: Number(row[4]) || 0,
-        currency: row[5] || "IDR",
-        color: row[6] || null,
-        note: row[7] || null,
-        tanggalSettlement: row[8] ? Number(row[8]) : null,
-        tanggalJatuhTempo: row[9] ? Number(row[9]) : null,
-      }));
+      balance: Number(row[4]) || 0,
+      currency: row[5] || "IDR",
+      color: row[6] || null,
+      note: row[7] || null,
+      tanggalSettlement: row[8] ? Number(row[8]) : null,
+      tanggalJatuhTempo: row[9] ? Number(row[9]) : null,
+    }));
+
+  setCached(cacheKey, accounts);
+  return accounts;
 }
 
 export async function updateAccount(
