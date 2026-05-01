@@ -22,6 +22,7 @@ import {
   BookOpen,
   Bell,
   CalendarDays,
+  Banknote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -78,6 +79,7 @@ export default function Sidebar() {
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+    { name: "Budget", href: "/dashboard/budget", icon: Banknote },
     { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
     { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
     { name: "Tagihan", href: "/dashboard/bills", icon: Bell },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { Transaction } from "@/components/TransactionCard";
 import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Minus, Info, Calendar, AlertCircle, PiggyBank, Pencil, Trash2, Check, X, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -391,6 +392,15 @@ export default function DashboardTabs({
       {/* ── TAB 2: VS BUDGET ────────────────────────────────────────────────── */}
       {activeTab === "budget" && (
         <div className="space-y-4">
+          <div className="flex items-center justify-end">
+            <Link
+              href="/dashboard/budget"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Kelola Budget
+            </Link>
+          </div>
+
           {/* Prorated info pill */}
           <div className="flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />

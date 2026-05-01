@@ -81,6 +81,8 @@ export async function getTransactionsDB(
   } else if (periodLow.includes("bulan ini") || periodLow.includes("this month")) {
     const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     dateFilter = { gte: `${ym}-01`, lte: `${ym}-31` };
+  } else if (/^\d{4}-\d{2}$/.test(period)) {
+    dateFilter = { gte: `${period}-01`, lte: `${period}-31` };
   } else if (periodLow.includes("minggu ini") || periodLow.includes("this week")) {
     const day = now.getDay();
     const monday = new Date(now);
