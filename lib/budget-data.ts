@@ -71,36 +71,57 @@ export async function fetchBudgetMonthData(
   userId: string,
   month: string
 ): Promise<BudgetMonthData> {
-  const previousMonth = getPreviousMonth(month);
+  try {
+    const previousMonth = getPreviousMonth(month);
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { sheetsId: true },
-  });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { sheetsId: true },
+    });
 
-  const [txThisMonth, txPreviousMonth, budgets, previousMonthBudgets] = await Promise.all([
-    fetchRawTransactions(userId, user?.sheetsId ?? null, month),
-    fetchRawTransactions(userId, user?.sheetsId ?? null, previousMonth),
-    prisma.budget.findMany({
-      where: { userId, month },
-      include: { category: true },
-      orderBy: { category: { name: "asc" } },
-    }),
-    prisma.budget.findMany({
-      where: { userId, month: previousMonth },
-      include: { category: true },
-    }),
-  ]);
+    const [txThisMonth, txPreviousMonth, budgets, previousMonthBudgets] = await Promise.all([
+      fetchRawTransactions(userId, user?.sheetsId ?? null, month),
+      fetchRawTransactions(userId, user?.sheetsId ?? null, previousMonth),
+      prisma.budget.findMany({
+        where: { userId, month },
+        include: { category: true },
+        orderBy: { category: { name: "asc" } },
+      }),
+      prisma.budget.findMany({
+        where: { userId, month: previousMonth },
+        include: { category: true },
+      }),
+    ]);
 
-  return computeBudgetData(txThisMonth, txPreviousMonth, budgets, previousMonthBudgets, month);
+    return computeBudgetData(txThisMonth, txPreviousMonth, budgets, previousMonthBudgets, month);
+  } catch (error) {
+    console.error(`Failed to fetch budget month data (${month}):`, error);
+    return emptyBudgetMonthData(month);
+  }
 }
 
 export async function fetchBudgetCategories(userId: string): Promise<BudgetCategoryOption[]> {
-  return prisma.category.findMany({
-    where: { userId, type: "expense" },
-    select: { id: true, name: true, type: true, isSavings: true },
-    orderBy: { name: "asc" },
-  });
+  try {
+    return await prisma.category.findMany({
+      where: { userId, type: "expense" },
+      select: { id: true, name: true, type: true, isSavings: true },
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Failed to fetch budget categories:", error);
+    return [];
+  }
+}
+
+export function emptyBudgetMonthData(month: string): BudgetMonthData {
+  return {
+    month,
+    totalIncome: 0,
+    totalExpense: 0,
+    netCashflow: 0,
+    budgets: [],
+    unbudgeted: [],
+  };
 }
 
 async function fetchRawTransactions(

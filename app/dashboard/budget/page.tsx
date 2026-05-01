@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import {
+  type BudgetCategoryOption,
+  type BudgetMonthData,
+  emptyBudgetMonthData,
   fetchBudgetCategories,
   fetchBudgetMonthData,
   getCurrentMonth,
@@ -23,12 +26,27 @@ export default async function BudgetPage({ searchParams }: Props) {
   const requestedMonth = resolvedSearchParams?.month;
   const month = isValidMonth(requestedMonth) ? requestedMonth : getCurrentMonth();
 
-  await seedDefaultCategories(session.userId);
+  let loadError: string | null = null;
 
-  const [initialData, categories] = await Promise.all([
-    fetchBudgetMonthData(session.userId, month),
-    fetchBudgetCategories(session.userId),
-  ]);
+  try {
+    await seedDefaultCategories(session.userId);
+  } catch (error) {
+    console.error("Failed to seed default categories on budget page:", error);
+    loadError = "Sebagian data kategori gagal dimuat. Coba muat ulang halaman.";
+  }
+
+  let initialData: BudgetMonthData = emptyBudgetMonthData(month);
+  let categories: BudgetCategoryOption[] = [];
+
+  try {
+    [initialData, categories] = await Promise.all([
+      fetchBudgetMonthData(session.userId, month),
+      fetchBudgetCategories(session.userId),
+    ]);
+  } catch (error) {
+    console.error("Failed to load budget page data:", error);
+    loadError = "Budget gagal dimuat. Coba muat ulang halaman.";
+  }
 
   return (
     <div className="flex flex-col w-full">
@@ -46,6 +64,12 @@ export default async function BudgetPage({ searchParams }: Props) {
             </p>
           </div>
         </div>
+
+        {loadError && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {loadError}
+          </div>
+        )}
 
         <BudgetClient initialData={initialData} categories={categories} />
       </div>
