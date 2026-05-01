@@ -18,11 +18,12 @@ interface ManualTransactionFormProps {
   accounts: Account[];
   categories: string[];
   onSuccess: () => void;
+  defaultAccountId?: string;
 }
 
 type TabType = "expense" | "income" | "transfer";
 
-export default function ManualTransactionForm({ accounts, categories, onSuccess }: ManualTransactionFormProps) {
+export default function ManualTransactionForm({ accounts, categories, onSuccess, defaultAccountId }: ManualTransactionFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<TabType>("expense");
   const [loading, setLoading] = useState(false);
@@ -40,13 +41,13 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess 
   // Reset form on tab change
   useEffect(() => {
     setAmount("");
-    setAccountId("");
+    setAccountId(defaultAccountId ?? "");
     setToAccountId("");
     setCategory("");
     setNote("");
     setError(null);
     setSuccess(null);
-  }, [tab]);
+  }, [tab, defaultAccountId]);
 
   const activeAccounts = accounts.filter((a) => a.id);
 

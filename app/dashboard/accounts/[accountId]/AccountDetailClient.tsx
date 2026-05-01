@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { TrendingUp, TrendingDown, Activity, Loader2 } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect, useRef, type FormEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
+import { TrendingUp, TrendingDown, Activity, Loader2, Plus, SendHorizonal, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import TransactionCard from "@/components/TransactionCard";
+import ManualTransactionForm from "@/components/ManualTransactionForm";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import type { AccountDetailData, AccountTransaction } from "@/lib/account-detail-data";
 
@@ -15,6 +18,17 @@ type Period = "bulan ini" | "bulan lalu" | "3 bulan" | "semua";
 interface Props {
   initialData: AccountDetailData;
 }
+
+interface AccountOption {
+  id: string;
+  name: string;
+  currency: string;
+  accountType: { name: string; classification: string };
+}
+
+type PromptResult =
+  | { error: string }
+  | { intent?: string; message?: string; clarification?: string; transaction?: unknown; transactions?: unknown[] };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,6 +41,11 @@ function formatIDR(value: string | number): string {
   }).format(num);
 }
 
+function promptMentionsAccount(prompt: string, accounts: AccountOption[]): boolean {
+  const normalized = prompt.toLocaleLowerCase("id-ID");
+  return accounts.some((a) => a.name && normalized.includes(a.name.toLocaleLowerCase("id-ID")));
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountDetailClient({ initialData }: Props) {
@@ -35,6 +54,15 @@ export default function AccountDetailClient({ initialData }: Props) {
   const [loading, setLoading] = useState(false);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [accounts, setAccounts] = useState<AccountOption[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [modalDataLoading, setModalDataLoading] = useState(false);
+  const [modalDataError, setModalDataError] = useState<string | null>(null);
+  const [prompt, setPrompt] = useState("");
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { account, transactions, summary } = data;
   const isLiability = account.accountType.classification === "liability";
@@ -86,10 +114,111 @@ export default function AccountDetailClient({ initialData }: Props) {
     fetchData(p, { skipBalance: true, skipAccount: true });
   }
 
+  const fetchModalData = useCallback(async () => {
+    setModalDataLoading(true);
+    setModalDataError(null);
+    try {
+      const [accountsRes, categoriesRes] = await Promise.all([
+        fetch("/api/accounts", { cache: "no-store" }),
+        fetch("/api/categories", { cache: "no-store" }),
+      ]);
+      if (!accountsRes.ok || !categoriesRes.ok) {
+        setModalDataError("Gagal memuat data akun/kategori.");
+        return;
+      }
+      const [accountsJson, categoriesJson] = await Promise.all([
+        accountsRes.json(),
+        categoriesRes.json(),
+      ]);
+      setAccounts(accountsJson.accounts ?? []);
+      setCategories((categoriesJson.categories ?? []).map((c: { name: string }) => c.name));
+    } catch {
+      setModalDataError("Gagal memuat data akun/kategori.");
+    } finally {
+      setModalDataLoading(false);
+    }
+  }, []);
+
+  const handleTransactionCreated = useCallback(() => {
+    emitDataChanged(["transactions", "budget", "accounts"]);
+  }, []);
+
+  const handleManualTransactionCreated = useCallback(() => {
+    fetchData(period);
+  }, [fetchData, period]);
+
+  async function handlePromptSubmit(e?: FormEvent) {
+    e?.preventDefault();
+    if (!prompt.trim() || promptLoading) return;
+
+    setPromptLoading(true);
+    setPromptResult(null);
+
+    const trimmedPrompt = prompt.trim();
+    const effectivePrompt = promptMentionsAccount(trimmedPrompt, accounts)
+      ? trimmedPrompt
+      : `${trimmedPrompt} akun ${account.name}`;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch("/api/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: effectivePrompt }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let errMsg = "Server error. Coba lagi.";
+        try { errMsg = JSON.parse(text)?.error ?? errMsg; } catch {}
+        setPromptResult({ error: errMsg });
+        return;
+      }
+
+      const result = await res.json();
+      setPromptResult(result);
+
+      if (
+        result.intent === "transaksi" ||
+        result.intent === "transaksi_bulk" ||
+        result.intent === "pemasukan"
+      ) {
+        setPrompt("");
+        handleTransactionCreated();
+      }
+    } catch {
+      setPromptResult({ error: "Koneksi gagal. Coba lagi." });
+    } finally {
+      setPromptLoading(false);
+    }
+  }
+
+  function handlePromptKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handlePromptSubmit();
+    }
+  }
+
   // Refresh when other tabs emit data changes — fetch everything since balance may have changed.
   useDataEvent(["transactions", "accounts"], () => {
     fetchData(period);
   });
+
+  useDataEvent(["accounts", "categories"], () => {
+    if (showAddModal) fetchModalData();
+  });
+
+  useEffect(() => {
+    if (showAddModal) {
+      fetchModalData();
+      setPromptResult(null);
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    }
+  }, [showAddModal, fetchModalData]);
 
   // ── Transaction CRUD handlers ───────────────────────────────────────────
 
@@ -148,6 +277,15 @@ export default function AccountDetailClient({ initialData }: Props) {
                 </p>
               )}
           </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowAddModal(true)}
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            Tambah Transaksi
+          </Button>
           <div className="text-right shrink-0">
             <p className="text-xs text-muted-foreground mb-0.5">Saldo Saat Ini</p>
             <p
@@ -325,6 +463,116 @@ export default function AccountDetailClient({ initialData }: Props) {
           </>
         )}
       </div>
+
+      {showAddModal && createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+        >
+          <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div>
+                <h2 className="text-base font-semibold">Tambah Transaksi</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Default akun: {account.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-muted-foreground hover:text-foreground text-xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5 overflow-y-auto">
+              <form onSubmit={handlePromptSubmit} className="space-y-2">
+                <div className="relative">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder={`Contoh: "Makan siang 35rb" akan dicatat di ${account.name}`}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={handlePromptKeyDown}
+                    rows={2}
+                    className="resize-none pr-12 rounded-[20px] shadow-sm py-3 px-4 focus-visible:ring-primary"
+                    disabled={promptLoading}
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!prompt.trim() || promptLoading}
+                    className="absolute bottom-2.5 right-2 h-9 w-9 rounded-full shadow-md hover:-translate-y-px transition-transform"
+                  >
+                    {promptLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SendHorizonal className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-[12px] font-medium text-muted-foreground px-2">
+                  Enter untuk kirim &middot; Shift+Enter untuk baris baru
+                </p>
+              </form>
+
+              {promptResult && (
+                "error" in promptResult ? (
+                  <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-red-500/40 bg-red-500/5">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
+                    <p className="text-sm text-destructive">{promptResult.error}</p>
+                  </div>
+                ) : promptResult.intent === "transaksi" || promptResult.intent === "transaksi_bulk" || promptResult.intent === "pemasukan" ? (
+                  <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-green-500/30 bg-green-500/5">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
+                    <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                      {promptResult.message ?? "Transaksi berhasil dicatat."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-amber-500/30 bg-amber-500/5">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                    <p className="text-sm text-amber-700 dark:text-amber-400">
+                      {promptResult.clarification ?? promptResult.message ?? "Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda."}
+                    </p>
+                  </div>
+                )
+              )}
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">atau input manual</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              {modalDataLoading ? (
+                <div className="h-[280px] animate-pulse rounded-xl bg-muted" />
+              ) : modalDataError ? (
+                <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-4">
+                  <p className="text-sm text-destructive">{modalDataError}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={fetchModalData}
+                    className="mt-3"
+                  >
+                    Coba Lagi
+                  </Button>
+                </div>
+              ) : (
+                <ManualTransactionForm
+                  accounts={accounts}
+                  categories={categories}
+                  defaultAccountId={account.id}
+                  onSuccess={handleManualTransactionCreated}
+                />
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
