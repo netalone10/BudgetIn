@@ -6,6 +6,7 @@ import { getTransactionsDB } from "@/utils/db-transactions";
 import { getTransactions } from "@/utils/sheets";
 import { getValidToken } from "@/utils/token";
 import { callWithRotation } from "@/utils/groq";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -62,7 +63,7 @@ export async function GET() {
 
     const byCategory: Record<string, number> = {};
     for (const t of transactions) {
-      if (t.type !== "income") {
+      if (isExpenseTransaction(t)) {
         byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
       }
     }

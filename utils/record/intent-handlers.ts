@@ -19,6 +19,7 @@ import { appendTransactionDB, getTransactionsDB } from "@/utils/db-transactions"
 import { callWithRotation } from "@/utils/groq";
 import { buildAccountResolver, type RuntimeAccount } from "./account-resolver";
 import { correctAmount, isValidAmount } from "./amount-parser";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
@@ -413,7 +414,7 @@ export async function handleLaporan(parsed: ParsedIntent, ctx: RecordContext): P
 
     const spentByCategory: Record<string, number> = {};
     for (const t of transactions) {
-      if (t.type !== "income") spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
+      if (isExpenseTransaction(t)) spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
     }
     const totalSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
 

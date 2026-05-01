@@ -11,6 +11,7 @@ import { startOfWeek } from "date-fns/startOfWeek";
 import { endOfWeek } from "date-fns/endOfWeek";
 import { format } from "date-fns/format";
 import { isSavingsTransaction } from "@/lib/savings-utils";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
@@ -172,7 +173,7 @@ export default function DashboardTabs({
 
   // Split transactions
   const incomeTxs = useMemo(() => filteredTransactions.filter((t) => t.type === "income"), [filteredTransactions]);
-  const expenseTxs = useMemo(() => filteredTransactions.filter((t) => t.type !== "income"), [filteredTransactions]);
+  const expenseTxs = useMemo(() => filteredTransactions.filter(isExpenseTransaction), [filteredTransactions]);
 
   // Further split expense into savings vs non-savings
   // totalSavings counts ALL savings transactions without cap (cashflow actuals, not goal progress)

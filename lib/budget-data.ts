@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { getTransactions } from "@/utils/sheets";
 import { getTransactionsDB } from "@/utils/db-transactions";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -45,6 +46,8 @@ type RawTxn = {
   amount: number;
   category: string;
   type: "expense" | "income" | "transfer_out" | "transfer_in";
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
 };
 
 type BudgetWithCategory = {
@@ -137,6 +140,8 @@ async function fetchRawTransactions(
         amount: t.amount,
         category: t.category,
         type: t.type,
+        fromAccountId: t.fromAccountId ?? null,
+        toAccountId: t.toAccountId ?? null,
       }));
     }
 
@@ -145,6 +150,8 @@ async function fetchRawTransactions(
       amount: t.amount,
       category: t.category,
       type: t.type,
+      fromAccountId: null,
+      toAccountId: null,
     }));
   } catch (error) {
     console.error(`Failed to fetch budget transactions (${month}):`, error);
@@ -167,14 +174,14 @@ function computeBudgetData(
   for (const t of txThisMonth) {
     if (t.type === "income") {
       totalIncome += t.amount;
-    } else {
+    } else if (isExpenseTransaction(t)) {
       totalExpense += t.amount;
       spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
     }
   }
 
   for (const t of txPreviousMonth) {
-    if (t.type !== "income") {
+    if (isExpenseTransaction(t)) {
       previousMonthSpent[t.category] = (previousMonthSpent[t.category] ?? 0) + t.amount;
     }
   }

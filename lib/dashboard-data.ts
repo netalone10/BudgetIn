@@ -12,6 +12,7 @@ import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccountsWithBalance } from "@/utils/sheets";
 import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -178,6 +179,8 @@ interface RawTxn {
   note: string;
   type: "expense" | "income" | "transfer_out" | "transfer_in";
   accountId: string | null;
+  fromAccountId?: string | null;
+  toAccountId?: string | null;
   created_at: string;
 }
 
@@ -198,6 +201,8 @@ async function fetchRawTransactions(
         note: t.note,
         type: (t.type === "income" ? "income" : "expense") as RawTxn["type"],
         accountId: t.fromAccountId ?? t.toAccountId ?? null,
+        fromAccountId: t.fromAccountId ?? null,
+        toAccountId: t.toAccountId ?? null,
         created_at: t.created_at ?? new Date().toISOString(),
       }));
     }
@@ -210,6 +215,8 @@ async function fetchRawTransactions(
       note: t.note,
       type: t.type,
       accountId: t.accountId,
+      fromAccountId: null,
+      toAccountId: null,
       created_at: t.created_at ?? new Date().toISOString(),
     }));
   } catch (error) {
@@ -255,13 +262,13 @@ function computeBudgetData(
     for (const t of txThisMonth) {
       if (t.type === "income") {
         totalIncome += t.amount;
-      } else {
+      } else if (isExpenseTransaction(t)) {
         totalExpense += t.amount;
         spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
       }
     }
     for (const t of txLastMonth) {
-      if (t.type !== "income") {
+      if (isExpenseTransaction(t)) {
         lastMonthSpent[t.category] = (lastMonthSpent[t.category] ?? 0) + t.amount;
       }
     }

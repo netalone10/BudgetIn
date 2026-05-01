@@ -8,6 +8,7 @@ import { getTransactions } from "@/utils/sheets";
 import { getTransactionsDB } from "@/utils/db-transactions";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
       if (t.category === "Saldo Awal") continue;
       if (t.type === "income") {
         totalIncome += t.amount;
-      } else {
+      } else if (isExpenseTransaction(t)) {
         spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
       }
     }

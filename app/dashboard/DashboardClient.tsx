@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
 
 // Dynamic imports for heavy components
@@ -131,9 +132,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
   const todayStats = useMemo(() => {
     const todayTxs = transactions.filter((t) => t.date === todayStr);
-    const expense = todayTxs.filter((t) => t.type !== "income").reduce((s, t) => s + t.amount, 0);
+    const expenseTxs = todayTxs.filter(isExpenseTransaction);
+    const expense = expenseTxs.reduce((s, t) => s + t.amount, 0);
     const income = todayTxs.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-    const count = todayTxs.filter((t) => t.type !== "income").length;
+    const count = expenseTxs.length;
     return { expense, income, count };
   }, [transactions, todayStr]);
 
