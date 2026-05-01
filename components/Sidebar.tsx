@@ -23,13 +23,16 @@ import {
   Bell,
   CalendarDays,
   Banknote,
+  Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import ManageCategoriesModal from "@/components/ManageCategoriesModal";
 import ChangePasswordModal from "@/components/ChangePasswordModal";
 import OnboardingModal from "@/components/OnboardingModal";
+import CalculatorModal from "@/components/CalculatorModal";
 
 export default function Sidebar() {
   const { data: session } = useSession();
@@ -41,6 +44,7 @@ export default function Sidebar() {
   const [showManageCategories, setShowManageCategories] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showCalculator, setShowCalculator] = useState(false);
 
   // Tampilkan onboarding sekali per user (localStorage)
   useEffect(() => {
@@ -194,9 +198,18 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <div className="p-3 border-t border-border flex flex-col gap-3">
-        <div className={cn("flex items-center", isCollapsed ? "justify-center" : "justify-between px-1")}>
-          <ThemeToggle />
+      <div className={cn("border-t border-border flex flex-col gap-3", isCollapsed ? "p-1.5" : "p-3")}>
+        <div className={cn("flex items-center gap-1", isCollapsed ? "justify-center" : "justify-start px-1")}>
+          <ThemeToggle compact={isCollapsed} />
+          <Button
+            variant="ghost"
+            size={isCollapsed ? "icon-xs" : "icon-sm"}
+            onClick={() => setShowCalculator(true)}
+            aria-label="Buka calculator"
+            title="Calculator"
+          >
+            <Calculator className={isCollapsed ? "h-3 w-3" : "h-4 w-4"} />
+          </Button>
         </div>
         
         {session?.user && (
@@ -340,7 +353,18 @@ export default function Sidebar() {
           </nav>
 
           <div className="p-4 border-t border-border flex flex-col gap-4">
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => { setIsMobileOpen(false); setShowCalculator(true); }}
+                aria-label="Buka calculator"
+                title="Calculator"
+              >
+                <Calculator className="h-4 w-4" />
+              </Button>
+            </div>
             {session?.user && (
               <div className="flex items-center justify-between rounded-xl p-3 bg-muted/40 border border-border/50">
                 <div className="flex items-center gap-3 min-w-0">
@@ -382,6 +406,10 @@ export default function Sidebar() {
 
       {showChangePassword && (
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
+      )}
+
+      {showCalculator && (
+        <CalculatorModal onClose={() => setShowCalculator(false)} />
       )}
 
       {showOnboarding && (
