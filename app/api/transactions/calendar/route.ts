@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { getTransactions } from "@/utils/sheets";
+import { isExpenseTransaction, isTransferTransaction } from "@/lib/transaction-classification";
 
 export interface CalendarTransaction {
   id: string;
@@ -70,14 +71,14 @@ export async function GET(req: NextRequest) {
           amount: t.amount,
           category: t.category,
           note: t.note,
-          type: t.type,
+          type: isTransferTransaction(t) ? "transfer_out" : t.type,
           accountName: t.fromAccountName ?? t.toAccountName,
         };
 
         if (t.type === "income") {
           days[day].income += t.amount;
           totalIncome += t.amount;
-        } else {
+        } else if (isExpenseTransaction(t)) {
           days[day].expense += t.amount;
           totalExpense += t.amount;
         }
@@ -121,10 +122,10 @@ export async function GET(req: NextRequest) {
       accountName: t.account?.name,
     };
 
-    if (t.type === "income" || t.type === "transfer_in") {
+    if (t.type === "income") {
       days[t.date].income += amount;
       totalIncome += amount;
-    } else if (t.type === "expense" || t.type === "transfer_out") {
+    } else if (isExpenseTransaction(t)) {
       days[t.date].expense += amount;
       totalExpense += amount;
     }

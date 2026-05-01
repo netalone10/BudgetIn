@@ -137,7 +137,7 @@ export async function GET(req: NextRequest) {
     }
 
     const expenseTxs = transactions
-      .filter((t) => t.type === "expense" && t.category !== "Saldo Awal")
+      .filter((t) => isExpenseTransaction(t) && t.category !== "Saldo Awal")
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5)
       .map((t) => ({
@@ -148,7 +148,7 @@ export async function GET(req: NextRequest) {
       }));
 
     const txDates = transactions
-      .filter((t) => t.type === "expense")
+      .filter(isExpenseTransaction)
       .map((t) => t.date.slice(0, 10));
     const uniqueDays = new Set(txDates).size || 1;
     const dailyAvgSpending = Math.round(totalSpent / uniqueDays);

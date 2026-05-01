@@ -69,7 +69,11 @@ function typeLabel(type: CalendarTransaction["type"]): string {
 }
 
 function isIncome(type: CalendarTransaction["type"]): boolean {
-  return type === "income" || type === "transfer_in";
+  return type === "income";
+}
+
+function isTransfer(type: CalendarTransaction["type"]): boolean {
+  return type === "transfer_in" || type === "transfer_out";
 }
 
 export default function CalendarClient() {
@@ -305,7 +309,7 @@ export default function CalendarClient() {
                       <span
                         className={cn(
                           "h-1.5 w-1.5 rounded-full shrink-0",
-                          isIncome(tx.type) ? "bg-emerald-500" : "bg-red-500"
+                          isTransfer(tx.type) ? "bg-muted-foreground" : isIncome(tx.type) ? "bg-emerald-500" : "bg-red-500"
                         )}
                       />
                       <span className="text-sm font-medium text-foreground truncate">
@@ -324,12 +328,14 @@ export default function CalendarClient() {
                   <div
                     className={cn(
                       "text-sm font-semibold shrink-0",
-                      isIncome(tx.type)
+                      isTransfer(tx.type)
+                        ? "text-muted-foreground"
+                        : isIncome(tx.type)
                         ? "text-emerald-600 dark:text-emerald-400"
                         : "text-red-500"
                     )}
                   >
-                    {isIncome(tx.type) ? "+" : "-"}
+                    {isTransfer(tx.type) ? "" : isIncome(tx.type) ? "+" : "-"}
                     {formatIDR(tx.amount)}
                   </div>
                 </div>
