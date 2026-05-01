@@ -32,6 +32,11 @@ export interface RecordContext {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ParsedIntent = Record<string, any>;
 
+function formatSignedIDR(amount: number, positivePrefix = ""): string {
+  const sign = amount < 0 ? "-" : positivePrefix;
+  return `${sign}Rp ${Math.abs(amount).toLocaleString("id-ID")}`;
+}
+
 export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
   const { userId, useSheets, sheetsId, accessToken, userAccounts, prompt } = ctx;
   const raw = parsed;
@@ -71,7 +76,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
     return NextResponse.json({
       intent: "transaksi",
       transaction,
-      message: `✓ Dicatat: ${parsed.category} — Rp ${parsed.amount.toLocaleString("id-ID")}`,
+      message: `✓ Dicatat: ${parsed.category} — ${formatSignedIDR(parsed.amount)}`,
       details: {
         date: base.date,
         category: parsed.category,
@@ -130,7 +135,7 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
     return NextResponse.json({
       intent: "transaksi_bulk",
       transactions,
-      message: `✓ ${transactions.length} transaksi dicatat (total Rp ${total.toLocaleString("id-ID")})`,
+      message: `✓ ${transactions.length} transaksi dicatat (total ${formatSignedIDR(total)})`,
       details: {
         date: parsed.date ?? ctx.today,
         accountName,
@@ -184,7 +189,7 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
       transaction,
       amount: incomeAmount,
       category: incomeCategory,
-      message: `✓ Pemasukan dicatat: ${incomeCategory} +Rp ${incomeAmount.toLocaleString("id-ID")}`,
+      message: `✓ Pemasukan dicatat: ${incomeCategory} ${formatSignedIDR(incomeAmount, "+")}`,
       details: {
         date: base.date,
         category: incomeCategory,

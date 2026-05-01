@@ -117,13 +117,17 @@ RULES:
             "k"            = × 1.000
    Contoh BENAR:
      "35rb"      → 35000        (35 × 1000)
+     "-35rb"     → -35000       (minus dipertahankan)
+     "minus 50rb" → -50000
      "200rb"     → 200000       (200 × 1000, BUKAN 200000000)
      "500ribu"   → 500000
      "1.5jt"     → 1500000
+     "-1.5jt"    → -1500000
      "2jt"       → 2000000
      "2k"        → 2000
      "1.500.000" → 1500000
    JANGAN pernah mengembalikan amount > 10.000.000 kecuali input jelas menyebut "juta"/"jt".
+   Jika user menulis tanda minus, output amount/incomeAmount/budgetAmount harus tetap negatif.
 
 4. Resolve tanggal relatif ke format YYYY-MM-DD timezone Asia/Jakarta:
    - "kemarin" → yesterday
@@ -149,12 +153,19 @@ RULES:
    Gunakan "transaksi" (bukan bulk) jika hanya ADA SATU item.
 
 9. VALIDASI NOMINAL WAJIB: Input transaksi/pemasukan/budget_setting HARUS mengandung nominal uang dalam IDR.
-   - VALID: "makan 35rb", "gajian 8jt", "beli kopi 25000", "dapat freelance 2.5jt"
+   - VALID: "makan 35rb", "gajian 8jt", "beli kopi 25000", "dapat freelance 2.5jt", "refund makan -50rb", "koreksi gaji minus 100rb"
    - TIDAK VALID → return unknown: "dapat warisan 1kg emas", "jual 1 lot BBCA", "beli 2 gram emas", "terima 50 pcs barang"
    Jika input menggunakan satuan NON-UANG (kg, gram, gr, ons, ton, lot, unit, pcs, ekor, biji, potong, ikat, helai, lusin, botol, kaleng, sachet, kantong, bungkus, kotak, porsi, meter, liter, ml) tanpa menyebut nilai/harga dalam IDR,
    return: {"intent":"unknown","clarification":"Input harus berisi nominal uang (contoh: 35rb, 2jt). Untuk aset non-uang, tulis nilainya: 'jual saham dapat 5jt' atau 'dapat emas senilai 3jt'."}
 
-10. EXTRACT AKUN: Jika user menyebut nama akun/bank/dompet/kartu kredit, extract ke field "accountName".
+10. NOMINAL MINUS:
+   - Nominal minus valid untuk koreksi/refund/retur/reversal/pembatalan pada "transaksi" dan "pemasukan".
+   - "refund makan -50rb" → {"intent":"transaksi","amount":-50000,...}
+   - "koreksi gaji minus 100rb" → {"intent":"pemasukan","incomeAmount":-100000,...}
+   - Jangan menghilangkan tanda minus jika user menulis minus.
+   - Jangan gunakan nominal minus untuk transfer; transfer harus dicatat dengan arah akun asal/tujuan yang benar.
+
+11. EXTRACT AKUN: Jika user menyebut nama akun/bank/dompet/kartu kredit, extract ke field "accountName".
    Contoh:
    - "makan 50rb pakai BCA" → accountName: "BCA"
    - "bayar pakai Mandiri" → accountName: "Mandiri"
@@ -163,7 +174,7 @@ RULES:
    - "dari dompet" → accountName: "dompet"
    Jika TIDAK disebutkan, JANGAN isi accountName (biarkan undefined/null).
 
-11. FORMAT JSON WAJIB per intent:
+12. FORMAT JSON WAJIB per intent:
    - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
    - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"accountName":"STRING","date":"YYYY-MM-DD"}
    - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}

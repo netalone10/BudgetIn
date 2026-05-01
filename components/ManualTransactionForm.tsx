@@ -84,12 +84,21 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
     setError(null);
     setSuccess(null);
 
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      setError("Nominal harus lebih dari 0.");
+    const parsedAmount = Number(amount);
+    if (!amount || isNaN(parsedAmount)) {
+      setError("Nominal tidak valid.");
+      return;
+    }
+    if (tab === "transfer" && parsedAmount <= 0) {
+      setError("Nominal transfer harus lebih dari 0.");
+      return;
+    }
+    if (tab !== "transfer" && parsedAmount === 0) {
+      setError("Nominal tidak boleh 0.");
       return;
     }
 
-    const payload: Record<string, unknown> = { type: tab, amount: Number(amount), date, note };
+    const payload: Record<string, unknown> = { type: tab, amount: parsedAmount, date, note };
 
     if (tab === "transfer") {
       payload.accountId = accountId;
@@ -168,7 +177,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
           <label className="block text-xs font-medium text-muted-foreground mb-1">Nominal (Rp)</label>
           <input
             type="number"
-            min="1"
+            min={tab === "transfer" ? "1" : "-1000000000"}
             max="1000000000"
             step="1"
             value={amount}

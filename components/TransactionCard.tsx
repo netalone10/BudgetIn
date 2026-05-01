@@ -127,7 +127,6 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
               <label className={LABEL_CLS}>Nominal (Rp)</label>
               <input
                 type="number"
-                min="1"
                 step="1"
                 value={editAmount}
                 onChange={(e) => setEditAmount(e.target.value)}
@@ -228,6 +227,8 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
   }
 
   const isIncome = transaction.type === "income" || transaction.type === "transfer_in";
+  const effectiveAmount = isIncome ? transaction.amount : -transaction.amount;
+  const isPositiveEffect = effectiveAmount >= 0;
 
   const displayAccount =
     transaction.fromAccountName ||
@@ -270,9 +271,9 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
         <td className="py-2.5 pr-2 text-right whitespace-nowrap">
           <span className={cn(
             "text-sm font-semibold tabular-nums",
-            isIncome ? "text-green-600 dark:text-green-400" : ""
+            isPositiveEffect ? "text-green-600 dark:text-green-400" : ""
           )}>
-            {isIncome ? "+" : "-"}{formatRupiah(transaction.amount)}
+            {isPositiveEffect ? "+" : "-"}{formatRupiah(Math.abs(transaction.amount))}
           </span>
         </td>
 

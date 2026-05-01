@@ -30,6 +30,16 @@ function fmt(n: number) {
   return new Intl.NumberFormat("id-ID").format(Math.abs(n));
 }
 
+function fmtSigned(n: number, positivePrefix = "+") {
+  const sign = n < 0 ? "-" : positivePrefix;
+  return `${sign}${fmt(n)}`;
+}
+
+function fmtEffect(type: "income" | "expense", amount: number) {
+  const effective = type === "income" ? amount : -amount;
+  return fmtSigned(effective);
+}
+
 function fmtCompact(n: number) {
   const abs = Math.abs(n);
   if (abs >= 1_000_000) return `${(abs / 1_000_000).toFixed(1).replace(".0", "")}jt`;
@@ -324,25 +334,25 @@ export default function DashboardTabs({
             <MetricCard
               icon={<TrendingUp className="h-3.5 w-3.5 text-green-500" />}
               label="Pemasukan"
-              value={`+${fmt(totalIncome)}`}
-              valueClass="text-green-600 dark:text-green-400"
+              value={fmtEffect("income", totalIncome)}
+              valueClass={totalIncome >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}
             />
             <MetricCard
               icon={<TrendingDown className="h-3.5 w-3.5 text-destructive" />}
               label="Pengeluaran"
-              value={`-${fmt(totalExpense)}`}
-              valueClass="text-destructive"
+              value={fmtEffect("expense", totalExpense)}
+              valueClass={totalExpense >= 0 ? "text-destructive" : "text-green-600 dark:text-green-400"}
             />
             <MetricCard
               icon={<PiggyBank className="h-3.5 w-3.5 text-blue-500" />}
               label="Tabungan"
-              value={`-${fmt(totalSavings)}`}
-              valueClass="text-blue-600 dark:text-blue-400"
+              value={fmtEffect("expense", totalSavings)}
+              valueClass={totalSavings >= 0 ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400"}
             />
             <MetricCard
               icon={<Minus className="h-3.5 w-3.5 text-muted-foreground" />}
               label="Sisa"
-              value={`${sisa >= 0 ? "+" : "-"}${fmt(sisa)}`}
+              value={fmtSigned(sisa)}
               valueClass={sisa >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}
             />
           </div>
@@ -421,7 +431,7 @@ export default function DashboardTabs({
                 <span className="text-sm font-medium">Total Pemasukan Bulan Ini</span>
               </div>
               <span className="text-sm font-bold text-green-600 dark:text-green-400 tabular-nums">
-                +{fmt(totalIncome)}
+                {fmtEffect("income", totalIncome)}
               </span>
             </div>
           )}
@@ -789,10 +799,9 @@ interface CategorySectionProps {
 function CategorySection({
   title, type, categories, total, transactions, expanded, onToggle,
 }: CategorySectionProps) {
-  const signPrefix = type === "income" ? "+" : "-";
-  const valueClass =
-    type === "income" ? "text-green-600 dark:text-green-400" : "text-destructive";
   const barClass = type === "income" ? "bg-green-500" : "bg-destructive";
+  const sectionEffect = type === "income" ? total : -total;
+  const valueClass = sectionEffect >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive";
 
   return (
     <div className="rounded-xl border bg-card overflow-hidden">
@@ -802,16 +811,18 @@ function CategorySection({
           {title}
         </span>
         <span className={cn("text-sm font-bold tabular-nums", valueClass)}>
-          {signPrefix}{fmt(total)}
+          {fmtEffect(type, total)}
         </span>
       </div>
 
       {/* Rows */}
       {categories.map(([cat, amount]) => {
         const key = `${type}-${cat}`;
-        const pct = total > 0 ? (amount / total) * 100 : 0;
+        const pct = Math.abs(total) > 0 ? (Math.abs(amount) / Math.abs(total)) * 100 : 0;
         const isOpen = expanded.has(key);
         const catTxs = transactions.filter((t) => t.category === cat);
+        const amountEffect = type === "income" ? amount : -amount;
+        const amountClass = amountEffect >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive";
 
         return (
           <div key={cat} className="border-b last:border-0">
@@ -830,8 +841,8 @@ function CategorySection({
                     <span className="text-xs text-muted-foreground tabular-nums">
                       {pct.toFixed(0)}%
                     </span>
-                    <span className={cn("text-sm font-semibold tabular-nums", valueClass)}>
-                      {signPrefix}{fmt(amount)}
+                    <span className={cn("text-sm font-semibold tabular-nums", amountClass)}>
+                      {fmtEffect(type, amount)}
                     </span>
                   </div>
                 </div>
@@ -853,20 +864,26 @@ function CategorySection({
                   </p>
                 ) : (
                   <div className="min-w-[360px]">
-                    {catTxs.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 text-xs hover:bg-muted/30 gap-3"
-                      >
-                        <span className="shrink-0 text-muted-foreground w-12">
-                          {formatDate(t.date)}
-                        </span>
-                        <span className="flex-1 whitespace-nowrap">{t.note || "—"}</span>
-                        <span className={cn("shrink-0 font-semibold tabular-nums", valueClass)}>
-                          {signPrefix}{fmt(t.amount)}
-                        </span>
-                      </div>
-                    ))}
+                    {catTxs.map((t) => {
+                      const txEffect = type === "income" ? t.amount : -t.amount;
+                      return (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 text-xs hover:bg-muted/30 gap-3"
+                        >
+                          <span className="shrink-0 text-muted-foreground w-12">
+                            {formatDate(t.date)}
+                          </span>
+                          <span className="flex-1 whitespace-nowrap">{t.note || "—"}</span>
+                          <span className={cn(
+                            "shrink-0 font-semibold tabular-nums",
+                            txEffect >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"
+                          )}>
+                            {fmtEffect(type, t.amount)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

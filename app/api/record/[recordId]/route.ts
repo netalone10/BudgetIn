@@ -3,10 +3,18 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
-import { updateTransaction, deleteTransaction, getAccounts } from "@/utils/sheets";
+import { updateTransaction, deleteTransaction, getAccounts, getTransactionRow } from "@/utils/sheets";
 import { updateTransactionDB, deleteTransactionDB } from "@/utils/db-transactions";
 
 type Params = { params: Promise<{ recordId: string }> };
+
+function isValidTransactionAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount !== 0 && Math.abs(amount) <= 1_000_000_000;
+}
+
+function isValidTransferAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
+}
 
 // PATCH /api/record/[recordId] — edit transaksi
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -37,6 +45,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         { error: "Gunakan fitur 'Sesuaikan Saldo' di halaman Akun untuk mengubah saldo awal." },
         { status: 403 }
       );
+    }
+
+    if (body.amount !== undefined) {
+      const parsedAmount = Number(body.amount);
+      const validAmount = existing.transferId
+        ? isValidTransferAmount(parsedAmount)
+        : isValidTransactionAmount(parsedAmount);
+      if (!validAmount) {
+        return NextResponse.json(
+          { error: existing.transferId ? "Nominal transfer harus lebih dari 0." : "Nominal tidak boleh 0." },
+          { status: 400 }
+        );
+      }
+      body.amount = parsedAmount;
     }
 
     try {
@@ -74,6 +96,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   try {
+    if (body.amount !== undefined) {
+      const existing = await getTransactionRow(user.sheetsId, accessToken, recordId);
+      if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
+      const parsedAmount = Number(body.amount);
+      const isTransfer = !!existing.fromAccountId && !!existing.toAccountId;
+      const validAmount = isTransfer
+        ? isValidTransferAmount(parsedAmount)
+        : isValidTransactionAmount(parsedAmount);
+      if (!validAmount) {
+        return NextResponse.json(
+          { error: isTransfer ? "Nominal transfer harus lebih dari 0." : "Nominal tidak boleh 0." },
+          { status: 400 }
+        );
+      }
+      body.amount = parsedAmount;
+    }
+
     let fromAccountId: string | undefined;
     let fromAccountName: string | undefined;
     if (body.accountId !== undefined) {

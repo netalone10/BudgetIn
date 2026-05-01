@@ -54,6 +54,11 @@ function formatTanggalID(iso: string): string {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d);
 }
 
+function formatSignedIDR(amount: number, positivePrefix = ""): string {
+  const sign = amount < 0 ? "-" : positivePrefix;
+  return `${sign}Rp ${Math.abs(amount).toLocaleString("id-ID")}`;
+}
+
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <>
@@ -338,8 +343,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </span>
                 </div>
                 <p className="text-xl font-semibold tabular-nums text-foreground mt-1">
-                  {todayStats.expense > 0
-                    ? `Rp ${new Intl.NumberFormat("id-ID").format(todayStats.expense)}`
+                  {todayStats.expense !== 0
+                    ? formatSignedIDR(todayStats.expense)
                     : <span className="text-muted-foreground text-base">Belum ada</span>
                   }
                 </p>
@@ -352,17 +357,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
 
             {/* Pemasukan hari ini */}
-            {todayStats.income > 0 && (
+            {todayStats.income !== 0 && (
               <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between shadow-sm">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="h-4 w-4 text-[#0fa76e]" />
+                    <TrendingUp className={cn("h-4 w-4", todayStats.income >= 0 ? "text-[#0fa76e]" : "text-destructive")} />
                     <span className="text-[13px] font-medium text-muted-foreground">
                       Masuk hari ini
                     </span>
                   </div>
-                  <p className="text-xl font-semibold tabular-nums text-[#0fa76e] mt-1">
-                    +{new Intl.NumberFormat("id-ID").format(todayStats.income)}
+                  <p className={cn(
+                    "text-xl font-semibold tabular-nums mt-1",
+                    todayStats.income >= 0 ? "text-[#0fa76e]" : "text-destructive"
+                  )}>
+                    {formatSignedIDR(todayStats.income, "+")}
                   </p>
                 </div>
               </div>
@@ -453,7 +461,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     <DetailsGrid tone="green">
                       <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
                       <DetailRow label="Kategori" value={response.details.category} />
-                      <DetailRow label="Nominal" value={`Rp ${response.details.amount.toLocaleString("id-ID")}`} />
+                      <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount)} />
                       {response.details.accountName && (
                         <DetailRow label="Akun" value={response.details.accountName} />
                       )}
@@ -474,13 +482,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                       {response.details.accountName && (
                         <DetailRow label="Akun" value={response.details.accountName} />
                       )}
-                      <DetailRow label="Total" value={`Rp ${response.details.total.toLocaleString("id-ID")}`} />
+                      <DetailRow label="Total" value={formatSignedIDR(response.details.total)} />
                     </DetailsGrid>
                   )}
                   <ul className="mt-1.5 space-y-0.5">
                     {response.transactions.map((t, i) => (
                       <li key={i} className="text-xs text-green-600 dark:text-green-500">
-                        &middot; {t.category} — Rp {t.amount.toLocaleString("id-ID")}
+                        &middot; {t.category} — {formatSignedIDR(t.amount)}
                         {t.note ? ` (${t.note})` : ""}
                       </li>
                     ))}
@@ -496,7 +504,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     <DetailsGrid tone="green">
                       <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
                       <DetailRow label="Kategori" value={response.details.category} />
-                      <DetailRow label="Nominal" value={`+Rp ${response.details.amount.toLocaleString("id-ID")}`} />
+                      <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount, "+")} />
                       {response.details.accountName && (
                         <DetailRow label="Akun" value={response.details.accountName} />
                       )}

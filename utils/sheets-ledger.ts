@@ -54,7 +54,7 @@ export function computeAccountBalancesFromTx(
   };
 
   for (const t of transactions) {
-    if (!Number.isFinite(t.amount) || t.amount <= 0) continue;
+    if (!Number.isFinite(t.amount) || t.amount === 0) continue;
     apply(t.fromAccountId, "from", t.amount);
     apply(t.toAccountId, "to", t.amount);
   }

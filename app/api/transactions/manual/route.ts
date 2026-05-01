@@ -7,7 +7,11 @@ import { randomUUID } from "crypto";
 import { getValidToken } from "@/utils/token";
 import { appendTransaction, getAccounts } from "@/utils/sheets";
 
-function isValidAmount(amount: number): boolean {
+function isValidTransactionAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount !== 0 && Math.abs(amount) <= 1_000_000_000;
+}
+
+function isValidTransferAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
 }
 
@@ -18,9 +22,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { type, amount, accountId, toAccountId, category, date, note } = body;
 
-  // Validasi amount
   const parsedAmount = Number(amount);
-  if (!isValidAmount(parsedAmount)) {
+  if (!Number.isFinite(parsedAmount)) {
     return NextResponse.json({ error: "Nominal tidak valid." }, { status: 400 });
   }
 
@@ -48,6 +51,9 @@ export async function POST(req: NextRequest) {
     const sheetsAccounts = await getAccounts(user!.sheetsId!, accessToken);
 
     if (type === "expense" || type === "income") {
+      if (!isValidTransactionAmount(parsedAmount)) {
+        return NextResponse.json({ error: "Nominal tidak boleh 0." }, { status: 400 });
+      }
       if (!accountId) return NextResponse.json({ error: "Akun harus dipilih." }, { status: 400 });
       if (!category?.trim()) return NextResponse.json({ error: "Kategori harus dipilih." }, { status: 400 });
 
@@ -77,6 +83,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (type === "transfer") {
+      if (!isValidTransferAmount(parsedAmount)) {
+        return NextResponse.json({ error: "Nominal transfer harus lebih dari 0." }, { status: 400 });
+      }
       if (!accountId) return NextResponse.json({ error: "Akun asal harus dipilih." }, { status: 400 });
       if (!toAccountId) return NextResponse.json({ error: "Akun tujuan harus dipilih." }, { status: 400 });
       if (accountId === toAccountId) return NextResponse.json({ error: "Akun asal dan tujuan tidak boleh sama." }, { status: 400 });
@@ -118,6 +127,9 @@ export async function POST(req: NextRequest) {
   const decimalAmount = new Decimal(parsedAmount);
 
   if (type === "expense" || type === "income") {
+    if (!isValidTransactionAmount(parsedAmount)) {
+      return NextResponse.json({ error: "Nominal tidak boleh 0." }, { status: 400 });
+    }
     if (!accountId) {
       return NextResponse.json({ error: "Akun harus dipilih." }, { status: 400 });
     }
@@ -162,6 +174,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === "transfer") {
+    if (!isValidTransferAmount(parsedAmount)) {
+      return NextResponse.json({ error: "Nominal transfer harus lebih dari 0." }, { status: 400 });
+    }
     if (!accountId) {
       return NextResponse.json({ error: "Akun asal harus dipilih." }, { status: 400 });
     }

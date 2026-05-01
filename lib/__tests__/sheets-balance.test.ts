@@ -90,14 +90,31 @@ describe("computeAccountBalancesFromTx", () => {
     expect(r.has("GHOST")).toBe(false);
   });
 
-  test("amount tidak valid (0/negatif/NaN) diskip", () => {
+  test("amount tidak valid (0/NaN) diskip", () => {
     const txs: Tx[] = [
       { type: "income", amount: 0, toAccountId: "A1" },
-      { type: "income", amount: -100, toAccountId: "A1" },
       { type: "income", amount: NaN, toAccountId: "A1" },
       { type: "income", amount: 100, toAccountId: "A1" },
     ];
     const r = computeAccountBalancesFromTx([ASSET], txs);
     expect(r.get("A1")).toBe(100);
+  });
+
+  test("expense negatif pada asset → saldo bertambah sebagai koreksi/refund beban", () => {
+    const txs: Tx[] = [
+      { type: "expense", amount: 200_000, fromAccountId: "A1" },
+      { type: "expense", amount: -50_000, fromAccountId: "A1" },
+    ];
+    const r = computeAccountBalancesFromTx([ASSET], txs);
+    expect(r.get("A1")).toBe(-150_000);
+  });
+
+  test("income negatif pada asset → saldo berkurang sebagai koreksi pendapatan", () => {
+    const txs: Tx[] = [
+      { type: "income", amount: 1_000_000, toAccountId: "A1" },
+      { type: "income", amount: -100_000, toAccountId: "A1" },
+    ];
+    const r = computeAccountBalancesFromTx([ASSET], txs);
+    expect(r.get("A1")).toBe(900_000);
   });
 });
