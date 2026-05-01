@@ -54,21 +54,48 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
     );
   };
 
+  const readErrorMessage = async (res: Response) => {
+    try {
+      const data = await res.json();
+      return data?.error ?? "Terjadi kesalahan.";
+    } catch {
+      return `Terjadi kesalahan (${res.status}).`;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    const trimmedName = name.trim();
+    const parsedAmount = Number(amount);
+    const parsedDueDay = parseInt(dueDay, 10);
+
+    if (!trimmedName) {
+      setError("Nama tagihan wajib diisi.");
+      return;
+    }
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError("Nominal tidak valid.");
+      return;
+    }
+    if (!Number.isInteger(parsedDueDay) || parsedDueDay < 1 || parsedDueDay > 31) {
+      setError("Tanggal jatuh tempo harus 1-31.");
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
         id: editBill?.id,
-        name,
-        amount: parseFloat(amount),
-        dueDay: parseInt(dueDay, 10),
+        name: trimmedName,
+        amount: parsedAmount,
+        dueDay: parsedDueDay,
         categoryId: categoryId || null,
         accountId: accountId || null,
         autoRecord,
         reminderDays,
-        note: note || null,
+        note: note.trim() || null,
       };
       const res = await fetch("/api/bills", {
         method: editBill ? "PUT" : "POST",
@@ -76,12 +103,13 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const d = await res.json();
-        setError(d.error ?? "Terjadi kesalahan.");
+        setError(await readErrorMessage(res));
         return;
       }
       onSaved();
       onClose();
+    } catch {
+      setError("Gagal menyimpan tagihan. Coba lagi.");
     } finally {
       setLoading(false);
     }
@@ -100,7 +128,7 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
+        <form onSubmit={handleSubmit} noValidate className="p-5 flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Nama Tagihan</label>
             <input
@@ -186,7 +214,7 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg border border-border">
+          <div className="flex items-center justify-between gap-3 p-3 bg-muted/40 rounded-lg border border-border">
             <div>
               <p className="text-sm font-medium text-foreground">Catat Otomatis</p>
               <p className="text-xs text-muted-foreground">Transaksi dicatat saat jatuh tempo</p>
@@ -194,9 +222,9 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
             <button
               type="button"
               onClick={() => setAutoRecord(!autoRecord)}
-              className={`relative overflow-hidden h-6 w-11 rounded-full transition-colors ${autoRecord ? "bg-primary" : "bg-muted"}`}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${autoRecord ? "bg-primary" : "bg-muted"}`}
             >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${autoRecord ? "translate-x-5" : "translate-x-0.5"}`} />
+              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${autoRecord ? "translate-x-5" : "translate-x-0"}`} />
             </button>
           </div>
 
