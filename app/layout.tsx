@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "BudgetIn",
-  description: "Catat pengeluaran, pahami uangmu — cukup dengan ketik.",
+  description: "Catat pengeluaran, pahami uangmu, cukup dengan ketik.",
   verification: {
     google: "5ee8c7cbea14c8b4",
   },
@@ -41,10 +41,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={cn(
-        inter.variable,
-        geistMono.variable
-      )}
+      className={cn(inter.variable, geistMono.variable)}
     >
       <body className="antialiased">
         <Providers>

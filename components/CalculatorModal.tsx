@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,13 +8,14 @@ interface CalculatorModalProps {
   onClose: () => void;
 }
 
-type Operator = "+" | "-" | "×" | "÷";
+type Operator = "+" | "-" | "*" | "/";
+type CalculatorKey = string | Operator | "=" | "BACKSPACE" | "C";
 
-const keys: Array<{ label: string | Operator; className?: string }> = [
+const keys: Array<{ label: CalculatorKey; className?: string }> = [
   { label: "C" },
-  { label: "⌫" },
-  { label: "÷" },
-  { label: "×" },
+  { label: "BACKSPACE" },
+  { label: "/" },
+  { label: "*" },
   { label: "7" },
   { label: "8" },
   { label: "9" },
@@ -34,7 +35,7 @@ const keys: Array<{ label: string | Operator; className?: string }> = [
 function calculate(firstValue: number, secondValue: number, operator: Operator) {
   if (operator === "+") return firstValue + secondValue;
   if (operator === "-") return firstValue - secondValue;
-  if (operator === "×") return firstValue * secondValue;
+  if (operator === "*") return firstValue * secondValue;
   if (secondValue === 0) return null;
   return firstValue / secondValue;
 }
@@ -45,17 +46,32 @@ function formatNumber(value: number) {
   return normalized.toString();
 }
 
+function getOperatorLabel(operator: Operator) {
+  if (operator === "*") return "x";
+  if (operator === "/") return "\u00F7";
+  return operator;
+}
+
+function getButtonLabel(key: CalculatorKey) {
+  if (key === "*") return "x";
+  if (key === "/") return "\u00F7";
+  if (key === "BACKSPACE") return "\u232B";
+  return key;
+}
+
 export default function CalculatorModal({ onClose }: CalculatorModalProps) {
   const [display, setDisplay] = useState("0");
   const [storedValue, setStoredValue] = useState<number | null>(null);
   const [operator, setOperator] = useState<Operator | null>(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
+  const [lastCalculation, setLastCalculation] = useState("");
 
   function resetCalculator() {
     setDisplay("0");
     setStoredValue(null);
     setOperator(null);
     setWaitingForOperand(false);
+    setLastCalculation("");
   }
 
   function inputDigit(digit: string) {
@@ -100,7 +116,10 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
     if (storedValue === null) {
       setStoredValue(inputValue);
     } else if (operator) {
+      const previousValueText = formatNumber(storedValue);
       const result = calculate(storedValue, inputValue, operator);
+
+      setLastCalculation(`${previousValueText} ${getOperatorLabel(operator)} ${display} =`);
 
       if (result === null) {
         setDisplay("Error");
@@ -121,7 +140,11 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
   function showResult() {
     if (display === "Error" || storedValue === null || operator === null) return;
 
+    const previousValueText = formatNumber(storedValue);
+    const calculationText = `${previousValueText} ${getOperatorLabel(operator)} ${display} =`;
     const result = calculate(storedValue, Number(display), operator);
+
+    setLastCalculation(calculationText);
 
     if (result === null) {
       setDisplay("Error");
@@ -134,7 +157,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
     setWaitingForOperand(true);
   }
 
-  function handleKeyPress(key: string | Operator) {
+  function handleKeyPress(key: CalculatorKey) {
     if (/^\d$/.test(key)) {
       inputDigit(key);
       return;
@@ -150,7 +173,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
       return;
     }
 
-    if (key === "⌫") {
+    if (key === "BACKSPACE") {
       deleteDigit();
       return;
     }
@@ -163,13 +186,73 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
     chooseOperator(key as Operator);
   }
 
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (/^\d$/.test(event.key)) {
+        event.preventDefault();
+        inputDigit(event.key);
+        return;
+      }
+
+      if (event.key === "." || event.key === ",") {
+        event.preventDefault();
+        inputDecimal();
+        return;
+      }
+
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        deleteDigit();
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === "=") {
+        event.preventDefault();
+        showResult();
+        return;
+      }
+
+      if (["+", "-", "*", "/"].includes(event.key)) {
+        event.preventDefault();
+        chooseOperator(event.key as Operator);
+        return;
+      }
+
+      if (event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        resetCalculator();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [display, onClose, operator, storedValue, waitingForOperand]);
+
+  const expressionText =
+    operator && storedValue !== null
+      ? `${formatNumber(storedValue)} ${getOperatorLabel(operator)}${waitingForOperand ? "" : ` ${display}`}`
+      : lastCalculation;
+
   return (
     <>
       <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-xs -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="calculator-title">
+      <div
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-xs -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-5 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calculator-title"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="calculator-title" className="text-base font-semibold">Calculator</h2>
+          <h2 id="calculator-title" className="text-base font-semibold">
+            Calculator
+          </h2>
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -180,6 +263,9 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
         </div>
 
         <div className="mb-4 rounded-xl border bg-background px-4 py-3 text-right">
+          <div className="min-h-5 break-all text-xs text-muted-foreground">
+            {expressionText || "\u00A0"}
+          </div>
           <div className="min-h-8 break-all text-2xl font-semibold tracking-tight text-foreground">
             {display}
           </div>
@@ -188,8 +274,8 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
         <div className="grid grid-cols-4 gap-2">
           {keys.map(({ label, className }) => {
             const key = label;
-            const isOperator = ["+", "-", "×", "÷", "="].includes(key);
-            const isAction = key === "C" || key === "⌫";
+            const isOperator = ["+", "-", "*", "/", "="].includes(key);
+            const isAction = key === "C" || key === "BACKSPACE";
 
             return (
               <button
@@ -206,7 +292,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
                   className
                 )}
               >
-                {key}
+                {getButtonLabel(key)}
               </button>
             );
           })}

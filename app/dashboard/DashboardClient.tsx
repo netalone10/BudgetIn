@@ -3,10 +3,25 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
-import TransactionCard, { Transaction, type TransactionCategory } from "@/components/TransactionCard";
+import TransactionCard, {
+  Transaction,
+  type TransactionCategory,
+} from "@/components/TransactionCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
+import {
+  SendHorizonal,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  TrendingDown,
+  TrendingUp,
+  RefreshCw,
+  MicVocal,
+  LayoutGrid,
+  Dices,
+} from "lucide-react";
 import NetWorthSummaryCard from "@/components/NetWorthSummaryCard";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
@@ -15,24 +30,21 @@ import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
 
-// Dynamic imports for heavy components
-// Skeleton heights matched to actual rendered content to minimize CLS.
 const ManualTransactionForm = dynamic(
   () => import("@/components/ManualTransactionForm"),
-  { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-[28px] bg-muted" /> }
 );
 
 const ReportView = dynamic(
   () => import("@/components/ReportView"),
-  { ssr: false, loading: () => <div className="h-[320px] animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-[320px] animate-pulse rounded-[28px] bg-muted" /> }
 );
 
 const DashboardTabs = dynamic(
   () => import("@/components/DashboardTabs"),
-  { ssr: false, loading: () => <div className="h-[420px] animate-pulse rounded-xl bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-[420px] animate-pulse rounded-[28px] bg-muted" /> }
 );
 
-// Re-export BudgetData type to avoid naming conflict
 type BudgetData = DashboardTabsBudgetData;
 
 type TxDetails = { date: string; category: string; amount: number; accountName?: string };
@@ -45,14 +57,18 @@ type ResponseData =
   | { intent: "pemasukan"; transaction: Transaction; amount: number; category: string; message: string; details?: TxDetails }
   | { intent: "budget_setting"; category: string; amount: number; month: string; message: string; details?: BudgetDetails }
   | { intent: "laporan"; period: string; totalSpent: number; spentByCategory: Record<string, number>; budgets: { category: string; budget: number; spent: number }[]; summary: string; transactionCount: number }
+  | { intent: "transfer"; message: string }
   | { intent: "unknown"; clarification: string }
   | { error: string };
 
 function formatTanggalID(iso: string): string {
-  // Accept "YYYY-MM-DD" — render as "29 Apr 2026" in id-ID locale.
-  const d = new Date(iso + "T00:00:00");
+  const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(d);
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(d);
 }
 
 function formatSignedIDR(amount: number, positivePrefix = ""): string {
@@ -70,11 +86,51 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 }
 
 function DetailsGrid({ children, tone }: { children: ReactNode; tone: "green" | "blue" }) {
-  const colorClass = tone === "blue" ? "text-blue-700 dark:text-blue-400" : "text-green-700 dark:text-green-400";
+  const colorClass =
+    tone === "blue"
+      ? "text-blue-700 dark:text-blue-400"
+      : "text-green-700 dark:text-green-400";
+
   return (
-    <dl className={`mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs ${colorClass}`}>
+    <dl className={cn("mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs", colorClass)}>
       {children}
     </dl>
+  );
+}
+
+function SectionCard({
+  eyebrow,
+  title,
+  description,
+  action,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-[30px] border border-border/70 bg-card/90 p-5 shadow-sm md:p-6">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+            {eyebrow}
+          </p>
+          <h3 className="text-xl font-semibold tracking-tight text-foreground">
+            {title}
+          </h3>
+          {description && (
+            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          )}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -84,6 +140,44 @@ const PROMPT_EXAMPLES = [
   "bayar listrik 250rb cash",
   "transfer 1jt dari BCA ke BNI",
   "rekap bulan ini",
+  "kopi dan pastry 42rb pakai GoPay",
+  "isi bensin 150rb lalu tol 23rb dari BCA",
+  "budget makan 1.2jt bulan ini",
+  "berapa pengeluaran minggu ini",
+  "bayar Spotify 69rb pakai kartu kredit",
+  "top up dana darurat 500rb ke Jago",
+  "freelance 2.5jt masuk ke BCA",
+  "ringkas kategori pengeluaran terbesar bulan ini",
+  "makan malam ramen 67rb pakai kartu kredit BNI",
+  "belanja bulanan 315rb dari BCA",
+  "parkir 10rb cash",
+  "Grab ke kantor 28rb dari GoPay",
+  "bayar internet 350rb dari BCA",
+  "tagihan air 125rb cash",
+  "transfer 500rb dari GoPay ke BCA",
+  "pindahkan 3jt dari BCA ke Jago Savings",
+  "bayar cicilan kartu kredit 450rb dari BCA",
+  "tabungan liburan 750rb ke Jago",
+  "investasi 2jt dari BCA",
+  "set budget transport 750rb bulan ini",
+  "set budget hiburan 400rb",
+  "naikkan budget makan jadi 1.5jt",
+  "berapa sisa budget makan bulan ini",
+  "kategori mana yang paling boros minggu ini",
+  "bandingkan pengeluaran minggu ini vs minggu lalu",
+  "buat laporan cashflow bulan ini",
+  "berapa total pemasukan hari ini",
+  "pengeluaran terbesar bulan ini apa saja",
+  "cek tagihan yang jatuh tempo minggu ini",
+  "berapa saldo akun BCA sekarang",
+  "berapa net worth saya saat ini",
+  "koreksi saldo BCA jadi 12.5jt",
+  "saldo awal GoPay 300rb",
+  "THR 4jt masuk ke BCA",
+  "bonus proyek 1.8jt masuk ke Jago",
+  "obat dan vitamin 125rb dari BCA",
+  "belanja hadiah 220rb pakai kartu kredit",
+  "minta insight pengeluaran makan saya",
 ];
 
 interface DashboardClientProps {
@@ -118,25 +212,26 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [accountVersion, setAccountVersion] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
+  const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 6));
 
-  // Memoize visible transactions to avoid re-slicing on every render
-  const visibleTransactions = useMemo(() =>
-    transactions.slice((page - 1) * pageSize, page * pageSize),
+  const visibleTransactions = useMemo(
+    () => transactions.slice((page - 1) * pageSize, page * pageSize),
     [transactions, page, pageSize]
   );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Hitung pengeluaran & pemasukan hari ini (WIB)
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
   const todayStats = useMemo(() => {
     const todayTxs = transactions.filter((t) => t.date === todayStr);
     const expenseTxs = todayTxs.filter(isExpenseTransaction);
+    const incomeTxs = todayTxs.filter((t) => t.type === "income");
     const expense = expenseTxs.reduce((s, t) => s + t.amount, 0);
-    const income = todayTxs.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
+    const income = incomeTxs.reduce((s, t) => s + t.amount, 0);
     const count = expenseTxs.length;
-    return { expense, income, count };
+    const incomeCount = incomeTxs.length;
+    return { expense, income, count, incomeCount };
   }, [transactions, todayStr]);
 
   useEffect(() => {
@@ -158,8 +253,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       const d = await r.json();
       const cats = d.categories ?? [];
       setCategories(cats.map((c: { name: string }) => c.name));
-      setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
-      // Build savings category names set
+      setTransactionCategories(
+        cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type }))
+      );
       const savingsNames = new Set<string>(
         cats
           .filter((c: { isSavings?: boolean }) => c.isSavings)
@@ -167,25 +263,28 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       );
       setSavingsCategoryNames(savingsNames);
     } catch {
-      // skip
+      // ignore
     }
   }
 
   async function fetchTransactions(noStore = false) {
     setTxLoading(true);
     try {
-      const res = await fetch("/api/record?period=bulan+ini", noStore ? { cache: "no-store" } : undefined);
+      const res = await fetch(
+        "/api/record?period=bulan+ini",
+        noStore ? { cache: "no-store" } : undefined
+      );
       if (res.status === 401) {
         const data = await res.json();
         if (data.error === "token_expired") {
-          setResponse({ error: "⚠️ Sesi Google expired. Silakan logout lalu login ulang." });
+          setResponse({ error: "Sesi Google expired. Silakan logout lalu login ulang." });
         }
         return;
       }
       const data = await res.json();
       setTransactions(data.transactions ?? []);
     } catch {
-      // skip
+      // ignore
     } finally {
       setTxLoading(false);
     }
@@ -198,7 +297,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       const data = await res.json();
       setBudgetData(data);
     } catch {
-      // skip
+      // ignore
     } finally {
       setBudgetLoading(false);
     }
@@ -211,7 +310,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       setAccounts(data.accounts ?? []);
       setAccountVersion((v) => v + 1);
     } catch {
-      // skip
+      // ignore
     }
   }
 
@@ -246,7 +345,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         let errMsg = "Server error. Coba lagi.";
-        try { errMsg = JSON.parse(text)?.error ?? errMsg; } catch {}
+        try {
+          errMsg = JSON.parse(text)?.error ?? errMsg;
+        } catch {
+          // ignore
+        }
         setResponse({ error: errMsg });
         return;
       }
@@ -254,8 +357,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       const data = await res.json();
       setResponse(data);
 
-      // Auto-dismiss success notification setelah 4 detik
-      if (data.intent === "transaksi" || data.intent === "transaksi_bulk" || data.intent === "pemasukan" || data.intent === "transfer" || data.intent === "budget_setting") {
+      if (
+        data.intent === "transaksi" ||
+        data.intent === "transaksi_bulk" ||
+        data.intent === "pemasukan" ||
+        data.intent === "transfer" ||
+        data.intent === "budget_setting"
+      ) {
         dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
       }
 
@@ -285,19 +393,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       if (data.intent === "budget_setting") {
         fetchBudget();
         emitDataChanged(["budget", "categories"]);
-        fetch("/api/categories")
-          .then((r) => r.json())
-          .then((d) => {
-            const cats = d.categories ?? [];
-            setCategories(cats.map((c: { name: string }) => c.name));
-            setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
-            setSavingsCategoryNames(new Set<string>(
-              cats
-                .filter((c: { isSavings?: boolean }) => c.isSavings)
-                .map((c: { name: string }) => c.name.toLowerCase())
-            ));
-          })
-          .catch(() => {});
+        fetchCategories();
       }
 
       setPrompt("");
@@ -335,18 +431,27 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }, []);
 
   const handleUpdateTx = useCallback((id: string, data: Partial<Transaction>) => {
-    setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...data } : t))
-    );
+    setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...data } : t)));
     emitDataChanged(["transactions", "budget", "accounts"]);
   }, []);
 
   const dataLoading = txLoading || budgetLoading;
+  const totalPages = Math.max(1, Math.ceil(transactions.length / pageSize));
+
+  function randomizePromptExamples() {
+    const shuffled = [...PROMPT_EXAMPLES]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 6);
+    setPromptExamples(shuffled);
+  }
 
   return (
-    <>
-        {/* Today's Summary — always render the shell to keep layout stable (avoid CLS) */}
-        <div className="flex justify-end">
+    <div className="space-y-6">
+      <SectionCard
+        eyebrow="Overview"
+        title="Kontrol harian"
+        description="Lihat ritme pengeluaran hari ini, status data terakhir, dan lompat langsung ke aksi yang kamu butuhkan."
+        action={
           <Button
             type="button"
             variant="outline"
@@ -358,228 +463,292 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             <RefreshCw className={cn("h-4 w-4", dataLoading && "animate-spin")} />
             Refresh data
           </Button>
-        </div>
-
-        <div className="flex gap-4" style={{ minHeight: 96 }}>
-          {txLoading ? (
-            <>
-              <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm animate-pulse">
-                <div className="h-4 w-24 bg-muted rounded mb-2" />
-                <div className="h-7 w-32 bg-muted rounded" />
+        }
+      >
+        <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr] lg:items-stretch">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[26px] border border-border/70 bg-background p-5">
+              <div className="mb-2 flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-destructive" />
+                <span className="text-[13px] font-medium text-muted-foreground">
+                  Keluar hari ini
+                </span>
               </div>
-            </>
-          ) : (
-          <>
-            {/* Pengeluaran hari ini */}
-            <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between shadow-sm">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingDown className="h-4 w-4 text-destructive" />
-                  <span className="text-[13px] font-medium text-muted-foreground">
-                    Keluar hari ini
-                  </span>
-                </div>
-                <p className="text-xl font-semibold tabular-nums text-foreground mt-1">
-                  {todayStats.expense !== 0
-                    ? formatSignedIDR(todayStats.expense)
-                    : <span className="text-muted-foreground text-base">Belum ada</span>
-                  }
-                </p>
-                {todayStats.count > 0 && (
-                  <p className="text-[12px] font-medium text-muted-foreground mt-1">
-                    {todayStats.count} transaksi
-                  </p>
+              <p className="text-2xl font-semibold tracking-tight text-foreground">
+                {todayStats.expense !== 0 ? (
+                  formatSignedIDR(todayStats.expense)
+                ) : (
+                  <span className="text-lg text-muted-foreground">Belum ada</span>
                 )}
-              </div>
+              </p>
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                {todayStats.count > 0 ? `${todayStats.count} transaksi tercatat` : "Masih sepi untuk hari ini"}
+              </p>
             </div>
 
-            {/* Pemasukan hari ini */}
-            {todayStats.income !== 0 && (
-              <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 flex items-center justify-between shadow-sm">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className={cn("h-4 w-4", todayStats.income >= 0 ? "text-[#0fa76e]" : "text-destructive")} />
-                    <span className="text-[13px] font-medium text-muted-foreground">
-                      Masuk hari ini
-                    </span>
-                  </div>
-                  <p className={cn(
-                    "text-xl font-semibold tabular-nums mt-1",
-                    todayStats.income >= 0 ? "text-[#0fa76e]" : "text-destructive"
-                  )}>
-                    {formatSignedIDR(todayStats.income, "+")}
-                  </p>
-                </div>
+            <div className="rounded-[26px] border border-border/70 bg-background p-5">
+              <div className="mb-2 flex items-center gap-2">
+                <TrendingUp
+                  className={cn(
+                    "h-4 w-4",
+                    todayStats.income >= 0 ? "text-emerald-500" : "text-destructive"
+                  )}
+                />
+                <span className="text-[13px] font-medium text-muted-foreground">
+                  Masuk hari ini
+                </span>
               </div>
-            )}
-          </>
-          )}
-        </div>
-
-        {/* Net Worth Summary */}
-        <NetWorthSummaryCard refreshTrigger={accountVersion} />
-
-        {/* Prompt Input */}
-        <form onSubmit={handleSubmit} className="space-y-2 mt-2">
-          <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              placeholder='Contoh: "Makan siang 35rb" atau "Rekap bulan ini"'
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={2}
-              className="resize-none pr-12 rounded-[20px] shadow-sm py-3 px-4 focus-visible:ring-primary"
-              disabled={loading}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!prompt.trim() || loading}
-              className="absolute bottom-2.5 right-2 h-9 w-9 rounded-full shadow-md hover:-translate-y-px transition-transform"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <SendHorizonal className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-          <p className="text-[12px] font-medium text-muted-foreground px-2">
-            Enter untuk kirim &middot; Shift+Enter untuk baris baru
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5 px-2">
-            <span className="text-[11px] text-muted-foreground shrink-0">Coba:</span>
-            {PROMPT_EXAMPLES.map((example) => (
-              <button
-                key={example}
-                type="button"
-                disabled={loading}
-                onClick={() => {
-                  setPrompt(example);
-                  textareaRef.current?.focus();
-                }}
-                className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              <p
+                className={cn(
+                  "text-2xl font-semibold tracking-tight",
+                  todayStats.income >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-destructive"
+                )}
               >
-                {example}
-              </button>
-            ))}
+                {todayStats.income !== 0 ? (
+                  formatSignedIDR(todayStats.income, "+")
+                ) : (
+                  <span className="text-lg text-muted-foreground">Belum ada</span>
+                )}
+              </p>
+              <p className="mt-2 text-[12px] text-muted-foreground">
+                {todayStats.incomeCount > 0
+                  ? `${todayStats.incomeCount} transaksi pemasukan tercatat`
+                  : "Belum ada pemasukan hari ini"}
+              </p>
+            </div>
           </div>
-        </form>
 
-        {/* Manual Input */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">atau input manual</span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-          <ManualTransactionForm
-            accounts={accounts}
-            categories={categories}
-            onSuccess={() => { fetchTransactions(); fetchBudget(); fetchAccounts(); }}
-          />
+          <NetWorthSummaryCard refreshTrigger={accountVersion} />
         </div>
+      </SectionCard>
 
-        {/* Response Area */}
-        {response && (
-          <div>
-            {"error" in response ? (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(239,68,68,0.4)", backgroundColor: "rgba(239,68,68,0.05)" }}>
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--destructive)" }} />
-                <p className="text-sm" style={{ color: "var(--destructive)" }}>{response.error}</p>
+      <SectionCard
+        eyebrow="Input"
+        title="Tulis seperti ngobrol"
+        description="Area ini didesain untuk jadi pintu masuk tercepat: satu kotak untuk transaksi, budget, transfer, dan laporan."
+      >
+        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="space-y-4">
+            <div className="rounded-[28px] border border-border/70 bg-background p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <MicVocal className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">
+                  AI capture box
+                </p>
               </div>
-            ) : response.intent === "transaksi" ? (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
-                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">✓ Transaksi dicatat</p>
-                  {response.details && (
-                    <DetailsGrid tone="green">
-                      <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
-                      <DetailRow label="Kategori" value={response.details.category} />
-                      <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount)} />
-                      {response.details.accountName && (
-                        <DetailRow label="Akun" value={response.details.accountName} />
+
+              <form onSubmit={handleSubmit} className="space-y-3">
+                <div className="relative">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder='Contoh: "Makan siang 35rb" atau "Rekap bulan ini"'
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={4}
+                    className="resize-none rounded-[24px] border-border/70 bg-card pr-12 pt-4 shadow-none focus-visible:ring-primary"
+                    disabled={loading}
+                  />
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!prompt.trim() || loading}
+                    className="absolute bottom-3 right-3 h-10 w-10 rounded-full shadow-md transition-transform hover:-translate-y-px"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <SendHorizonal className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground">Coba:</span>
+                    <button
+                      type="button"
+                      onClick={randomizePromptExamples}
+                      className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      title="Acak saran prompt"
+                    >
+                      <Dices className="h-3 w-3" />
+                      Acak
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {promptExamples.map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => {
+                        setPrompt(example);
+                        textareaRef.current?.focus();
+                      }}
+                      className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="px-1 text-[12px] font-medium text-muted-foreground">
+                  Enter untuk kirim. Shift+Enter untuk baris baru.
+                </p>
+              </form>
+            </div>
+
+            {response && (
+              <div className="rounded-[28px] border border-border/70 bg-background p-4">
+                {"error" in response ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <p className="text-sm text-destructive">{response.error}</p>
+                  </div>
+                ) : response.intent === "transaksi" ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                        Transaksi dicatat
+                      </p>
+                      {response.details && (
+                        <DetailsGrid tone="green">
+                          <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          <DetailRow label="Kategori" value={response.details.category} />
+                          <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount)} />
+                          {response.details.accountName && (
+                            <DetailRow label="Akun" value={response.details.accountName} />
+                          )}
+                        </DetailsGrid>
                       )}
-                    </DetailsGrid>
-                  )}
-                </div>
-              </div>
-            ) : response.intent === "transaksi_bulk" ? (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
-                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">
-                    ✓ {response.details?.count ?? response.transactions.length} transaksi dicatat
-                  </p>
-                  {response.details && (
-                    <DetailsGrid tone="green">
-                      <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
-                      {response.details.accountName && (
-                        <DetailRow label="Akun" value={response.details.accountName} />
+                    </div>
+                  </div>
+                ) : response.intent === "transaksi_bulk" ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                        {response.details?.count ?? response.transactions.length} transaksi dicatat
+                      </p>
+                      {response.details && (
+                        <DetailsGrid tone="green">
+                          <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          {response.details.accountName && (
+                            <DetailRow label="Akun" value={response.details.accountName} />
+                          )}
+                          <DetailRow label="Total" value={formatSignedIDR(response.details.total)} />
+                        </DetailsGrid>
                       )}
-                      <DetailRow label="Total" value={formatSignedIDR(response.details.total)} />
-                    </DetailsGrid>
-                  )}
-                  <ul className="mt-1.5 space-y-0.5">
-                    {response.transactions.map((t, i) => (
-                      <li key={i} className="text-xs text-green-600 dark:text-green-500">
-                        &middot; {t.category} — {formatSignedIDR(t.amount)}
-                        {t.note ? ` (${t.note})` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : response.intent === "pemasukan" ? (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(34,197,94,0.3)", backgroundColor: "rgba(34,197,94,0.05)" }}>
-                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-700 dark:text-green-400">✓ Pemasukan dicatat</p>
-                  {response.details && (
-                    <DetailsGrid tone="green">
-                      <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
-                      <DetailRow label="Kategori" value={response.details.category} />
-                      <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount, "+")} />
-                      {response.details.accountName && (
-                        <DetailRow label="Akun" value={response.details.accountName} />
+                      <ul className="mt-2 space-y-1">
+                        {response.transactions.map((t, i) => (
+                          <li
+                            key={i}
+                            className="text-xs text-emerald-700 dark:text-emerald-400"
+                          >
+                            - {t.category}: {formatSignedIDR(t.amount)}
+                            {t.note ? ` (${t.note})` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : response.intent === "pemasukan" ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                        Pemasukan dicatat
+                      </p>
+                      {response.details && (
+                        <DetailsGrid tone="green">
+                          <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          <DetailRow label="Kategori" value={response.details.category} />
+                          <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount, "+")} />
+                          {response.details.accountName && (
+                            <DetailRow label="Akun" value={response.details.accountName} />
+                          )}
+                        </DetailsGrid>
                       )}
-                    </DetailsGrid>
-                  )}
-                </div>
-              </div>
-            ) : response.intent === "budget_setting" ? (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(59,130,246,0.3)", backgroundColor: "rgba(59,130,246,0.05)" }}>
-                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">✓ Budget tersimpan</p>
-                  {response.details && (
-                    <DetailsGrid tone="blue">
-                      <DetailRow label="Kategori" value={response.details.category} />
-                      <DetailRow label="Nominal" value={`Rp ${response.details.amount.toLocaleString("id-ID")}`} />
-                      <DetailRow label="Bulan" value={response.details.month} />
-                    </DetailsGrid>
-                  )}
-                </div>
-              </div>
-            ) : response.intent === "laporan" ? (
-              <ReportView data={response} />
-            ) : response.intent === "unknown" ? (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(234,179,8,0.3)", backgroundColor: "rgba(234,179,8,0.05)" }}>
-                <Info className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400" />
-                <p className="text-sm text-yellow-700 dark:text-yellow-400">{response.clarification}</p>
-              </div>
-            ) : (
-              <div className="flex items-start gap-3 rounded-xl px-4 py-3" style={{ border: "1px solid rgba(234,179,8,0.3)", backgroundColor: "rgba(234,179,8,0.05)" }}>
-                <Info className="h-4 w-4 shrink-0 mt-0.5 text-yellow-600 dark:text-yellow-400" />
-                <p className="text-sm text-yellow-700 dark:text-yellow-400">Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda.</p>
+                    </div>
+                  </div>
+                ) : response.intent === "budget_setting" ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-blue-500/25 bg-blue-500/5 px-4 py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                        Budget tersimpan
+                      </p>
+                      {response.details && (
+                        <DetailsGrid tone="blue">
+                          <DetailRow label="Kategori" value={response.details.category} />
+                          <DetailRow label="Nominal" value={`Rp ${response.details.amount.toLocaleString("id-ID")}`} />
+                          <DetailRow label="Bulan" value={response.details.month} />
+                        </DetailsGrid>
+                      )}
+                    </div>
+                  </div>
+                ) : response.intent === "laporan" ? (
+                  <ReportView data={response} />
+                ) : response.intent === "unknown" ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/25 bg-yellow-500/5 px-4 py-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                      {response.clarification}
+                    </p>
+                  </div>
+                ) : response.intent === "transfer" ? (
+                  <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                      {response.message || "Transfer berhasil diproses."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/25 bg-yellow-500/5 px-4 py-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                      Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
 
-        {/* Dashboard Tabs */}
+          <div className="rounded-[28px] border border-border/70 bg-background p-4">
+            <div className="mb-4 flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold text-foreground">
+                Input manual
+              </p>
+            </div>
+            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+              Kalau kamu ingin lebih presisi, form manual tetap siap untuk transaksi yang perlu detail tambahan.
+            </p>
+            <ManualTransactionForm
+              accounts={accounts}
+              categories={categories}
+              onSuccess={() => {
+                fetchTransactions();
+                fetchBudget();
+                fetchAccounts();
+              }}
+            />
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        eyebrow="Analytics"
+        title="Cashflow dan budget"
+        description="Area baca utama untuk melihat distribusi transaksi, progres budget, dan pola pengeluaran."
+      >
         <DashboardTabs
           transactions={transactions}
           budgetData={budgetData}
@@ -590,44 +759,53 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           savingsCategoryNames={savingsCategoryNames}
           onBudgetChange={fetchBudget}
         />
+      </SectionCard>
 
-        {/* Riwayat Transaksi */}
-        <div className="space-y-4 pt-4">
-          <div className="flex items-center gap-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="label-mono text-muted-foreground">
-              Riwayat Transaksi
-            </span>
-            <span className="h-px flex-1 bg-border" />
+      <SectionCard
+        eyebrow="Ledger"
+        title="Riwayat transaksi"
+        description="Riwayat lengkap dengan table yang lebih bersih dan kontrol paging yang lebih mudah dipindai."
+      >
+        {txLoading ? (
+          <div className="rounded-[28px] border border-border/70 bg-background overflow-hidden">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex animate-pulse items-center gap-4 border-b border-border px-5 py-4 last:border-0"
+              >
+                <div className="h-4 w-12 rounded-md bg-muted" />
+                <div className="h-4 flex-1 rounded-md bg-muted" />
+                <div className="h-6 w-20 rounded-full bg-muted" />
+                <div className="h-4 w-20 rounded-md bg-muted" />
+              </div>
+            ))}
           </div>
-
-          {txLoading ? (
-            <div className="rounded-[24px] border border-border bg-card overflow-hidden shadow-sm">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="flex items-center gap-4 px-5 py-4 border-b border-border animate-pulse">
-                  <div className="h-4 w-12 bg-muted rounded-md" />
-                  <div className="h-4 flex-1 bg-muted rounded-md" />
-                  <div className="h-6 w-20 bg-muted rounded-full" />
-                  <div className="h-4 w-20 bg-muted rounded-md" />
-                </div>
-              ))}
-            </div>
-          ) : transactions.length === 0 ? (
-            <div className="rounded-[24px] border border-border bg-card px-5 py-10 text-center text-muted-foreground text-sm shadow-sm">
-              Belum ada transaksi bulan ini.
-            </div>
-          ) : (
-            <div className="rounded-[24px] border border-border bg-card shadow-sm">
-              <div className="overflow-x-auto rounded-[24px]">
-              <table className="w-full min-w-[480px]">
+        ) : transactions.length === 0 ? (
+          <div className="rounded-[28px] border border-border/70 bg-background px-5 py-12 text-center text-sm text-muted-foreground">
+            Belum ada transaksi bulan ini.
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px]">
                 <thead>
-                  <tr className="border-b border-border bg-muted/40">
-                    <th className="py-3 px-5 text-left w-16 label-mono text-muted-foreground">Tgl</th>
-                    <th className="py-3 pr-4 text-left label-mono text-muted-foreground">Deskripsi</th>
-                    <th className="py-3 pr-4 text-left label-mono text-muted-foreground">Kategori</th>
-                    <th className="py-3 pr-4 text-left label-mono text-muted-foreground hidden sm:table-cell">Akun</th>
-                    <th className="py-3 pr-4 text-right label-mono text-muted-foreground">Jumlah</th>
-                    <th className="py-3 pr-4 w-16" />
+                  <tr className="border-b border-border bg-muted/35">
+                    <th className="label-mono w-16 px-5 py-3 text-left text-muted-foreground">
+                      Tgl
+                    </th>
+                    <th className="label-mono py-3 pr-4 text-left text-muted-foreground">
+                      Deskripsi
+                    </th>
+                    <th className="label-mono py-3 pr-4 text-left text-muted-foreground">
+                      Kategori
+                    </th>
+                    <th className="label-mono hidden py-3 pr-4 text-left text-muted-foreground sm:table-cell">
+                      Akun
+                    </th>
+                    <th className="label-mono py-3 pr-4 text-right text-muted-foreground">
+                      Jumlah
+                    </th>
+                    <th className="w-16 py-3 pr-4" />
                   </tr>
                 </thead>
                 <tbody>
@@ -643,50 +821,58 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="flex flex-col gap-4 border-t border-border bg-muted/20 px-5 py-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-medium text-muted-foreground">
+                  Tampilkan
+                </span>
+                {([10, 20, 50] as const).map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => {
+                      setPageSize(n);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
+                      pageSize === n
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
               </div>
-              <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20 gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium text-muted-foreground">Tampilkan</span>
-                  {([10, 20, 50] as const).map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => { setPageSize(n); setPage(1); }}
-                      className={cn(
-                        "text-[13px] px-2.5 py-1 rounded-md font-medium transition-colors border",
-                        pageSize === n
-                          ? "bg-foreground text-background border-foreground shadow-[rgba(0,0,0,0.06)_0px_1px_2px]"
-                          : "bg-background text-muted-foreground border-border hover:bg-muted hover:text-foreground"
-                      )}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-[13px] font-medium text-muted-foreground">
-                    {Math.min((page - 1) * pageSize + 1, transactions.length)}&ndash;{Math.min(page * pageSize, transactions.length)} dari {transactions.length}
-                  </span>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      className="text-[15px] px-2.5 py-0.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 transition-colors"
-                    >
-                      &lsaquo;
-                    </button>
-                    <button
-                      onClick={() => setPage((p) => Math.min(Math.ceil(transactions.length / pageSize), p + 1))}
-                      disabled={page >= Math.ceil(transactions.length / pageSize)}
-                      className="text-[15px] px-2.5 py-0.5 rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 transition-colors"
-                    >
-                      &rsaquo;
-                    </button>
-                  </div>
+
+              <div className="flex items-center justify-between gap-3 md:justify-end">
+                <span className="text-[13px] font-medium text-muted-foreground">
+                  {Math.min((page - 1) * pageSize + 1, transactions.length)}-
+                  {Math.min(page * pageSize, transactions.length)} dari {transactions.length}
+                </span>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-[15px] transition-colors hover:bg-muted disabled:opacity-40"
+                  >
+                    {"<"}
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="rounded-full border border-border bg-background px-3 py-1 text-[15px] transition-colors hover:bg-muted disabled:opacity-40"
+                  >
+                    {">"}
+                  </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
-    </>
+          </div>
+        )}
+      </SectionCard>
+    </div>
   );
 }

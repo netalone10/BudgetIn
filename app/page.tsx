@@ -3,202 +3,326 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+const quickEntries = [
+  {
+    from: "Kamu",
+    tone: "bg-primary/12 text-primary ring-1 ring-primary/20",
+    text: "Ngopi dan croissant 42rb sebelum meeting",
+  },
+  {
+    from: "AI",
+    tone: "bg-muted text-muted-foreground",
+    text: "Siap. Tersimpan ke Makan & Minum - Rp 42.000 - Hari ini",
+  },
+  {
+    from: "Kamu",
+    tone: "bg-primary/12 text-primary ring-1 ring-primary/20",
+    text: "Isi bensin 150rb, sekalian tol 23rb",
+  },
+  {
+    from: "AI",
+    tone: "bg-muted text-muted-foreground",
+    text: "Dua transaksi dicatat: Transport - Rp 150.000 dan Rp 23.000",
+  },
+];
+
+const signalCards = [
+  {
+    eyebrow: "Baca pola",
+    title: "Budget yang terasa hidup",
+    body:
+      "Lihat kategori mana yang mulai memanas sebelum total bulanan telanjur bocor.",
+  },
+  {
+    eyebrow: "Tetap privat",
+    title: "Data tetap milikmu",
+    body:
+      "BudgetIn bekerja di atas spreadsheet Google milikmu sendiri, bukan database tertutup yang sulit dipindahkan.",
+  },
+  {
+    eyebrow: "Minta insight",
+    title: "AI yang memberi tindakan",
+    body:
+      "Bukan cuma angka. Kamu dapat ringkasan singkat dan saran yang langsung bisa dipakai.",
+  },
+];
+
+const budgetBars = [
+  { label: "Makan", pct: 68 },
+  { label: "Transport", pct: 45 },
+  { label: "Tagihan", pct: 82 },
+];
+
 // Auth-aware redirect ditangani di edge oleh `middleware.ts`.
 // Halaman ini fully static agar LCP optimal (CDN cache, no DB hit).
 export const dynamic = "force-static";
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background relative overflow-hidden">
-      {/* ── Mintlify Atmospheric Hero Gradient Wash ── */}
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
       <div className="hero-atmospheric-gradient pointer-events-none absolute inset-0 z-0 h-[800px] w-full" />
+      <div className="pointer-events-none absolute inset-x-0 top-24 z-0 mx-auto h-[520px] w-[min(92vw,1100px)] rounded-full bg-primary/8 blur-3xl" />
 
-      {/* Navbar */}
-      <header className="relative z-10 flex h-14 items-center justify-between border-b border-border px-6 backdrop-blur-md sticky top-0 bg-background/80">
-        <span className="text-[17px] font-semibold text-foreground tracking-tight">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-md">
+        <span className="text-[17px] font-semibold tracking-tight text-foreground">
           BudgetIn
         </span>
         <ThemeToggle />
       </header>
 
       <main className="relative z-10 flex flex-1 flex-col">
-
-        {/* ── Hero ── */}
-        <section className="flex flex-col items-center justify-center gap-8 px-4 pt-32 pb-24 text-center">
-          
-          <div className="badge-mono border border-border bg-card shadow-sm text-foreground mb-4">
-            Catat. Pahami. Hemat.
-          </div>
-
-          <div className="space-y-6 max-w-3xl">
-            <h1 className="text-5xl sm:text-[64px] font-semibold leading-[1.15] tracking-tight-hero text-foreground">
-              Catat pengeluaran,{" "}
-              <em className="not-italic text-primary">
-                pahami uangmu
-              </em>
-              {" "}—{" "}
-              <br className="hidden sm:block" />
-              cukup dengan ketik.
-            </h1>
-
-            <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              Tulis seperti chat biasa. AI kami yang proses sisanya &mdash;
-              kategori, budget, hingga laporan otomatis.
-            </p>
-          </div>
-
-          <div className="flex flex-col items-center gap-4 mt-4">
-            <div className="flex items-center justify-center gap-3">
-              <Link
-                href="/auth"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "font-medium"
-                )}
-              >
-                Mulai Gratis
-              </Link>
+        <section className="mx-auto grid w-full max-w-6xl gap-16 px-4 pb-24 pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:px-6 lg:pt-24">
+          <div className="text-center lg:text-left">
+            <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-border bg-card/85 px-4 py-2 text-sm shadow-sm backdrop-blur">
+              <span className="badge-mono border border-primary/20 bg-primary/12 text-primary">
+                AI-first
+              </span>
+              <span className="text-muted-foreground">
+                Catat. Pahami. Hemat.
+              </span>
             </div>
-            <p className="text-[13px] text-muted-foreground font-medium">
-              Gratis &middot; Tidak perlu kartu kredit &middot; Login dengan Google
-            </p>
-          </div>
-        </section>
 
-        {/* ── Features — Clean Flat Grid ── */}
-        <section className="mx-auto w-full max-w-5xl px-4 pb-32 pt-12">
-          
-          <div className="mb-12 flex flex-col items-center gap-3 text-center">
-            <span className="label-mono text-primary">Cara Kerja</span>
-            <h2 className="text-[40px] font-semibold tracking-tight-h2 text-foreground">
-              Sistem pencatatan termudah
-            </h2>
-          </div>
+            <div className="max-w-3xl space-y-6">
+              <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight-hero text-foreground sm:text-[64px]">
+                Budget tracker yang terasa
+                <span className="text-primary"> seperti ngobrol</span>, bukan isi
+                spreadsheet.
+              </h1>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            
-            {/* Feature 01 */}
-            <div className="rounded-[24px] border border-border bg-card p-8 shadow-sm transition-all hover:border-[rgba(0,0,0,0.08)] dark:hover:border-[rgba(255,255,255,0.12)]">
-              <span className="label-mono text-muted-foreground mb-4 block">01</span>
-              <h3 className="text-[20px] font-semibold tracking-tight-h3 mb-4 text-foreground">
-                Catat Transaksi
-              </h3>
-              
-              <div className="rounded-2xl border border-border bg-background p-5 mb-5 space-y-4">
-                <div className="flex items-start gap-3">
-                  <span className="badge-mono bg-[#d4fae8] text-[#0fa76e] dark:bg-[#0fa76e]/20 dark:text-[#18E299]">Kamu</span>
-                  <span className="text-sm">Makan siang warteg 18rb</span>
-                </div>
-                <div className="h-px bg-border" />
-                <div className="flex items-start gap-3">
-                  <span className="badge-mono bg-muted text-muted-foreground">AI</span>
-                  <span className="text-sm text-muted-foreground">
-                    ✓ Dicatat: Makan &mdash; Rp 18.000
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-[16px] text-muted-foreground leading-relaxed">
-                Tulis natural &mdash; AI otomatis ekstrak nominal, kategori, dan tanggal tanpa form apapun.
+              <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground lg:max-w-xl">
+                Tulis pengeluaran seperti chat biasa. BudgetIn membaca nominal,
+                kategori, dan konteksnya, lalu menyusunnya jadi sistem keuangan
+                yang rapi.
               </p>
             </div>
 
-            {/* Feature 02 */}
-            <div className="rounded-[24px] border border-border bg-card p-8 shadow-sm transition-all hover:border-[rgba(0,0,0,0.08)] dark:hover:border-[rgba(255,255,255,0.12)]">
-              <span className="label-mono text-muted-foreground mb-4 block">02</span>
-              <h3 className="text-[20px] font-semibold tracking-tight-h3 mb-4 text-foreground">
-                Kelola Budget
-              </h3>
-              
-              <div className="rounded-2xl border border-border bg-background p-5 mb-5 space-y-4">
-                {[
-                  { label: "Makan", pct: 68 },
-                  { label: "Transport", pct: 45 },
-                  { label: "Hiburan", pct: 92 },
-                ].map((item) => (
-                  <div key={item.label} className="space-y-2">
-                    <div className="flex justify-between text-xs font-semibold uppercase tracking-wide">
-                      <span>{item.label}</span>
-                      <span className="text-muted-foreground">{item.pct}%</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${item.pct}%`, opacity: item.pct > 85 ? 1 : 0.7 }}
-                      />
-                    </div>
+            <div className="mt-8 flex flex-col items-center gap-4 lg:items-start">
+              <div className="flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
+                <Link
+                  href="/auth"
+                  className={cn(
+                    buttonVariants({ size: "lg" }),
+                    "min-w-44 font-medium shadow-lg shadow-primary/20"
+                  )}
+                >
+                  Mulai Gratis
+                </Link>
+                <a
+                  href="#cara-kerja"
+                  className="inline-flex min-w-44 items-center justify-center rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  Lihat Cara Kerja
+                </a>
+              </div>
+              <p className="text-[13px] font-medium text-muted-foreground">
+                Gratis - Tidak perlu kartu kredit - Login dengan Google
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-3 text-left sm:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-card/85 p-4 shadow-sm backdrop-blur">
+                <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Input
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  Bahasa natural
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card/85 p-4 shadow-sm backdrop-blur">
+                <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Output
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  Budget, laporan, insight
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border bg-card/85 p-4 shadow-sm backdrop-blur">
+                <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+                  Storage
+                </p>
+                <p className="mt-2 text-sm font-medium text-foreground">
+                  Google Sheets milikmu
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative">
+            <div className="absolute -left-8 top-8 hidden h-24 w-24 rounded-full bg-primary/15 blur-2xl lg:block" />
+            <div className="absolute -right-6 bottom-8 hidden h-28 w-28 rounded-full bg-foreground/8 blur-3xl dark:bg-white/8 lg:block" />
+            <div className="relative overflow-hidden rounded-[32px] border border-border bg-card/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur dark:shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
+              <div className="flex items-center justify-between rounded-[24px] border border-border bg-background/90 px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Inbox transaksi
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Semua terasa seperti percakapan
+                  </p>
+                </div>
+                <div className="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold text-primary">
+                  Live parsing
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3 rounded-[24px] border border-border bg-background p-4">
+                {quickEntries.map((entry, index) => (
+                  <div
+                    key={`${entry.from}-${index}`}
+                    className={cn(
+                      "landing-reveal rounded-2xl px-4 py-3",
+                      entry.from === "Kamu"
+                        ? "ml-auto max-w-[85%]"
+                        : "mr-auto max-w-[92%]",
+                      entry.tone
+                    )}
+                    style={{ animationDelay: `${index * 120}ms` }}
+                  >
+                    <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                      {entry.from}
+                    </p>
+                    <p className="text-sm leading-relaxed">{entry.text}</p>
                   </div>
                 ))}
               </div>
 
-              <p className="text-[16px] text-muted-foreground leading-relaxed">
-                Set budget per kategori. Dapatkan progres pengeluaran secara visual yang sangat akurat.
-              </p>
-            </div>
-
-            {/* Feature 03 */}
-            <div className="rounded-[24px] border border-border bg-card p-8 shadow-sm transition-all hover:border-[rgba(0,0,0,0.08)] dark:hover:border-[rgba(255,255,255,0.12)]">
-              <span className="label-mono text-muted-foreground mb-4 block">03</span>
-              <h3 className="text-[20px] font-semibold tracking-tight-h3 mb-4 text-foreground">
-                Google Sheets Sync
-              </h3>
-              
-              <div className="rounded-2xl border border-border bg-background p-5 mb-5 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-[#d4fae8] dark:bg-[#0fa76e]/20 flex items-center justify-center shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                    <rect x="4" y="3" width="16" height="18" rx="3" stroke="#0fa76e" strokeWidth="2" />
-                    <path d="M8 8h8M8 12h8M8 16h5" stroke="#0fa76e" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
+              <div className="mt-4 grid gap-4 md:grid-cols-[1.15fr_0.85fr]">
+                <div className="rounded-[24px] border border-border bg-background p-4">
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">
+                      Status budget
+                    </p>
+                    <p className="text-xs text-muted-foreground">Mei 2026</p>
+                  </div>
+                  <div className="space-y-4">
+                    {budgetBars.map((item) => (
+                      <div key={item.label} className="space-y-2">
+                        <div className="flex justify-between text-xs font-semibold uppercase tracking-wide">
+                          <span>{item.label}</span>
+                          <span className="text-muted-foreground">{item.pct}%</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary transition-[width]"
+                            style={{
+                              width: `${item.pct}%`,
+                              opacity: item.pct > 75 ? 1 : 0.72,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Spreadsheet milikmu</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Tidak meninggalkan Google Drive-mu</p>
+
+                <div className="rounded-[24px] border border-border bg-primary/[0.08] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                    Insight hari ini
+                  </p>
+                  <p className="mt-3 text-xl font-semibold leading-tight text-foreground">
+                    Pengeluaran makan naik lebih cepat dari ritme normal mingguan.
+                  </p>
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                    Coba batasi jajan siang sampai Jumat. Potensinya hemat sekitar
+                    Rp 120.000 minggu ini.
+                  </p>
                 </div>
               </div>
-
-              <p className="text-[16px] text-muted-foreground leading-relaxed">
-                Privasi terjaga penuh. Seluruh data transaksi disimpan di Spreadsheet pribadi milikmu.
-              </p>
-            </div>
-
-            {/* Feature 04 */}
-            <div className="rounded-[24px] border border-border bg-card p-8 shadow-sm transition-all hover:border-[rgba(0,0,0,0.08)] dark:hover:border-[rgba(255,255,255,0.12)]">
-              <span className="label-mono text-muted-foreground mb-4 block">04</span>
-              <h3 className="text-[20px] font-semibold tracking-tight-h3 mb-4 text-foreground">
-                Laporan & Analisis AI
-              </h3>
-              
-              <div className="rounded-2xl border border-border bg-background p-5 mb-5 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold">Total bulan ini</span>
-                  <span className="text-lg font-semibold tracking-tight-h3 text-primary">Rp 1.240.000</span>
-                </div>
-                <div className="h-px bg-border" />
-                <p className="text-sm leading-relaxed italic text-muted-foreground">
-                  "Pengeluaran terbesar ada di kategori Makan. Coba untuk lebih sering memasak di rumah agar budget tidak bocor."
-                </p>
-              </div>
-
-              <p className="text-[16px] text-muted-foreground leading-relaxed">
-                Minta laporan kapan saja. AI selalu siap memberi saran yang langsung bisa dipraktikkan.
-              </p>
             </div>
           </div>
         </section>
 
-        {/* ── Bottom CTA ── */}
-        <section className="px-4 pb-32 pt-16 text-center border-t border-border bg-muted/30">
-          <div className="mx-auto max-w-lg space-y-8">
-            <h2 className="text-[40px] font-semibold tracking-tight-h2 leading-tight text-foreground">
-              Jadikan keuanganmu <br />
-              <span className="text-primary">winning advantage</span>
-            </h2>
+        <section className="border-y border-border bg-muted/35 py-4">
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-8 gap-y-2 px-4 text-center text-sm text-muted-foreground lg:justify-between lg:px-6">
+            <span>Input natural tanpa form kaku</span>
+            <span>Budget kategori yang mudah dibaca</span>
+            <span>AI summary yang langsung actionable</span>
+            <span>Spreadsheet tetap di akun Google-mu</span>
+          </div>
+        </section>
 
+        <section
+          id="cara-kerja"
+          className="mx-auto w-full max-w-6xl px-4 pb-28 pt-16 lg:px-6"
+        >
+          <div className="mb-12 flex flex-col items-center gap-3 text-center">
+            <span className="label-mono text-primary">Cara Kerja</span>
+            <h2 className="text-[40px] font-semibold tracking-tight-h2 text-foreground">
+              Dari catatan singkat jadi sistem keuangan yang rapi
+            </h2>
+            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
+              Kamu cukup menulis. BudgetIn mengubah potongan aktivitas harian
+              menjadi pencatatan yang konsisten, mudah dianalisis, dan tetap
+              terasa ringan dipakai.
+            </p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="grid gap-4 md:grid-cols-2">
+              {signalCards.map((card, index) => (
+                <div
+                  key={card.title}
+                  className={cn(
+                    "rounded-[24px] border border-border bg-card p-8 shadow-sm transition-all hover:-translate-y-1 hover:border-foreground/10",
+                    index === 0 ? "md:col-span-2" : ""
+                  )}
+                >
+                  <span className="label-mono mb-4 block text-muted-foreground">
+                    {card.eyebrow}
+                  </span>
+                  <h3 className="mb-4 text-[22px] font-semibold tracking-tight-h3 text-foreground">
+                    {card.title}
+                  </h3>
+                  <p className="text-[16px] leading-relaxed text-muted-foreground">
+                    {card.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-card p-8 shadow-sm">
+              <span className="label-mono mb-4 block text-muted-foreground">
+                Contoh ringkasan
+              </span>
+              <h3 className="text-[24px] font-semibold tracking-tight-h3 text-foreground">
+                "Bulan ini kamu stabil, tapi akhir pekan selalu jadi titik bocor."
+              </h3>
+              <div className="my-6 h-px bg-border" />
+              <div className="space-y-5 text-sm leading-relaxed text-muted-foreground">
+                <p>
+                  Pengeluaran terbesar masih berada di kategori Makan, tetapi
+                  lonjakan paling tajam muncul setiap Sabtu dan Minggu.
+                </p>
+                <p>
+                  Kalau kamu memindahkan dua kali makan akhir pekan ke masak di
+                  rumah, budget bulanan bisa turun tanpa mengubah pola hidup
+                  harian.
+                </p>
+                <p className="rounded-2xl bg-muted px-4 py-3 text-foreground">
+                  Ringkas, relevan, dan cukup konkret untuk ditindaklanjuti.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 pb-32 pt-4 lg:px-6">
+          <div className="mx-auto max-w-5xl rounded-[32px] border border-border bg-card px-6 py-14 text-center shadow-sm sm:px-10">
+            <span className="label-mono text-primary">Siap mulai</span>
+            <h2 className="mt-4 text-[40px] font-semibold leading-tight tracking-tight-h2 text-foreground">
+              Jadikan keuanganmu
+              <span className="text-primary"> lebih tenang</span>, satu chat
+              pada satu waktu.
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              BudgetIn membantu kamu tetap rapi tanpa mengubah cara berpikir.
+              Cukup catat seperti biasa, lalu biarkan sistemnya bekerja.
+            </p>
             <Link
               href="/auth"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "font-medium shadow-md hover:-translate-y-0.5 transition-transform"
+                "mt-8 font-medium shadow-md transition-transform hover:-translate-y-0.5"
               )}
             >
               Mulai Sekarang Gratis
@@ -207,20 +331,19 @@ export default function LandingPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 py-10 text-center space-y-4 border-t border-border">
-        <span className="block text-[15px] font-semibold text-foreground tracking-tight">
+      <footer className="relative z-10 space-y-4 border-t border-border py-10 text-center">
+        <span className="block text-[15px] font-semibold tracking-tight text-foreground">
           BudgetIn
         </span>
-        <p className="text-[13px] text-muted-foreground font-medium">
-          &copy; 2026 BudgetIn &mdash; Aplikasi pencatat keuangan responsif & aman.
+        <p className="text-[13px] font-medium text-muted-foreground">
+          &copy; 2026 BudgetIn - Aplikasi pencatat keuangan responsif dan aman.
         </p>
-        <div className="flex items-center justify-center gap-4 text-[13px] font-medium text-muted-foreground mt-4">
-          <Link href="/privacy" className="hover:text-primary transition-colors">
+        <div className="mt-4 flex items-center justify-center gap-4 text-[13px] font-medium text-muted-foreground">
+          <Link href="/privacy" className="transition-colors hover:text-primary">
             Kebijakan Privasi
           </Link>
           <span>&middot;</span>
-          <Link href="/terms" className="hover:text-primary transition-colors">
+          <Link href="/terms" className="transition-colors hover:text-primary">
             Syarat &amp; Ketentuan
           </Link>
         </div>

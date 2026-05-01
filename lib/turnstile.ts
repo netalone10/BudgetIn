@@ -1,18 +1,15 @@
 /**
  * Cloudflare Turnstile server-side verification.
- * Returns true if token is valid, or if TURNSTILE_SECRET_KEY is not set (dev mode).
+ * Returns true in non-production so local/dev auth flows are not blocked.
  */
 export async function verifyTurnstile(token: string | undefined | null): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
-  // Production: wajib ada secret & token
-  if (process.env.NODE_ENV === "production") {
-    if (!secret || !token) return false;
-  } else {
-    // Development: skip jika secret belum dikonfigurasi
-    if (!secret) return true;
-    if (!token) return false;
+  if (process.env.NODE_ENV !== "production") {
+    return true;
   }
+
+  if (!secret || !token) return false;
 
   try {
     const res = await fetch(

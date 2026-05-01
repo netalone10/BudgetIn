@@ -6,7 +6,9 @@ import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Plus, Loader2, Wallet, AlertCircle, Tags, Edit2, Trash2,
-  ChevronDown, ChevronRight, RefreshCw, Eye
+  ChevronDown, ChevronRight, RefreshCw, Eye, Landmark, Smartphone,
+  TrendingUp, Bitcoin, House, Car, HandCoins, CreditCard, Ellipsis,
+  type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -71,6 +73,57 @@ function formatShortDate(dateStr: string): string {
   const [, month, day] = dateStr.split("-");
   const months = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"];
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
+}
+
+const ACCOUNT_TYPE_ICONS: Record<string, LucideIcon> = {
+  wallet: Wallet,
+  landmark: Landmark,
+  smartphone: Smartphone,
+  "trending-up": TrendingUp,
+  bitcoin: Bitcoin,
+  home: House,
+  car: Car,
+  handshake: HandCoins,
+  "credit-card": CreditCard,
+  "more-horizontal": Ellipsis,
+};
+
+const ACCOUNT_TYPE_ICON_BY_NAME: Record<string, string> = {
+  Kas: "wallet",
+  Bank: "landmark",
+  "E-Wallet": "smartphone",
+  Investasi: "trending-up",
+  Kripto: "bitcoin",
+  Properti: "home",
+  Kendaraan: "car",
+  Piutang: "handshake",
+  Hutang: "credit-card",
+  "Kartu Kredit": "credit-card",
+  Lainnya: "more-horizontal",
+};
+
+const ACCOUNT_TYPE_COLOR_BY_NAME: Record<string, string> = {
+  Kas: "#10b981",
+  Bank: "#3b82f6",
+  "E-Wallet": "#8b5cf6",
+  Investasi: "#f59e0b",
+  Kripto: "#f97316",
+  Properti: "#14b8a6",
+  Kendaraan: "#06b6d4",
+  Piutang: "#84cc16",
+  Hutang: "#ef4444",
+  "Kartu Kredit": "#dc2626",
+  Lainnya: "#6b7280",
+};
+
+function getAccountIcon(iconName?: string | null, typeName?: string): LucideIcon {
+  const resolvedIconName = iconName ?? (typeName ? ACCOUNT_TYPE_ICON_BY_NAME[typeName] : undefined);
+  if (!resolvedIconName) return Wallet;
+  return ACCOUNT_TYPE_ICONS[resolvedIconName] ?? Wallet;
+}
+
+function getAccountBadgeColor(account: Pick<AccountData, "color" | "accountType">): string {
+  return account.color ?? account.accountType.color ?? ACCOUNT_TYPE_COLOR_BY_NAME[account.accountType.name] ?? "#6b7280";
 }
 
 // Urutan likuiditas grup akun (asset → liability).
@@ -395,8 +448,9 @@ const AccountCard = memo(function AccountCard({
   const router = useRouter();
   const isLiability = account.accountType.classification === "liability";
   const balance = parseFloat(account.currentBalance);
-  const color = account.color ?? account.accountType.color;
+  const color = getAccountBadgeColor(account);
   const recent = account.recentTransactions ?? [];
+  const AccountIcon = getAccountIcon(account.icon ?? account.accountType.icon, account.accountType.name);
 
   return (
     <div className="rounded-xl border border-border bg-background hover:border-border/80 transition-colors overflow-hidden">
@@ -404,10 +458,10 @@ const AccountCard = memo(function AccountCard({
       <div className="flex items-center justify-between p-4 gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-white text-sm font-bold"
+            className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-white"
             style={{ backgroundColor: color }}
           >
-            {account.name.slice(0, 1).toUpperCase()}
+            <AccountIcon className="h-4 w-4" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">

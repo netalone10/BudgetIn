@@ -40,6 +40,7 @@ function AuthForm() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<TurnstileInstance>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+  const captchaEnabled = process.env.NODE_ENV === "production" && !!siteKey;
 
   // Query param banners
   const verifiedParam = searchParams.get("verified");
@@ -93,8 +94,10 @@ function AuthForm() {
 
       if (!res.ok) {
         setError(data.error ?? "Gagal mendaftar.");
-        turnstileRef.current?.reset();
-        setTurnstileToken(null);
+        if (captchaEnabled) {
+          turnstileRef.current?.reset();
+          setTurnstileToken(null);
+        }
         setLoading(false);
         return;
       }
@@ -113,8 +116,10 @@ function AuthForm() {
       });
 
       if (res?.error) {
-        turnstileRef.current?.reset();
-        setTurnstileToken(null);
+        if (captchaEnabled) {
+          turnstileRef.current?.reset();
+          setTurnstileToken(null);
+        }
         // Cek apakah email belum diverifikasi
         if (res.error.includes("EMAIL_NOT_VERIFIED")) {
           setUnverifiedEmail(email);
@@ -293,7 +298,12 @@ function AuthForm() {
         <p className="text-sm text-muted-foreground">
           {tab === "login" ? "Belum punya akun? " : "Sudah punya akun? "}
           <button
-            onClick={() => { setTab(tab === "login" ? "register" : "login"); setError(""); setTurnstileToken(null); turnstileRef.current?.reset(); }}
+            onClick={() => {
+              setTab(tab === "login" ? "register" : "login");
+              setError("");
+              setTurnstileToken(null);
+              if (captchaEnabled) turnstileRef.current?.reset();
+            }}
             className="font-medium text-primary hover:underline"
           >
             {tab === "login" ? "Daftar" : "Masuk"}
@@ -386,7 +396,7 @@ function AuthForm() {
           </div>
 
           {/* Cloudflare Turnstile CAPTCHA */}
-          {siteKey && (
+          {captchaEnabled && (
             <div className="flex justify-center">
               <Turnstile
                 ref={turnstileRef}
@@ -402,7 +412,7 @@ function AuthForm() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || googleLoading || (!!siteKey && !turnstileToken)}
+            disabled={loading || googleLoading || (captchaEnabled && !turnstileToken)}
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
