@@ -15,16 +15,22 @@ function isValidTransferAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
 }
 
+const TRANSFER_FEE_CATEGORY = "Biaya Admin";
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { type, amount, accountId, toAccountId, category, date, note } = body;
+  const { type, amount, accountId, toAccountId, category, date, note, fee } = body;
 
   const parsedAmount = Number(amount);
+  const parsedFee = fee === undefined || fee === null || fee === "" ? 0 : Number(fee);
   if (!Number.isFinite(parsedAmount)) {
     return NextResponse.json({ error: "Nominal tidak valid." }, { status: 400 });
+  }
+  if (!Number.isFinite(parsedFee) || parsedFee < 0 || parsedFee > 1_000_000_000) {
+    return NextResponse.json({ error: "Fee tidak valid." }, { status: 400 });
   }
 
   // Validasi date
@@ -113,11 +119,30 @@ export async function POST(req: NextRequest) {
         toAccountName: toAccount.name,
       });
 
+      let feeTransaction = null;
+      if (parsedFee > 0) {
+        feeTransaction = await appendTransaction(user!.sheetsId!, accessToken, {
+          date,
+          amount: parsedFee,
+          category: TRANSFER_FEE_CATEGORY,
+          note: note ? `Fee transfer - ${note}` : "Fee transfer",
+          type: "expense",
+          fromAccountId: accountId,
+          fromAccountName: fromAccount.name,
+        });
+
+        await prisma.category.upsert({
+          where: { userId_name: { userId: session.userId, name: TRANSFER_FEE_CATEGORY } },
+          update: {},
+          create: { userId: session.userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+        });
+      }
+
       // Sheets: saldo dihitung pure-ledger (no cache write). Transfer terekam sebagai
       // 1 row expense dengan from+to terisi; getAccountsWithBalance akan menghitung
       // delta untuk kedua akun dari ledger.
 
-      return NextResponse.json({ transaction, message: "Transfer berhasil dicatat." }, { status: 201 });
+      return NextResponse.json({ transaction, feeTransaction, message: "Transfer berhasil dicatat." }, { status: 201 });
     }
 
     return NextResponse.json({ error: "Tipe transaksi tidak valid." }, { status: 400 });
@@ -248,7 +273,34 @@ export async function POST(req: NextRequest) {
           transferId,
         },
       }),
+      ...(parsedFee > 0
+        ? [
+            prisma.transaction.create({
+              data: {
+                userId: session.userId,
+                accountId,
+                type: "expense",
+                amount: new Decimal(parsedFee),
+                category: TRANSFER_FEE_CATEGORY,
+                date,
+                note: transferNote ? `Fee transfer - ${transferNote}` : "Fee transfer",
+              },
+            }),
+          ]
+        : []),
     ]);
+
+    if (parsedFee > 0) {
+      await prisma.category.upsert({
+        where: { userId_name: { userId: session.userId, name: TRANSFER_FEE_CATEGORY } },
+        update: {},
+        create: {
+          userId: session.userId,
+          name: TRANSFER_FEE_CATEGORY,
+          type: "expense",
+        },
+      });
+    }
 
     return NextResponse.json({ transferId, message: "Transfer berhasil dicatat." }, { status: 201 });
   }

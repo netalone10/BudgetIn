@@ -10,7 +10,7 @@ import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { NON_MONETARY_UNITS, MONETARY_INDICATOR, REPORT_KEYWORDS } from "@/utils/record/amount-parser";
-import { handleTransaksi, handleTransaksiBulk, handlePemasukan, handleBudgetSetting, handleLaporan } from "@/utils/record/intent-handlers";
+import { handleTransaksi, handleTransaksiBulk, handlePemasukan, handleTransfer, handleBudgetSetting, handleLaporan } from "@/utils/record/intent-handlers";
 import type { RuntimeAccount } from "@/utils/record/account-resolver";
 
 const TIMEZONE = "Asia/Jakarta";
@@ -167,6 +167,7 @@ export async function POST(req: NextRequest) {
   if (parsed.intent === "transaksi")      return handleTransaksi(parsed, ctx);
   if (parsed.intent === "transaksi_bulk") return handleTransaksiBulk(parsed, ctx);
   if (parsed.intent === "pemasukan")      return handlePemasukan(parsed, ctx);
+  if (parsed.intent === "transfer")       return handleTransfer(parsed, ctx);
   if (parsed.intent === "budget_setting") return handleBudgetSetting(parsed, ctx);
   if (parsed.intent === "laporan")        return handleLaporan(parsed, ctx);
 

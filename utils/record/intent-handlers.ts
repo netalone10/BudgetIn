@@ -8,6 +8,8 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Decimal } from "@prisma/client/runtime/library";
+import { randomUUID } from "crypto";
 import {
   appendTransaction,
   appendBudgetBackup,
@@ -17,6 +19,8 @@ import { appendTransactionDB, getTransactionsDB } from "@/utils/db-transactions"
 import { callWithRotation } from "@/utils/groq";
 import { buildAccountResolver, type RuntimeAccount } from "./account-resolver";
 import { correctAmount, isValidAmount } from "./amount-parser";
+
+const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
 export interface RecordContext {
   userId: string;
@@ -35,6 +39,10 @@ type ParsedIntent = Record<string, any>;
 function formatSignedIDR(amount: number, positivePrefix = ""): string {
   const sign = amount < 0 ? "-" : positivePrefix;
   return `${sign}Rp ${Math.abs(amount).toLocaleString("id-ID")}`;
+}
+
+function isValidTransferAmount(amount: number): boolean {
+  return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
 }
 
 export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
@@ -145,6 +153,149 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
     });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
+  }
+}
+
+export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
+  const { userId, useSheets, sheetsId, accessToken, userAccounts, prompt } = ctx;
+  let transferAmount = Number(parsed.transferAmount ?? parsed.amount ?? parsed.nominal ?? 0);
+  const fee = parsed.fee === undefined || parsed.fee === null || parsed.fee === "" ? 0 : Number(parsed.fee);
+  if (transferAmount) transferAmount = Math.abs(correctAmount(prompt, transferAmount));
+
+  if (!isValidTransferAmount(transferAmount)) {
+    return NextResponse.json({ intent: "unknown", clarification: "Nominal transfer tidak terdeteksi. Contoh: 'transfer 1jt dari BCA ke Mandiri fee 2500'" });
+  }
+  if (!Number.isFinite(fee) || fee < 0 || fee > 1_000_000_000) {
+    return NextResponse.json({ intent: "unknown", clarification: "Fee transfer tidak valid. Contoh: 'transfer 1jt dari BCA ke Mandiri fee 2500'" });
+  }
+
+  const { resolveAccount, validateAccount } = buildAccountResolver({ userId, prompt, useSheets, sheetsId, accessToken, userAccounts });
+  const fromResolution = await resolveAccount(parsed.fromAccountName ?? parsed.accountName, "expense");
+  if ("clarification" in fromResolution) return NextResponse.json({ intent: "unknown", clarification: fromResolution.clarification });
+  const toResolution = await resolveAccount(parsed.toAccountName, "income");
+  if ("clarification" in toResolution) return NextResponse.json({ intent: "unknown", clarification: toResolution.clarification });
+
+  const fromAccountId = fromResolution.accountId;
+  const toAccountId = toResolution.accountId;
+  if (fromAccountId === toAccountId) {
+    return NextResponse.json({ error: "Akun asal dan tujuan tidak boleh sama." }, { status: 400 });
+  }
+
+  const fromError = await validateAccount(fromAccountId);
+  if (fromError) return NextResponse.json({ error: fromError.error }, { status: fromError.status });
+  const toError = await validateAccount(toAccountId);
+  if (toError) return NextResponse.json({ error: toError.error }, { status: toError.status });
+
+  const fromAccount = userAccounts.find((a) => a.id === fromAccountId);
+  const toAccount = userAccounts.find((a) => a.id === toAccountId);
+  const fromAccountName = fromAccount?.name ?? "";
+  const toAccountName = toAccount?.name ?? "";
+  const date = parsed.date ?? ctx.today;
+  const note = parsed.note ?? "";
+
+  try {
+    if (useSheets) {
+      const transaction = await appendTransaction(sheetsId!, accessToken, {
+        date,
+        amount: transferAmount,
+        category: "Transfer",
+        note,
+        type: "expense",
+        fromAccountId,
+        fromAccountName,
+        toAccountId,
+        toAccountName,
+      });
+      const transactions = [transaction];
+      if (fee > 0) {
+        const feeTransaction = await appendTransaction(sheetsId!, accessToken, {
+          date,
+          amount: fee,
+          category: TRANSFER_FEE_CATEGORY,
+          note: note ? `Fee transfer - ${note}` : "Fee transfer",
+          type: "expense",
+          fromAccountId,
+          fromAccountName,
+        });
+        transactions.push(feeTransaction);
+      }
+
+      if (fee > 0) {
+        await prisma.category.upsert({
+          where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
+          update: {},
+          create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+        });
+      }
+
+      return NextResponse.json({
+        intent: "transfer",
+        transactions,
+        transaction,
+        message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
+        details: { date, amount: transferAmount, fee, fromAccountName, toAccountName },
+      });
+    }
+
+    const transferId = randomUUID();
+    await prisma.$transaction([
+      prisma.transaction.create({
+        data: {
+          userId,
+          accountId: fromAccountId,
+          type: "transfer_out",
+          amount: new Decimal(transferAmount),
+          category: "Transfer",
+          date,
+          note,
+          transferId,
+        },
+      }),
+      prisma.transaction.create({
+        data: {
+          userId,
+          accountId: toAccountId,
+          type: "transfer_in",
+          amount: new Decimal(transferAmount),
+          category: "Transfer",
+          date,
+          note,
+          transferId,
+        },
+      }),
+      ...(fee > 0
+        ? [
+            prisma.transaction.create({
+              data: {
+                userId,
+                accountId: fromAccountId,
+                type: "expense",
+                amount: new Decimal(fee),
+                category: TRANSFER_FEE_CATEGORY,
+                date,
+                note: note ? `Fee transfer - ${note}` : "Fee transfer",
+              },
+            }),
+          ]
+        : []),
+    ]);
+
+    if (fee > 0) {
+      await prisma.category.upsert({
+        where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
+        update: {},
+        create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+      });
+    }
+
+    return NextResponse.json({
+      intent: "transfer",
+      transferId,
+      message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
+      details: { date, amount: transferAmount, fee, fromAccountName, toAccountName },
+    });
+  } catch {
+    return NextResponse.json({ error: "Gagal menyimpan transfer. Coba lagi." }, { status: 500 });
   }
 }
 

@@ -253,7 +253,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       setResponse(data);
 
       // Auto-dismiss success notification setelah 4 detik
-      if (data.intent === "transaksi" || data.intent === "transaksi_bulk" || data.intent === "pemasukan" || data.intent === "budget_setting") {
+      if (data.intent === "transaksi" || data.intent === "transaksi_bulk" || data.intent === "pemasukan" || data.intent === "transfer" || data.intent === "budget_setting") {
         dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
       }
 
@@ -268,6 +268,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       if (data.intent === "transaksi_bulk" && data.transactions?.length) {
         setTransactions((prev) => [...data.transactions, ...prev]);
         setPage(1);
+        fetchBudget();
+        fetchAccounts();
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      }
+
+      if (data.intent === "transfer") {
+        fetchTransactions(true);
         fetchBudget();
         fetchAccounts();
         emitDataChanged(["transactions", "budget", "accounts"]);

@@ -186,7 +186,8 @@ export default function AccountDetailClient({ initialData }: Props) {
       if (
         result.intent === "transaksi" ||
         result.intent === "transaksi_bulk" ||
-        result.intent === "pemasukan"
+        result.intent === "pemasukan" ||
+        result.intent === "transfer"
       ) {
         setPrompt("");
         handleTransactionCreated();

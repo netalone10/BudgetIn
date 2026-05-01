@@ -103,6 +103,31 @@ function createTransferPair(params: {
   ];
 }
 
+function createTransferWithFee(params: {
+  userId: string;
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  fee: number;
+  date: string;
+  note: string;
+  transferId: string;
+}) {
+  return [
+    ...createTransferPair(params),
+    {
+      userId: params.userId,
+      accountId: params.fromAccountId,
+      type: "expense" as const,
+      amount: params.fee,
+      date: params.date,
+      note: params.note ? `Fee transfer - ${params.note}` : "Fee transfer",
+      category: "Biaya Admin",
+      transferId: null,
+    },
+  ];
+}
+
 /** Transfer validation — mirrors checks in manual/route.ts (pure) */
 function validateTransfer(
   accountId: string,

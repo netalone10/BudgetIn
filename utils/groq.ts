@@ -60,7 +60,7 @@ export async function callWithRotation<T>(
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ParsedRecord {
-  intent: "transaksi" | "transaksi_bulk" | "pemasukan" | "budget_setting" | "laporan" | "unknown";
+  intent: "transaksi" | "transaksi_bulk" | "pemasukan" | "transfer" | "budget_setting" | "laporan" | "unknown";
 
   // intent: transaksi (pengeluaran)
   amount?: number;
@@ -75,6 +75,12 @@ export interface ParsedRecord {
   // intent: pemasukan (income)
   incomeAmount?: number;
   incomeCategory?: string; // "Gaji" | "Freelance" | "Bonus" | "Investasi" | lainnya
+
+  // intent: transfer
+  transferAmount?: number;
+  fromAccountName?: string;
+  toAccountName?: string;
+  fee?: number;
 
   // intent: budget_setting
   budgetCategory?: string;
@@ -96,6 +102,7 @@ RULES:
 1. Tentukan intent dari input:
    - "transaksi": user mencatat PENGELUARAN (ada nominal + konteks belanja/bayar/beli/makan/transport/dll)
    - "pemasukan": user mencatat PEMASUKAN / income (ada kata: gajian/gaji/terima/dapat/income/masuk/fee/bayaran/transfer masuk/bonus/dividen/freelance)
+   - "transfer": user memindahkan uang antar akun/dompet/bank sendiri (ada kata: transfer/kirim/topup/top up/isi saldo/pindah dana dari akun A ke akun B)
    - "budget_setting": user ingin set atau ubah batas budget per kategori (ada kata: budget/limit/alokasi)
    - "laporan": user meminta rekap, ringkasan, atau analisis pengeluaran (ada kata: rekap/laporan/lihat/berapa/analisis)
    - "unknown": tidak bisa ditentukan, butuh klarifikasi
@@ -174,10 +181,23 @@ RULES:
    - "dari dompet" → accountName: "dompet"
    Jika TIDAK disebutkan, JANGAN isi accountName (biarkan undefined/null).
 
-12. FORMAT JSON WAJIB per intent:
+12. TRANSFER ANTAR AKUN:
+   - Gunakan intent "transfer" untuk kalimat seperti:
+     "transfer 1jt dari BCA ke Mandiri fee 2500"
+     "kirim 200rb BCA ke GoPay admin 1000"
+     "topup dana 100rb biaya admin 1000 dari BCA"
+     "isi saldo shopeepay 50rb dari Mandiri"
+   - Extract nominal utama ke "transferAmount".
+   - Extract akun asal ke "fromAccountName" dan akun tujuan ke "toAccountName".
+   - Jika ada kata fee/admin/biaya admin/biaya transfer dengan nominal sendiri, extract ke "fee".
+   - Jika ada 2 nominal, nominal setelah kata fee/admin/biaya adalah fee; nominal lainnya adalah transferAmount.
+   - Transfer harus positif; jangan gunakan nominal minus untuk transfer.
+
+13. FORMAT JSON WAJIB per intent:
    - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
    - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"accountName":"STRING","date":"YYYY-MM-DD"}
    - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
+   - transfer: {"intent":"transfer","transferAmount":NUMBER,"fromAccountName":"STRING","toAccountName":"STRING","fee":NUMBER,"note":"STRING","date":"YYYY-MM-DD"}
    - budget_setting: {"intent":"budget_setting","budgetCategory":"STRING","budgetAmount":NUMBER}
    - laporan: {"intent":"laporan","period":"STRING","reportType":"summary"}
    - unknown: {"intent":"unknown","clarification":"STRING"}

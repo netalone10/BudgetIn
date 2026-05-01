@@ -32,6 +32,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
 
   // Form state
   const [amount, setAmount] = useState("");
+  const [fee, setFee] = useState("");
   const [accountId, setAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
   const [category, setCategory] = useState("");
@@ -41,6 +42,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   // Reset form on tab change
   useEffect(() => {
     setAmount("");
+    setFee("");
     setAccountId(defaultAccountId ?? "");
     setToAccountId("");
     setCategory("");
@@ -97,12 +99,18 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       setError("Nominal tidak boleh 0.");
       return;
     }
+    const parsedFee = fee.trim() === "" ? 0 : Number(fee);
+    if (tab === "transfer" && (!Number.isFinite(parsedFee) || parsedFee < 0)) {
+      setError("Fee harus 0 atau lebih.");
+      return;
+    }
 
     const payload: Record<string, unknown> = { type: tab, amount: parsedAmount, date, note };
 
     if (tab === "transfer") {
       payload.accountId = accountId;
       payload.toAccountId = toAccountId;
+      if (parsedFee > 0) payload.fee = parsedFee;
     } else {
       payload.accountId = accountId;
       payload.category = category;
@@ -122,6 +130,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       }
       setSuccess(tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.");
       setAmount("");
+      setFee("");
       setNote("");
       setCategory("");
       onSuccess();
@@ -190,8 +199,9 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
 
         {/* Account(s) */}
         {tab === "transfer" ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Dari Akun</label>
               <select
                 value={accountId}
@@ -232,6 +242,21 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
                   </optgroup>
                 ))}
               </select>
+            </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Fee (opsional)</label>
+              <input
+                type="number"
+                min="0"
+                max="1000000000"
+                step="1"
+                value={fee}
+                onChange={(e) => setFee(e.target.value)}
+                placeholder="0"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">Jika diisi, fee dicatat sebagai pengeluaran kategori Biaya Admin dari akun asal.</p>
             </div>
           </div>
         ) : (
