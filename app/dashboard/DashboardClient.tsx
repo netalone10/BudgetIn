@@ -3,10 +3,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
-import TransactionCard, { Transaction } from "@/components/TransactionCard";
+import TransactionCard, { Transaction, type TransactionCategory } from "@/components/TransactionCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp } from "lucide-react";
+import { SendHorizonal, Loader2, CheckCircle2, AlertCircle, Info, TrendingDown, TrendingUp, RefreshCw } from "lucide-react";
 import NetWorthSummaryCard from "@/components/NetWorthSummaryCard";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
@@ -103,6 +103,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [categories, setCategories] = useState<string[]>(
     initialData.categories.map((c) => c.name)
   );
+  const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(
+    initialData.categories.map((c) => ({ name: c.name, type: c.type }))
+  );
   const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(
     new Set(initialData.savingsCategoryNames)
   );
@@ -153,6 +156,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       const d = await r.json();
       const cats = d.categories ?? [];
       setCategories(cats.map((c: { name: string }) => c.name));
+      setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
       // Build savings category names set
       const savingsNames = new Set<string>(
         cats
@@ -207,6 +211,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     } catch {
       // skip
     }
+  }
+
+  async function handleManualRefresh() {
+    await Promise.all([
+      fetchTransactions(true),
+      fetchBudget(true),
+      fetchAccounts(true),
+      fetchCategories(),
+    ]);
   }
 
   async function handleSubmit(e?: React.FormEvent) {
@@ -268,6 +281,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           .then((d) => {
             const cats = d.categories ?? [];
             setCategories(cats.map((c: { name: string }) => c.name));
+            setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
             setSavingsCategoryNames(new Set<string>(
               cats
                 .filter((c: { isSavings?: boolean }) => c.isSavings)
@@ -323,6 +337,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   return (
     <>
         {/* Today's Summary — always render the shell to keep layout stable (avoid CLS) */}
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleManualRefresh}
+            disabled={dataLoading}
+            className="rounded-full"
+          >
+            <RefreshCw className={cn("h-4 w-4", dataLoading && "animate-spin")} />
+            Refresh data
+          </Button>
+        </div>
+
         <div className="flex gap-4" style={{ minHeight: 96 }}>
           {txLoading ? (
             <>
@@ -598,7 +626,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     <TransactionCard
                       key={t.id}
                       transaction={t}
-                      categories={categories}
+                      categories={transactionCategories}
                       accounts={accounts}
                       onDelete={handleDeleteTx}
                       onUpdate={handleUpdateTx}

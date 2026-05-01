@@ -20,9 +20,14 @@ export interface Transaction {
   accountId?: string | null;
 }
 
+export interface TransactionCategory {
+  name: string;
+  type: string;
+}
+
 interface Props {
   transaction: Transaction;
-  categories?: string[];
+  categories?: TransactionCategory[];
   accounts?: { id: string; name: string }[];
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: Partial<Transaction>) => void;
@@ -46,7 +51,7 @@ function formatDate(dateStr: string) {
 
 interface EditModalProps {
   transaction: Transaction;
-  categories: string[];
+  categories: TransactionCategory[];
   accounts: { id: string; name: string }[];
   onClose: () => void;
   onSaved: (updates: Partial<Transaction>) => void;
@@ -61,10 +66,16 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Gabungkan kategori user + kategori transaksi ini (kalau belum ada di list)
-  const categoryOptions = categories.includes(transaction.category)
-    ? categories
-    : [...categories, transaction.category].sort();
+  const categoryType =
+    transaction.type === "income" || transaction.type === "transfer_in"
+      ? "income"
+      : "expense";
+  const filteredCategoryNames = categories
+    .filter((c) => c.type === categoryType)
+    .map((c) => c.name);
+  const categoryOptions = filteredCategoryNames.includes(transaction.category)
+    ? filteredCategoryNames
+    : [...filteredCategoryNames, transaction.category].sort();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Activity, Loader2, Plus, SendHorizonal, Check
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import TransactionCard from "@/components/TransactionCard";
+import TransactionCard, { type TransactionCategory } from "@/components/TransactionCard";
 import ManualTransactionForm from "@/components/ManualTransactionForm";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import type { AccountDetailData, AccountTransaction } from "@/lib/account-detail-data";
@@ -57,6 +57,7 @@ export default function AccountDetailClient({ initialData }: Props) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>([]);
   const [modalDataLoading, setModalDataLoading] = useState(false);
   const [modalDataError, setModalDataError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
@@ -132,6 +133,7 @@ export default function AccountDetailClient({ initialData }: Props) {
       ]);
       setAccounts(accountsJson.accounts ?? []);
       setCategories((categoriesJson.categories ?? []).map((c: { name: string }) => c.name));
+      setTransactionCategories((categoriesJson.categories ?? []).map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
     } catch {
       setModalDataError("Gagal memuat data akun/kategori.");
     } finally {
@@ -211,6 +213,10 @@ export default function AccountDetailClient({ initialData }: Props) {
   useDataEvent(["accounts", "categories"], () => {
     if (showAddModal) fetchModalData();
   });
+
+  useEffect(() => {
+    fetchModalData();
+  }, [fetchModalData]);
 
   useEffect(() => {
     if (showAddModal) {
@@ -407,6 +413,7 @@ export default function AccountDetailClient({ initialData }: Props) {
                     <TransactionCard
                       key={t.id}
                       transaction={t}
+                      categories={transactionCategories}
                       onDelete={handleDeleteTx}
                       onUpdate={handleUpdateTx}
                     />
