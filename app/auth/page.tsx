@@ -15,6 +15,8 @@ import type { TurnstileInstance } from "@marsidev/react-turnstile";
 
 type Tab = "login" | "register";
 
+const DEMO_LOGIN_TIMEOUT_MS = 12000;
+
 // ── Inner component (needs useSearchParams) ──────────────────────────────────
 function AuthForm() {
   const router = useRouter();
@@ -49,6 +51,47 @@ function AuthForm() {
   const errorParam = searchParams.get("error");
   const demoParam = searchParams.get("demo");
 
+  async function triggerDemoLogin() {
+    demoLoginAttemptedRef.current = true;
+    setTab("login");
+    setEmail(DEMO_ACCOUNT.email);
+    setPassword(DEMO_ACCOUNT.password);
+    setError("");
+    setLoading(true);
+
+    const signInPromise = signIn("credentials", {
+      email: DEMO_ACCOUNT.email,
+      password: DEMO_ACCOUNT.password,
+      turnstileToken: turnstileToken ?? "",
+      redirect: false,
+    });
+
+    const timeoutPromise = new Promise<"timeout">((resolve) => {
+      setTimeout(() => resolve("timeout"), DEMO_LOGIN_TIMEOUT_MS);
+    });
+
+    const res = await Promise.race([signInPromise, timeoutPromise]);
+
+    if (res === "timeout") {
+      setError("Login demo terlalu lama. Coba lagi, atau login manual kalau masih berlanjut.");
+      setLoading(false);
+      return;
+    }
+
+    if (res?.error) {
+      if (res.error.includes("CAPTCHA_FAILED")) {
+        setError("Login demo gagal karena verifikasi keamanan belum siap.");
+      } else {
+        setError("Akun demo belum tersedia. Jalankan seed akun demo dulu.");
+      }
+      setLoading(false);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
+  }
+
   useEffect(() => {
     if (demoParam !== "1") return;
     if (loading || googleLoading || verificationSentEmail || unverifiedEmail) return;
@@ -57,34 +100,8 @@ function AuthForm() {
     let cancelled = false;
 
     async function autoLoginDemo() {
-      demoLoginAttemptedRef.current = true;
-      setTab("login");
-      setEmail(DEMO_ACCOUNT.email);
-      setPassword(DEMO_ACCOUNT.password);
-      setError("");
-      setLoading(true);
-
-      const res = await signIn("credentials", {
-        email: DEMO_ACCOUNT.email,
-        password: DEMO_ACCOUNT.password,
-        turnstileToken: turnstileToken ?? "",
-        redirect: false,
-      });
-
+      await triggerDemoLogin();
       if (cancelled) return;
-
-      if (res?.error) {
-        if (res.error.includes("CAPTCHA_FAILED")) {
-          setError("Login demo gagal karena verifikasi keamanan belum siap.");
-        } else {
-          setError("Akun demo belum tersedia. Jalankan seed akun demo dulu.");
-        }
-        setLoading(false);
-        return;
-      }
-
-      router.push("/dashboard");
-      router.refresh();
     }
 
     void autoLoginDemo();
@@ -367,7 +384,9 @@ function AuthForm() {
         </p>
         {demoParam === "1" && (
           <p className="text-xs text-primary">
-            Menyiapkan login otomatis ke akun demo...
+            {loading
+              ? "Menyiapkan login otomatis ke akun demo..."
+              : "Akun demo siap dicoba otomatis."}
           </p>
         )}
       </div>
@@ -402,8 +421,22 @@ function AuthForm() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
-            {error}
+          <div className="rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive space-y-2">
+            <p>{error}</p>
+            {demoParam === "1" && !loading && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  demoLoginAttemptedRef.current = false;
+                  void triggerDemoLogin();
+                }}
+              >
+                Coba lagi login demo
+              </Button>
+            )}
           </div>
         )}
 
