@@ -7,6 +7,7 @@ import { Loader2, Eye, EyeOff, MailCheck, AlertCircle, CheckCircle2 } from "luci
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { DEMO_ACCOUNT } from "@/lib/demo-account";
 import ThemeToggle from "@/components/ThemeToggle";
 import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
@@ -18,6 +19,7 @@ type Tab = "login" | "register";
 function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const demoLoginAttemptedRef = useRef(false);
 
   const [tab, setTab] = useState<Tab>("login");
   const [loading, setLoading] = useState(false);
@@ -45,6 +47,60 @@ function AuthForm() {
   // Query param banners
   const verifiedParam = searchParams.get("verified");
   const errorParam = searchParams.get("error");
+  const demoParam = searchParams.get("demo");
+
+  useEffect(() => {
+    if (demoParam !== "1") return;
+    if (loading || googleLoading || verificationSentEmail || unverifiedEmail) return;
+    if (demoLoginAttemptedRef.current) return;
+
+    let cancelled = false;
+
+    async function autoLoginDemo() {
+      demoLoginAttemptedRef.current = true;
+      setTab("login");
+      setEmail(DEMO_ACCOUNT.email);
+      setPassword(DEMO_ACCOUNT.password);
+      setError("");
+      setLoading(true);
+
+      const res = await signIn("credentials", {
+        email: DEMO_ACCOUNT.email,
+        password: DEMO_ACCOUNT.password,
+        turnstileToken: turnstileToken ?? "",
+        redirect: false,
+      });
+
+      if (cancelled) return;
+
+      if (res?.error) {
+        if (res.error.includes("CAPTCHA_FAILED")) {
+          setError("Login demo gagal karena verifikasi keamanan belum siap.");
+        } else {
+          setError("Akun demo belum tersedia. Jalankan seed akun demo dulu.");
+        }
+        setLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    }
+
+    void autoLoginDemo();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    demoParam,
+    googleLoading,
+    loading,
+    router,
+    turnstileToken,
+    unverifiedEmail,
+    verificationSentEmail,
+  ]);
 
   // ── Helper: kirim ulang email verifikasi ─────────────────────────────────
   async function handleResend(targetEmail: string) {
@@ -309,6 +365,11 @@ function AuthForm() {
             {tab === "login" ? "Daftar" : "Masuk"}
           </button>
         </p>
+        {demoParam === "1" && (
+          <p className="text-xs text-primary">
+            Menyiapkan login otomatis ke akun demo...
+          </p>
+        )}
       </div>
 
       <div className="rounded-xl border bg-card p-6 space-y-4 shadow-sm">

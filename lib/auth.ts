@@ -6,6 +6,7 @@ import { createGoogleSheet } from "@/utils/sheets";
 import { seedDefaultCategories } from "@/utils/seed-categories";
 import { isAdmin } from "@/lib/is-admin";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { DEMO_ACCOUNT } from "@/lib/demo-account";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -40,9 +41,15 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        // Verifikasi Cloudflare Turnstile CAPTCHA
-        const captchaOk = await verifyTurnstile(credentials.turnstileToken);
-        if (!captchaOk) throw new Error("CAPTCHA_FAILED");
+        const isDemoLogin =
+          credentials.email === DEMO_ACCOUNT.email &&
+          credentials.password === DEMO_ACCOUNT.password;
+
+        // Izinkan one-click access untuk akun demo publik tanpa CAPTCHA.
+        if (!isDemoLogin) {
+          const captchaOk = await verifyTurnstile(credentials.turnstileToken);
+          if (!captchaOk) throw new Error("CAPTCHA_FAILED");
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },

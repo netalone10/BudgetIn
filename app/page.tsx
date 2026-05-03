@@ -113,9 +113,18 @@ export default function LandingPage() {
                 >
                   Lihat Cara Kerja
                 </a>
+                <Link
+                  href="/auth?demo=1"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "lg" }),
+                    "min-w-44 border-primary/20 bg-primary/5 font-medium text-primary hover:bg-primary/10"
+                  )}
+                >
+                  Akses Akun Demo
+                </Link>
               </div>
               <p className="text-[13px] font-medium text-muted-foreground">
-                Gratis - Tidak perlu kartu kredit - Login dengan Google
+                Gratis - Tidak perlu kartu kredit - Login Google atau coba akun demo
               </p>
             </div>
 
@@ -326,6 +335,15 @@ export default function LandingPage() {
               )}
             >
               Mulai Sekarang Gratis
+            </Link>
+            <Link
+              href="/auth?demo=1"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "lg" }),
+                "mt-3 font-medium text-primary hover:text-primary"
+              )}
+            >
+              Masuk ke akun demo
             </Link>
           </div>
         </section>
