@@ -47,9 +47,18 @@ const DashboardTabs = dynamic(
 
 type BudgetData = DashboardTabsBudgetData;
 
-type TxDetails = { date: string; category: string; amount: number; accountName?: string };
+type TxDetails = { date: string; category: string; amount: number; accountName?: string; savingsGoalName?: string; contributionStatus?: string };
 type BulkDetails = { date: string; accountName?: string; total: number; count: number };
 type BudgetDetails = { category: string; amount: number; month: string };
+type SavingsPendingAction = {
+  type: "savings_contribution";
+  amount: number;
+  accountName?: string;
+  date?: string;
+  category?: string;
+  note?: string;
+};
+type SavingsGoalOption = { id: string; label: string; description: string };
 
 type ResponseData =
   | { intent: "transaksi"; transaction: Transaction; message: string; details?: TxDetails }
@@ -58,7 +67,7 @@ type ResponseData =
   | { intent: "budget_setting"; category: string; amount: number; month: string; message: string; details?: BudgetDetails }
   | { intent: "laporan"; period: string; totalSpent: number; spentByCategory: Record<string, number>; budgets: { category: string; budget: number; spent: number }[]; summary: string; transactionCount: number }
   | { intent: "transfer"; message: string }
-  | { intent: "unknown"; clarification: string }
+  | { intent: "unknown"; clarification: string; clarificationType?: string; pendingAction?: SavingsPendingAction; options?: SavingsGoalOption[] }
   | { error: string };
 
 function formatTanggalID(iso: string): string {
@@ -323,6 +332,19 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     ]);
   }
 
+  async function submitRecord(body: { prompt: string; pendingAction?: SavingsPendingAction; selectedGoalId?: string }) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch("/api/record", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return res;
+  }
+
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!prompt.trim() || loading) return;
@@ -332,15 +354,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     setResponse(null);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-      const res = await fetch("/api/record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim() }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      const res = await submitRecord({ prompt: prompt.trim() });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -396,8 +410,50 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         fetchCategories();
       }
 
-      setPrompt("");
+      if (data.intent !== "unknown") setPrompt("");
       textareaRef.current?.focus();
+    } catch {
+      setResponse({ error: "Koneksi gagal. Coba lagi." });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSavingsGoalSelect(goalId: string) {
+    if (!response || "error" in response || response.intent !== "unknown" || !response.pendingAction) return;
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    setLoading(true);
+
+    try {
+      const res = await submitRecord({
+        prompt: prompt.trim() || response.pendingAction.note || "nabung",
+        pendingAction: response.pendingAction,
+        selectedGoalId: goalId,
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let errMsg = "Server error. Coba lagi.";
+        try {
+          errMsg = JSON.parse(text)?.error ?? errMsg;
+        } catch {
+          // ignore
+        }
+        setResponse({ error: errMsg });
+        return;
+      }
+
+      const data = await res.json();
+      setResponse(data);
+      if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
+        setTransactions((prev) => [data.transaction, ...prev]);
+        setPage(1);
+        fetchBudget();
+        fetchAccounts();
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      }
+      setPrompt("");
+      dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
     } catch {
       setResponse({ error: "Koneksi gagal. Coba lagi." });
     } finally {
@@ -625,6 +681,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                           {response.details.accountName && (
                             <DetailRow label="Akun" value={response.details.accountName} />
                           )}
+                          {response.details.savingsGoalName && (
+                            <DetailRow label="Goal" value={response.details.savingsGoalName} />
+                          )}
+                          {response.details.contributionStatus && (
+                            <DetailRow
+                              label="Kontribusi"
+                              value={response.details.contributionStatus === "allocated" ? "Teralokasi" : "Belum teralokasi"}
+                            />
+                          )}
                         </DetailsGrid>
                       )}
                     </div>
@@ -698,9 +763,29 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 ) : response.intent === "unknown" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/25 bg-yellow-500/5 px-4 py-3">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
-                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                      {response.clarification}
-                    </p>
+                    <div className="flex-1">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                        {response.clarification}
+                      </p>
+                      {response.clarificationType === "savings_goal_selection" && response.options?.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {response.options.map((option) => (
+                            <Button
+                              key={option.id}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={loading}
+                              onClick={() => handleSavingsGoalSelect(option.id)}
+                              className="rounded-full bg-background/80"
+                              title={option.description}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ) : response.intent === "transfer" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">

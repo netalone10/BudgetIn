@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   }
   const userId = session.userId;
 
-  const { prompt } = await req.json();
+  const { prompt, pendingAction, selectedGoalId } = await req.json();
   if (!prompt?.trim()) {
     return NextResponse.json({ error: "Prompt kosong" }, { status: 400 });
   }
@@ -138,18 +138,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Classify intent via Groq
-  let parsed;
-  try {
-    parsed = await classifyIntent(prompt, categoryNames, accountNames);
-  } catch {
-    return NextResponse.json({ error: "AI sedang tidak tersedia. Coba lagi." }, { status: 503 });
-  }
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("[record] parsed:", JSON.stringify(parsed, null, 2));
-  }
-
   const today = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM-dd");
   const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
 
@@ -163,6 +151,42 @@ export async function POST(req: NextRequest) {
     today,
     currentMonth,
   };
+
+  if (pendingAction?.type === "savings_contribution" && selectedGoalId) {
+    const amount = Number(pendingAction.amount);
+    const accountSuffix = pendingAction.accountName ? ` dari ${pendingAction.accountName}` : "";
+    const noteSuffix = pendingAction.note ? ` ${pendingAction.note}` : "";
+    const selectedGoal = await prisma.savingsGoal.findFirst({
+      where: { id: selectedGoalId, userId },
+      select: { name: true },
+    });
+    if (!selectedGoal) {
+      return NextResponse.json({ error: "Goal tabungan tidak ditemukan" }, { status: 400 });
+    }
+    const resolvedPrompt = `nabung ${amount} ke ${selectedGoal.name}${accountSuffix}${noteSuffix}`.trim();
+    const parsed = {
+      intent: "transaksi",
+      amount,
+      category: pendingAction.category ?? "Tabungan",
+      accountName: pendingAction.accountName,
+      note: pendingAction.note ?? prompt,
+      date: pendingAction.date ?? today,
+    };
+
+    return handleTransaksi(parsed, { ...ctx, prompt: resolvedPrompt });
+  }
+
+  // Classify intent via Groq
+  let parsed;
+  try {
+    parsed = await classifyIntent(prompt, categoryNames, accountNames);
+  } catch {
+    return NextResponse.json({ error: "AI sedang tidak tersedia. Coba lagi." }, { status: 503 });
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[record] parsed:", JSON.stringify(parsed, null, 2));
+  }
 
   if (parsed.intent === "transaksi")      return handleTransaksi(parsed, ctx);
   if (parsed.intent === "transaksi_bulk") return handleTransaksiBulk(parsed, ctx);

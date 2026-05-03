@@ -28,7 +28,23 @@ interface AccountOption {
 
 type PromptResult =
   | { error: string }
-  | { intent?: string; message?: string; clarification?: string; transaction?: unknown; transactions?: unknown[] };
+  | {
+      intent?: string;
+      message?: string;
+      clarification?: string;
+      clarificationType?: string;
+      pendingAction?: {
+        type: "savings_contribution";
+        amount: number;
+        accountName?: string;
+        date?: string;
+        category?: string;
+        note?: string;
+      };
+      options?: { id: string; label: string; description: string }[];
+      transaction?: unknown;
+      transactions?: unknown[];
+    };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -189,6 +205,46 @@ export default function AccountDetailClient({ initialData }: Props) {
         result.intent === "pemasukan" ||
         result.intent === "transfer"
       ) {
+        setPrompt("");
+        handleTransactionCreated();
+      }
+    } catch {
+      setPromptResult({ error: "Koneksi gagal. Coba lagi." });
+    } finally {
+      setPromptLoading(false);
+    }
+  }
+
+  async function handleSavingsGoalSelect(goalId: string) {
+    if (!promptResult || "error" in promptResult || !promptResult.pendingAction || promptLoading) return;
+
+    setPromptLoading(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch("/api/record", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompt.trim() || promptResult.pendingAction.note || "nabung",
+          pendingAction: promptResult.pendingAction,
+          selectedGoalId: goalId,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        let errMsg = "Server error. Coba lagi.";
+        try { errMsg = JSON.parse(text)?.error ?? errMsg; } catch {}
+        setPromptResult({ error: errMsg });
+        return;
+      }
+
+      const result = await res.json();
+      setPromptResult(result);
+      if (result.intent === "transaksi") {
         setPrompt("");
         handleTransactionCreated();
       }
@@ -540,9 +596,29 @@ export default function AccountDetailClient({ initialData }: Props) {
                 ) : (
                   <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-amber-500/30 bg-amber-500/5">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                    <p className="text-sm text-amber-700 dark:text-amber-400">
-                      {promptResult.clarification ?? promptResult.message ?? "Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda."}
-                    </p>
+                    <div className="flex-1">
+                      <p className="text-sm text-amber-700 dark:text-amber-400">
+                        {promptResult.clarification ?? promptResult.message ?? "Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda."}
+                      </p>
+                      {promptResult.clarificationType === "savings_goal_selection" && promptResult.options?.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {promptResult.options.map((option) => (
+                            <Button
+                              key={option.id}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={promptLoading}
+                              onClick={() => handleSavingsGoalSelect(option.id)}
+                              className="rounded-full bg-background/80"
+                              title={option.description}
+                            >
+                              {option.label}
+                            </Button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 )
               )}

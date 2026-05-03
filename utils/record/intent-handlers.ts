@@ -20,6 +20,7 @@ import { callWithRotation } from "@/utils/groq";
 import { buildAccountResolver, type RuntimeAccount } from "./account-resolver";
 import { correctAmount, isValidAmount } from "./amount-parser";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isSavingsPrompt, resolveSavingsGoalForPrompt } from "./savings-goal-resolver";
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
@@ -67,7 +68,38 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
 
   const account = userAccounts.find((a) => a.id === accountId);
   const accountName = account?.name ?? "";
-  const base = { date: parsed.date ?? ctx.today, amount: parsed.amount, category: parsed.category, note: parsed.note ?? "", type: "expense" as const };
+  const date = parsed.date ?? ctx.today;
+  const note = parsed.note ?? "";
+  const goals = isSavingsPrompt(prompt, parsed.category)
+    ? await prisma.savingsGoal.findMany({
+        where: { userId },
+        select: { id: true, name: true, targetAmount: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
+  const savingsResolution = resolveSavingsGoalForPrompt({
+    prompt,
+    category: parsed.category,
+    goals,
+    amount: parsed.amount,
+    accountName,
+    date,
+    note,
+  });
+  if (savingsResolution.kind === "ambiguous") {
+    return NextResponse.json({
+      intent: "unknown",
+      clarification: savingsResolution.clarification,
+      clarificationType: savingsResolution.clarificationType,
+      pendingAction: savingsResolution.pendingAction,
+      options: savingsResolution.options,
+    });
+  }
+
+  const category = savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated"
+    ? savingsResolution.category
+    : parsed.category;
+  const base = { date, amount: parsed.amount, category, note, type: "expense" as const };
 
   try {
     const transaction = useSheets
@@ -77,18 +109,62 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
     // Sheets: saldo dihitung pure-ledger via getAccountsWithBalance (no cache write).
 
     await prisma.category.upsert({
-      where: { userId_name: { userId, name: parsed.category } },
-      update: {},
-      create: { userId, name: parsed.category },
+      where: { userId_name: { userId, name: category } },
+      update: savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated" ? { isSavings: true } : {},
+      create: { userId, name: category, ...(savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated" ? { isSavings: true } : {}) },
     });
+
+    if (savingsResolution.kind === "resolved") {
+      await prisma.savingsContribution.create({
+        data: {
+          userId,
+          goalId: savingsResolution.goal.id,
+          transactionId: transaction.id,
+          amount: new Decimal(parsed.amount),
+          date,
+          note,
+        },
+      });
+    }
+
+    if (savingsResolution.kind === "resolved") {
+      return NextResponse.json({
+        intent: "transaksi",
+        transaction,
+        message: `✓ Tabungan dicatat: ${formatSignedIDR(parsed.amount)} ke ${savingsResolution.goal.name} dari ${accountName}`,
+        details: {
+          date: base.date,
+          category,
+          amount: parsed.amount,
+          accountName,
+          savingsGoalName: savingsResolution.goal.name,
+          contributionStatus: "allocated",
+        },
+      });
+    }
+
+    if (savingsResolution.kind === "unallocated") {
+      return NextResponse.json({
+        intent: "transaksi",
+        transaction,
+        message: "✓ Tabungan dicatat sebagai Tabungan umum. Kamu belum punya goal tabungan; buat goal agar kontribusi bisa dilacak per tujuan.",
+        details: {
+          date: base.date,
+          category,
+          amount: parsed.amount,
+          accountName,
+          contributionStatus: "unallocated",
+        },
+      });
+    }
 
     return NextResponse.json({
       intent: "transaksi",
       transaction,
-      message: `✓ Dicatat: ${parsed.category} — ${formatSignedIDR(parsed.amount)}`,
+      message: `✓ Dicatat: ${category} — ${formatSignedIDR(parsed.amount)}`,
       details: {
         date: base.date,
-        category: parsed.category,
+        category,
         amount: parsed.amount,
         accountName,
       },

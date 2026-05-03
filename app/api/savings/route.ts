@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getValidToken } from "@/utils/token";
-import { getTransactions } from "@/utils/sheets";
-import { getTransactionsDB } from "@/utils/db-transactions";
-import { isSavingsTransaction } from "@/lib/savings-utils";
 
 // ── Exported for testability ──────────────────────────────────────────────────
 
@@ -33,57 +29,26 @@ export async function GET(_req: NextRequest) {
 
   const userId = session.userId;
 
-  // Fetch goals and savings categories in parallel
-  const [goals, savingsCategories, user] = await Promise.all([
+  // Fetch goals and contributions in parallel
+  const [goals, contributions] = await Promise.all([
     prisma.savingsGoal.findMany({ where: { userId } }),
-    prisma.category.findMany({ where: { userId, isSavings: true } }),
-    prisma.user.findUnique({ where: { id: userId }, select: { sheetsId: true } }),
+    prisma.savingsContribution.findMany({
+      where: { userId },
+      orderBy: { date: "desc" },
+    }),
   ]);
-
-  const savingsCategoryNames = new Set(
-    savingsCategories.map((c) => c.name.toLowerCase())
-  );
-
-  // Fetch current month transactions — once, filter in memory
-  let transactions: { id: string; date: string; amount: number; category: string; note: string; type: string }[] = [];
-
-  if (user?.sheetsId) {
-    // Google Sheets user
-    let accessToken: string;
-    try {
-      accessToken = await getValidToken(userId);
-    } catch {
-      return NextResponse.json(
-        { error: "Sesi expired. Silakan login ulang." },
-        { status: 401 }
-      );
-    }
-    const sheetsTxs = await getTransactions(user.sheetsId, accessToken, "bulan ini");
-    transactions = sheetsTxs;
-    // Google users: keyword matching only — pass empty Set
-    savingsCategoryNames.clear();
-  } else {
-    // Email/DB user
-    transactions = await getTransactionsDB(userId, "bulan ini");
-  }
 
   // Build goals with progress
   const goalsWithProgress = goals.map((goal) => {
-    const contributions: { id: string; date: string; amount: number; note: string }[] = [];
-    let totalContributed = 0;
-
-    for (const tx of transactions) {
-      if (tx.type === "income") continue;
-      if (isSavingsTransaction(tx.category, savingsCategoryNames)) {
-        totalContributed += tx.amount;
-        contributions.push({
-          id: tx.id,
-          date: tx.date,
-          amount: tx.amount,
-          note: tx.note,
-        });
-      }
-    }
+    const goalContributions = contributions
+      .filter((contribution) => contribution.goalId === goal.id)
+      .map((contribution) => ({
+        id: contribution.transactionId,
+        date: contribution.date,
+        amount: contribution.amount.toNumber(),
+        note: contribution.note,
+      }));
+    const totalContributed = goalContributions.reduce((sum, contribution) => sum + contribution.amount, 0);
 
     return {
       id: goal.id,
@@ -93,7 +58,7 @@ export async function GET(_req: NextRequest) {
       deadline: goal.deadline ? goal.deadline.toISOString() : null,
       createdAt: goal.createdAt.toISOString(),
       totalContributed,
-      contributions,
+      contributions: goalContributions,
     };
   });
 

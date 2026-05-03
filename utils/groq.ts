@@ -116,6 +116,7 @@ RULES:
    - kos/sewa kos/kost/ngekos/kontrak rumah → "Kos"
    - listrik/air/internet/iuran/wifi/pln/bpjs/pulsa → "Tagihan"
    - obat/dokter/apotek/rumah sakit/klinik/vitamin → "Kesehatan"
+   - nabung/menabung/tabungan/celengan/dana darurat/dana pensiun/deposito/reksa dana/reksadana/saham/investasi → "Tabungan"
    - lainnya → gunakan kategori paling relevan dalam Title Case
 
 3. Konversi nominal — IKUTI PERSIS:
@@ -193,7 +194,12 @@ RULES:
    - Jika ada 2 nominal, nominal setelah kata fee/admin/biaya adalah fee; nominal lainnya adalah transferAmount.
    - Transfer harus positif; jangan gunakan nominal minus untuk transfer.
 
-13. FORMAT JSON WAJIB per intent:
+13. TABUNGAN / SAVINGS:
+   - Prompt seperti "nabung 500rb dari BCA", "menabung 500rb ke Dana Darurat dari BCA", "tabungan liburan 750rb", "investasi 2jt dari BCA" adalah intent "transaksi" dengan category "Tabungan".
+   - Jika user menyebut nama tujuan tabungan seperti "Dana Darurat" atau "Liburan", letakkan nama itu di note jika tidak ada note lain.
+   - Jangan ubah prompt savings menjadi kategori "Lain-lain".
+
+14. FORMAT JSON WAJIB per intent:
    - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
    - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"accountName":"STRING","date":"YYYY-MM-DD"}
    - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}

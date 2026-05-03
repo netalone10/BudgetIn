@@ -29,6 +29,7 @@ model User {
   categories     Category[]
   transactions   Transaction[]
   savingsGoals   SavingsGoal[]
+  savingsContributions SavingsContribution[]
   accountTypes   AccountType[]
   accounts       Account[]
   recurringBills RecurringBill[]
@@ -101,9 +102,29 @@ model SavingsGoal {
   deadline     DateTime? @map("deadline")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions SavingsContribution[]
 
   @@map("savings_goals")
+}
+
+model SavingsContribution {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  goalId        String   @map("goal_id")
+  transactionId String   @map("transaction_id")
+  amount        Decimal  @db.Decimal(19, 4)
+  date          String
+  note          String   @default("")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, transactionId])
+  @@index([userId, goalId])
+  @@index([userId, date])
+  @@map("savings_contributions")
 }
 
 // ── Account-Based Bookkeeping ─────────────────────────────────────────────────
