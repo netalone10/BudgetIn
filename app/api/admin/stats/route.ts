@@ -13,43 +13,46 @@ export async function GET() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOf7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const startOf30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [
     totalUsers,
     googleUsers,
     emailUsers,
+    verifiedEmailUsers,
+    unverifiedEmailUsers,
+    sheetsUsers,
+    dbOnlyUsers,
     newThisMonth,
     newLast7Days,
-    recentUsers,
+    activeLast7Days,
+    activeLast30Days,
     totalTransactions,
     totalBudgets,
+    totalAccounts,
+    totalSavingsGoals,
+    totalRecurringBills,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { googleId: { not: null } } }),
     prisma.user.count({ where: { googleId: null } }),
+    prisma.user.count({ where: { googleId: null, emailVerified: { not: null } } }),
+    prisma.user.count({ where: { googleId: null, emailVerified: null } }),
+    prisma.user.count({ where: { sheetsId: { not: null } } }),
+    prisma.user.count({ where: { sheetsId: null } }),
     prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
     prisma.user.count({ where: { createdAt: { gte: startOf7Days } } }),
-    prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        googleId: true,
-        sheetsId: true,
-        emailVerified: true,
-        createdAt: true,
-        _count: { select: { budgets: true, categories: true } },
-        transactions: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { createdAt: true },
-        },
-      },
+    prisma.user.count({
+      where: { transactions: { some: { createdAt: { gte: startOf7Days } } } },
+    }),
+    prisma.user.count({
+      where: { transactions: { some: { createdAt: { gte: startOf30Days } } } },
     }),
     prisma.transaction.count(),
     prisma.budget.count(),
+    prisma.account.count(),
+    prisma.savingsGoal.count(),
+    prisma.recurringBill.count(),
   ]);
 
   return NextResponse.json({
@@ -57,22 +60,19 @@ export async function GET() {
       totalUsers,
       googleUsers,
       emailUsers,
+      verifiedEmailUsers,
+      unverifiedEmailUsers,
+      sheetsUsers,
+      dbOnlyUsers,
       newThisMonth,
       newLast7Days,
+      activeLast7Days,
+      activeLast30Days,
       totalTransactions,
       totalBudgets,
+      totalAccounts,
+      totalSavingsGoals,
+      totalRecurringBills,
     },
-    recentUsers: recentUsers.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      type: u.googleId ? "google" : "email",
-      hasSheets: !!u.sheetsId,
-      emailVerified: !!u.emailVerified,
-      budgetCount: u._count.budgets,
-      categoryCount: u._count.categories,
-      createdAt: u.createdAt.toISOString(),
-      lastActivityAt: (u.transactions[0]?.createdAt ?? u.createdAt).toISOString(),
-    })),
   });
 }
