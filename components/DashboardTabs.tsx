@@ -372,49 +372,52 @@ export default function DashboardTabs({
           {transactions.length === 0 ? (
             <EmptyState text="Belum ada transaksi bulan ini." />
           ) : (
-            <div
-              className={cn(
-                "grid gap-4",
-                cashflowSectionCount >= 3
-                  ? "xl:grid-cols-3"
-                  : cashflowSectionCount === 2
-                  ? "xl:grid-cols-2"
-                  : "xl:grid-cols-1"
-              )}
-            >
-              {incomeByCategory.length > 0 && (
-                <CategorySection
-                  title="Pemasukan"
-                  type="income"
-                  categories={incomeByCategory}
-                  total={totalIncome}
-                  transactions={incomeTxs}
-                  expanded={expanded}
-                  onToggle={toggle}
-                />
-              )}
-              {expenseByCategory.length > 0 && (
-                <CategorySection
-                  title="Pengeluaran"
-                  type="expense"
-                  categories={expenseByCategory}
-                  total={totalExpense}
-                  transactions={nonSavingsExpenseTxs}
-                  expanded={expanded}
-                  onToggle={toggle}
-                />
-              )}
-              {savingsByCategory.length > 0 && (
-                <CategorySection
-                  title="Tabungan"
-                  type="expense"
-                  categories={savingsByCategory}
-                  total={totalSavings}
-                  transactions={savingsTxs}
-                  expanded={expanded}
-                  onToggle={toggle}
-                />
-              )}
+            <div className="-mx-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin]">
+              <div
+                className={cn(
+                  "grid w-max grid-flow-col auto-cols-[minmax(320px,calc(100vw-3rem))] gap-4",
+                  "xl:w-full xl:grid-flow-row xl:auto-cols-fr",
+                  cashflowSectionCount >= 3
+                    ? "xl:grid-cols-3"
+                    : cashflowSectionCount === 2
+                    ? "xl:grid-cols-2"
+                    : "xl:grid-cols-1"
+                )}
+              >
+                {incomeByCategory.length > 0 && (
+                  <CategorySection
+                    title="Pemasukan"
+                    type="income"
+                    categories={incomeByCategory}
+                    total={totalIncome}
+                    transactions={incomeTxs}
+                    expanded={expanded}
+                    onToggle={toggle}
+                  />
+                )}
+                {expenseByCategory.length > 0 && (
+                  <CategorySection
+                    title="Pengeluaran"
+                    type="expense"
+                    categories={expenseByCategory}
+                    total={totalExpense}
+                    transactions={nonSavingsExpenseTxs}
+                    expanded={expanded}
+                    onToggle={toggle}
+                  />
+                )}
+                {savingsByCategory.length > 0 && (
+                  <CategorySection
+                    title="Tabungan"
+                    type="expense"
+                    categories={savingsByCategory}
+                    total={totalSavings}
+                    transactions={savingsTxs}
+                    expanded={expanded}
+                    onToggle={toggle}
+                  />
+                )}
+              </div>
             </div>
           )}
         </div>
