@@ -39,6 +39,10 @@ interface Transaction {
   note: string;
   type: "expense" | "income" | "transfer_out" | "transfer_in";
   accountId: string | null;
+  fromAccountId?: string | null;
+  fromAccountName?: string | null;
+  toAccountId?: string | null;
+  toAccountName?: string | null;
   created_at: string;
 }
 
@@ -180,7 +184,9 @@ interface RawTxn {
   type: "expense" | "income" | "transfer_out" | "transfer_in";
   accountId: string | null;
   fromAccountId?: string | null;
+  fromAccountName?: string | null;
   toAccountId?: string | null;
+  toAccountName?: string | null;
   created_at: string;
 }
 
@@ -202,7 +208,9 @@ async function fetchRawTransactions(
         type: (t.type === "income" ? "income" : "expense") as RawTxn["type"],
         accountId: t.fromAccountId ?? t.toAccountId ?? null,
         fromAccountId: t.fromAccountId ?? null,
+        fromAccountName: t.fromAccountName ?? null,
         toAccountId: t.toAccountId ?? null,
+        toAccountName: t.toAccountName ?? null,
         created_at: t.created_at ?? new Date().toISOString(),
       }));
     }
@@ -216,7 +224,9 @@ async function fetchRawTransactions(
       type: t.type,
       accountId: t.accountId,
       fromAccountId: null,
+      fromAccountName: null,
       toAccountId: null,
+      toAccountName: null,
       created_at: t.created_at ?? new Date().toISOString(),
     }));
   } catch (error) {
@@ -235,6 +245,10 @@ function mapTxnsForDisplay(raw: RawTxn[]): Transaction[] {
     note: t.note,
     type: t.type,
     accountId: t.accountId,
+    fromAccountId: t.fromAccountId ?? null,
+    fromAccountName: t.fromAccountName ?? null,
+    toAccountId: t.toAccountId ?? null,
+    toAccountName: t.toAccountName ?? null,
     created_at: t.created_at,
   }));
 }

@@ -45,8 +45,8 @@ export interface AccountTransaction {
   type: "expense" | "income" | "transfer_out" | "transfer_in";
   created_at: string;
   accountId: string | null;
-  fromAccountName?: string;
-  toAccountName?: string;
+  fromAccountName?: string | null;
+  toAccountName?: string | null;
 }
 
 /**

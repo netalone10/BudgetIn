@@ -15,8 +15,10 @@ export interface Transaction {
   note: string;
   created_at: string;
   type?: "expense" | "income" | "transfer_out" | "transfer_in";
-  fromAccountName?: string;
-  toAccountName?: string;
+  fromAccountId?: string | null;
+  fromAccountName?: string | null;
+  toAccountId?: string | null;
+  toAccountName?: string | null;
   accountId?: string | null;
 }
 

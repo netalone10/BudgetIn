@@ -20,6 +20,18 @@ describe("transaction classification", () => {
     expect(isExpenseTransaction(tx)).toBe(false);
   });
 
+  it("excludes Sheets transfer rows with account names from expense", () => {
+    const tx = {
+      type: "expense",
+      category: "Transfer",
+      fromAccountName: "BCA",
+      toAccountName: "Mandiri",
+    };
+
+    expect(isTransferTransaction(tx)).toBe(true);
+    expect(isExpenseTransaction(tx)).toBe(false);
+  });
+
   it("keeps transfer fee as expense", () => {
     const tx = {
       type: "expense",
