@@ -9,27 +9,30 @@ interface CalculatorModalProps {
 }
 
 type Operator = "+" | "-" | "*" | "/";
-type CalculatorKey = string | Operator | "=" | "BACKSPACE" | "C";
+type CalculatorKey = string | Operator | "=" | "BACKSPACE" | "C" | "%" | "00" | "COPY";
 
 const keys: Array<{ label: CalculatorKey; className?: string }> = [
   { label: "C" },
   { label: "BACKSPACE" },
+  { label: "%" },
   { label: "/" },
-  { label: "*" },
   { label: "7" },
   { label: "8" },
   { label: "9" },
-  { label: "-" },
+  { label: "*" },
   { label: "4" },
   { label: "5" },
   { label: "6" },
-  { label: "+" },
+  { label: "-" },
   { label: "1" },
   { label: "2" },
   { label: "3" },
-  { label: "=" },
-  { label: "0", className: "col-span-2" },
+  { label: "+" },
+  { label: "00" },
+  { label: "0" },
   { label: "." },
+  { label: "=" },
+  { label: "COPY", className: "col-span-4" },
 ];
 
 function calculate(firstValue: number, secondValue: number, operator: Operator) {
@@ -56,6 +59,7 @@ function getButtonLabel(key: CalculatorKey) {
   if (key === "*") return "x";
   if (key === "/") return "\u00F7";
   if (key === "BACKSPACE") return "\u232B";
+  if (key === "COPY") return "Copy";
   return key;
 }
 
@@ -65,6 +69,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
   const [operator, setOperator] = useState<Operator | null>(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
   const [lastCalculation, setLastCalculation] = useState("");
+  const [copied, setCopied] = useState(false);
 
   function resetCalculator() {
     setDisplay("0");
@@ -88,6 +93,20 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
     });
   }
 
+  function inputDoubleZero() {
+    if (display === "Error" || waitingForOperand) {
+      setDisplay("0");
+      setWaitingForOperand(false);
+      return;
+    }
+
+    setDisplay((current) => {
+      if (current === "0") return current;
+      if (current.length >= 13) return current;
+      return `${current}00`;
+    });
+  }
+
   function inputDecimal() {
     if (display === "Error" || waitingForOperand) {
       setDisplay("0.");
@@ -106,6 +125,27 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
     }
 
     setDisplay((current) => (current.length <= 1 ? "0" : current.slice(0, -1)));
+  }
+
+  function inputPercent() {
+    if (display === "Error") return;
+
+    const currentValue = Number(display);
+    const percentValue =
+      storedValue !== null && (operator === "+" || operator === "-")
+        ? storedValue * (currentValue / 100)
+        : currentValue / 100;
+
+    setDisplay(formatNumber(percentValue));
+    setWaitingForOperand(false);
+  }
+
+  async function copyDisplay() {
+    if (display === "Error" || !navigator.clipboard) return;
+
+    await navigator.clipboard.writeText(display);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
   }
 
   function chooseOperator(nextOperator: Operator) {
@@ -163,6 +203,11 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
       return;
     }
 
+    if (key === "00") {
+      inputDoubleZero();
+      return;
+    }
+
     if (key === ".") {
       inputDecimal();
       return;
@@ -175,6 +220,16 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
 
     if (key === "BACKSPACE") {
       deleteDigit();
+      return;
+    }
+
+    if (key === "%") {
+      inputPercent();
+      return;
+    }
+
+    if (key === "COPY") {
+      void copyDisplay();
       return;
     }
 
@@ -209,6 +264,18 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
       if (event.key === "Backspace") {
         event.preventDefault();
         deleteDigit();
+        return;
+      }
+
+      if (event.key === "%") {
+        event.preventDefault();
+        inputPercent();
+        return;
+      }
+
+      if (event.key.toLowerCase() === "c" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        void copyDisplay();
         return;
       }
 
@@ -275,7 +342,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
           {keys.map(({ label, className }) => {
             const key = label;
             const isOperator = ["+", "-", "*", "/", "="].includes(key);
-            const isAction = key === "C" || key === "BACKSPACE";
+            const isAction = key === "C" || key === "BACKSPACE" || key === "%" || key === "COPY";
 
             return (
               <button
@@ -292,7 +359,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
                   className
                 )}
               >
-                {getButtonLabel(key)}
+                {key === "COPY" && copied ? "Copied" : getButtonLabel(key)}
               </button>
             );
           })}
