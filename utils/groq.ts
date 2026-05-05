@@ -67,6 +67,7 @@ export interface ParsedRecord {
   category?: string;
   note?: string;
   date?: string; // YYYY-MM-DD
+  time?: string; // HH:mm
   accountName?: string; // nama akun yang disebutkan user
 
   // intent: transaksi_bulk (beberapa item sekaligus)
@@ -143,6 +144,12 @@ RULES:
    - "minggu lalu" → 7 days ago
    - default (tidak disebutkan) → today
 
+4b. Resolve waktu transaksi ke format HH:mm timezone Asia/Jakarta:
+   - "jam 14:30" / "pukul 14.30" → "14:30"
+   - "jam 2 siang" → "14:00"
+   - "tadi pagi" → "08:00", "siang" → "12:00", "sore" → "16:00", "malam"/"semalam" → "20:00"
+   - Jika waktu tidak disebutkan, jangan isi time.
+
 5. Output HANYA JSON valid, tanpa teks tambahan, tanpa markdown backticks.
 
 6. Jika intent = "unknown", isi field clarification dengan pertanyaan singkat dalam bahasa yang sama dengan input user.
@@ -200,10 +207,10 @@ RULES:
    - Jangan ubah prompt savings menjadi kategori "Lain-lain".
 
 14. FORMAT JSON WAJIB per intent:
-   - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
-   - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"accountName":"STRING","date":"YYYY-MM-DD"}
-   - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD"}
-   - transfer: {"intent":"transfer","transferAmount":NUMBER,"fromAccountName":"STRING","toAccountName":"STRING","fee":NUMBER,"note":"STRING","date":"YYYY-MM-DD"}
+   - transaksi: {"intent":"transaksi","amount":NUMBER,"category":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD","time":"HH:mm"}
+   - transaksi_bulk: {"intent":"transaksi_bulk","items":[{"amount":NUMBER,"category":"STRING","note":"STRING"}],"accountName":"STRING","date":"YYYY-MM-DD","time":"HH:mm"}
+   - pemasukan: {"intent":"pemasukan","incomeAmount":NUMBER,"incomeCategory":"STRING","accountName":"STRING","note":"STRING","date":"YYYY-MM-DD","time":"HH:mm"}
+   - transfer: {"intent":"transfer","transferAmount":NUMBER,"fromAccountName":"STRING","toAccountName":"STRING","fee":NUMBER,"note":"STRING","date":"YYYY-MM-DD","time":"HH:mm"}
    - budget_setting: {"intent":"budget_setting","budgetCategory":"STRING","budgetAmount":NUMBER}
    - laporan: {"intent":"laporan","period":"STRING","reportType":"summary"}
    - unknown: {"intent":"unknown","clarification":"STRING"}

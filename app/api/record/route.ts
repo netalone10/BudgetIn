@@ -12,6 +12,7 @@ import { toZonedTime } from "date-fns-tz";
 import { NON_MONETARY_UNITS, MONETARY_INDICATOR, REPORT_KEYWORDS } from "@/utils/record/amount-parser";
 import { handleTransaksi, handleTransaksiBulk, handlePemasukan, handleTransfer, handleBudgetSetting, handleLaporan } from "@/utils/record/intent-handlers";
 import type { RuntimeAccount } from "@/utils/record/account-resolver";
+import { compareTransactionDateTimeDesc, currentJakartaTime } from "@/lib/transaction-time";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
   try {
     const transactions = await getTransactions(user.sheetsId, accessToken, resolvedPeriod);
-    transactions.sort((a, b) => (a.date < b.date ? 1 : -1));
+    transactions.sort(compareTransactionDateTimeDesc);
     return NextResponse.json({ transactions: transactions.slice(0, 200) });
   } catch {
     return NextResponse.json({ transactions: [] });
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest) {
   }
 
   const today = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM-dd");
+  const currentTime = currentJakartaTime();
   const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
 
   const ctx = {
@@ -149,6 +151,7 @@ export async function POST(req: NextRequest) {
     userAccounts,
     prompt,
     today,
+    currentTime,
     currentMonth,
   };
 
@@ -171,6 +174,7 @@ export async function POST(req: NextRequest) {
       accountName: pendingAction.accountName,
       note: pendingAction.note ?? prompt,
       date: pendingAction.date ?? today,
+      time: pendingAction.time ?? currentTime,
     };
 
     return handleTransaksi(parsed, { ...ctx, prompt: resolvedPrompt });

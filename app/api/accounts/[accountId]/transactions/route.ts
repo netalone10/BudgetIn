@@ -6,6 +6,7 @@ import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccounts, computeAccountBalancesFromTx } from "@/utils/sheets";
 import { getSingleAccountBalance } from "@/utils/account-balance";
 import { Decimal } from "@prisma/client/runtime/library";
+import { compareTransactionDateTimeDesc, normalizeTransactionTime } from "@/lib/transaction-time";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -70,11 +71,7 @@ async function handleSheetsUser(
   // Apply period filter
   filtered = applyPeriodFilter(filtered, period);
 
-  // Sort by date descending, then by created_at descending
-  filtered.sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-    return (a.created_at || "") < (b.created_at || "") ? 1 : -1;
-  });
+  filtered.sort(compareTransactionDateTimeDesc);
 
   // Compute summary before limiting
   const summary = computeSummary(filtered, accountId);
@@ -83,6 +80,7 @@ async function handleSheetsUser(
   const transactions = filtered.slice(0, limit).map((t) => ({
     id: t.id,
     date: t.date,
+    time: normalizeTransactionTime(t.time),
     amount: t.amount,
     category: t.category,
     note: t.note,
@@ -136,7 +134,7 @@ async function handleDbUser(
       accountId,
       ...(dateFilter && { date: dateFilter }),
     },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ date: "desc" }, { time: "desc" }],
   });
 
   // Compute summary
@@ -157,6 +155,7 @@ async function handleDbUser(
   const transactions = rows.slice(0, limit).map((r) => ({
     id: r.id,
     date: r.date,
+    time: normalizeTransactionTime(r.time),
     amount: r.amount.toNumber(),
     category: r.category,
     note: r.note,

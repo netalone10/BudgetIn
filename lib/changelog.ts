@@ -14,6 +14,21 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.5.0",
+    date: "2026-05-05",
+    title: "Jam transaksi end-to-end",
+    description: "Transaksi sekarang menyimpan tanggal dan jam terpisah, bisa diinput manual, diedit, ditampilkan, diurutkan, serta dipahami dari prompt AI.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.5.0`,
+    changes: [
+      "Menambahkan input jam di form transaksi manual dan modal edit transaksi.",
+      "Menampilkan jam transaksi di daftar transaksi serta mengurutkan riwayat berdasarkan tanggal dan jam.",
+      "Menambahkan field time di database dan kolom time di Google Sheets Transaksi kolom L tanpa menggeser kolom lama.",
+      "Membuat AI prompt memahami waktu seperti jam 14:30, jam 2 siang, tadi pagi, sore, malam, dan semalam.",
+      "Memastikan backup/restore, calendar, account detail, dan bill payment kompatibel dengan jam transaksi.",
+    ],
+  },
+  {
     version: "v1.4.0",
     date: "2026-05-05",
     title: "Reset data dan delete account di Settings",

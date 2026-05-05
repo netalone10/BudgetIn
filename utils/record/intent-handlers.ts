@@ -21,6 +21,7 @@ import { buildAccountResolver, type RuntimeAccount } from "./account-resolver";
 import { correctAmount, isValidAmount } from "./amount-parser";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { isSavingsPrompt, resolveSavingsGoalForPrompt } from "./savings-goal-resolver";
+import { normalizeTransactionTime, parseTransactionTimeFromPrompt } from "@/lib/transaction-time";
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
@@ -32,6 +33,7 @@ export interface RecordContext {
   userAccounts: RuntimeAccount[];
   prompt: string;
   today: string;
+  currentTime: string;
   currentMonth: string;
 }
 
@@ -45,6 +47,10 @@ function formatSignedIDR(amount: number, positivePrefix = ""): string {
 
 function isValidTransferAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount > 0 && amount <= 1_000_000_000;
+}
+
+function resolveTransactionTime(parsed: ParsedIntent, ctx: RecordContext): string {
+  return normalizeTransactionTime(parsed.time, parseTransactionTimeFromPrompt(ctx.prompt, ctx.currentTime));
 }
 
 export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
@@ -69,6 +75,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   const account = userAccounts.find((a) => a.id === accountId);
   const accountName = account?.name ?? "";
   const date = parsed.date ?? ctx.today;
+  const time = resolveTransactionTime(parsed, ctx);
   const note = parsed.note ?? "";
   const goals = isSavingsPrompt(prompt, parsed.category)
     ? await prisma.savingsGoal.findMany({
@@ -99,7 +106,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   const category = savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated"
     ? savingsResolution.category
     : parsed.category;
-  const base = { date, amount: parsed.amount, category, note, type: "expense" as const };
+  const base = { date, time, amount: parsed.amount, category, note, type: "expense" as const };
 
   try {
     const transaction = useSheets
@@ -134,6 +141,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
         message: `✓ Tabungan dicatat: ${formatSignedIDR(parsed.amount)} ke ${savingsResolution.goal.name} dari ${accountName}`,
         details: {
           date: base.date,
+          time: base.time,
           category,
           amount: parsed.amount,
           accountName,
@@ -150,6 +158,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
         message: "✓ Tabungan dicatat sebagai Tabungan umum. Kamu belum punya goal tabungan; buat goal agar kontribusi bisa dilacak per tujuan.",
         details: {
           date: base.date,
+          time: base.time,
           category,
           amount: parsed.amount,
           accountName,
@@ -164,6 +173,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
       message: `✓ Dicatat: ${category} — ${formatSignedIDR(parsed.amount)}`,
       details: {
         date: base.date,
+        time: base.time,
         category,
         amount: parsed.amount,
         accountName,
@@ -192,12 +202,13 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
 
   const account = userAccounts.find((a) => a.id === accountId);
   const accountName = account?.name ?? "";
+  const time = resolveTransactionTime(parsed, ctx);
 
   try {
     const transactions = [];
     for (const item of items) {
       if (!item.amount || !item.category) continue;
-      const base = { date: parsed.date ?? ctx.today, amount: item.amount, category: item.category, note: item.note ?? "", type: "expense" as const };
+      const base = { date: parsed.date ?? ctx.today, time, amount: item.amount, category: item.category, note: item.note ?? "", type: "expense" as const };
       const transaction = useSheets
         ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
         : await appendTransactionDB(userId, { ...base, accountId });
@@ -223,6 +234,7 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
       message: `✓ ${transactions.length} transaksi dicatat (total ${formatSignedIDR(total)})`,
       details: {
         date: parsed.date ?? ctx.today,
+        time,
         accountName,
         total,
         count: transactions.length,
@@ -268,12 +280,14 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
   const fromAccountName = fromAccount?.name ?? "";
   const toAccountName = toAccount?.name ?? "";
   const date = parsed.date ?? ctx.today;
+  const time = resolveTransactionTime(parsed, ctx);
   const note = parsed.note ?? "";
 
   try {
     if (useSheets) {
       const transaction = await appendTransaction(sheetsId!, accessToken, {
         date,
+        time,
         amount: transferAmount,
         category: "Transfer",
         note,
@@ -287,6 +301,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
       if (fee > 0) {
         const feeTransaction = await appendTransaction(sheetsId!, accessToken, {
           date,
+          time,
           amount: fee,
           category: TRANSFER_FEE_CATEGORY,
           note: note ? `Fee transfer - ${note}` : "Fee transfer",
@@ -310,7 +325,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
         transactions,
         transaction,
         message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
-        details: { date, amount: transferAmount, fee, fromAccountName, toAccountName },
+        details: { date, time, amount: transferAmount, fee, fromAccountName, toAccountName },
       });
     }
 
@@ -324,6 +339,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
           amount: new Decimal(transferAmount),
           category: "Transfer",
           date,
+          time,
           note,
           transferId,
         },
@@ -336,6 +352,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
           amount: new Decimal(transferAmount),
           category: "Transfer",
           date,
+          time,
           note,
           transferId,
         },
@@ -350,6 +367,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
                 amount: new Decimal(fee),
                 category: TRANSFER_FEE_CATEGORY,
                 date,
+                time,
                 note: note ? `Fee transfer - ${note}` : "Fee transfer",
               },
             }),
@@ -369,7 +387,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
       intent: "transfer",
       transferId,
       message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
-      details: { date, amount: transferAmount, fee, fromAccountName, toAccountName },
+      details: { date, time, amount: transferAmount, fee, fromAccountName, toAccountName },
     });
   } catch {
     return NextResponse.json({ error: "Gagal menyimpan transfer. Coba lagi." }, { status: 500 });
@@ -397,7 +415,7 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
 
   const account = userAccounts.find((a) => a.id === accountId);
   const accountName = account?.name ?? "";
-  const base = { date: parsed.date ?? ctx.today, amount: incomeAmount, category: incomeCategory, note: parsed.note ?? "", type: "income" as const };
+  const base = { date: parsed.date ?? ctx.today, time: resolveTransactionTime(parsed, ctx), amount: incomeAmount, category: incomeCategory, note: parsed.note ?? "", type: "income" as const };
 
   try {
     const transaction = useSheets
@@ -420,6 +438,7 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
       message: `✓ Pemasukan dicatat: ${incomeCategory} ${formatSignedIDR(incomeAmount, "+")}`,
       details: {
         date: base.date,
+        time: base.time,
         category: incomeCategory,
         amount: incomeAmount,
         accountName,

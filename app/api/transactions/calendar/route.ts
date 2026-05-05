@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { getTransactions } from "@/utils/sheets";
 import { isExpenseTransaction, isTransferTransaction } from "@/lib/transaction-classification";
+import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 export interface CalendarTransaction {
   id: string;
   date: string;
+  time: string;
   amount: number;
   category: string;
   note: string;
@@ -68,6 +70,7 @@ export async function GET(req: NextRequest) {
         const calTx: CalendarTransaction = {
           id: t.id,
           date: t.date,
+          time: normalizeTransactionTime(t.time),
           amount: t.amount,
           category: t.category,
           note: t.note,
@@ -101,7 +104,7 @@ export async function GET(req: NextRequest) {
       date: { startsWith: prefix },
     },
     include: { account: true },
-    orderBy: { date: "asc" },
+    orderBy: [{ date: "asc" }, { time: "asc" }],
   });
 
   const days: Record<string, DayData> = {};
@@ -115,6 +118,7 @@ export async function GET(req: NextRequest) {
     const calTx: CalendarTransaction = {
       id: t.id,
       date: t.date,
+      time: normalizeTransactionTime(t.time),
       amount,
       category: t.category,
       note: t.note,

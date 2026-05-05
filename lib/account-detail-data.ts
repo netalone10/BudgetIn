@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getSingleAccountBalance } from "@/utils/account-balance";
 import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccounts, computeAccountBalancesFromTx } from "@/utils/sheets";
+import { compareTransactionDateTimeDesc, normalizeTransactionTime } from "@/lib/transaction-time";
 
 export interface AccountDetailData {
   account: {
@@ -39,6 +40,7 @@ export interface AccountDetailData {
 export interface AccountTransaction {
   id: string;
   date: string;
+  time: string | null;
   amount: number;
   category: string;
   note: string;
@@ -94,7 +96,7 @@ async function fetchDbAccountDetail(
         accountId,
         date: { gte: `${ym}-01`, lte: `${ym}-31` },
       },
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ date: "desc" }, { time: "desc" }],
     }),
   ]);
 
@@ -107,6 +109,7 @@ async function fetchDbAccountDetail(
     return {
       id: r.id,
       date: r.date,
+      time: normalizeTransactionTime(r.time),
       amount: amt,
       category: r.category,
       note: r.note,
@@ -167,10 +170,7 @@ async function fetchSheetsAccountDetail(
   filtered = filtered.filter((t) => t.date.startsWith(ym));
 
   // Sort descending
-  filtered.sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-    return (a.created_at || "") < (b.created_at || "") ? 1 : -1;
-  });
+  filtered.sort(compareTransactionDateTimeDesc);
 
   let totalIn = 0;
   let totalOut = 0;
@@ -181,6 +181,7 @@ async function fetchSheetsAccountDetail(
     return {
       id: t.id,
       date: t.date,
+      time: normalizeTransactionTime(t.time),
       amount: t.amount,
       category: t.category,
       note: t.note,

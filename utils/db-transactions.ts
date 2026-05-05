@@ -5,10 +5,12 @@
 
 import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
+import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 export interface DbTransaction {
   id: string;
   date: string;
+  time: string;
   amount: number;
   category: string;
   note: string;
@@ -19,6 +21,7 @@ export interface DbTransaction {
 
 interface CreateInput {
   date: string;
+  time?: string;
   amount: number;
   category: string;
   note: string;
@@ -37,6 +40,7 @@ export async function appendTransactionDB(
       id: uuidv4(),
       userId,
       date: data.date,
+      time: normalizeTransactionTime(data.time),
       amount: data.amount,
       category: data.category,
       note: data.note,
@@ -48,6 +52,7 @@ export async function appendTransactionDB(
   return {
     id: tx.id,
     date: tx.date,
+    time: tx.time,
     amount: tx.amount.toNumber(),
     category: tx.category,
     note: tx.note,
@@ -119,12 +124,13 @@ export async function getTransactionsDB(
       userId,
       date: dateFilter,
     },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { time: "desc" }],
   });
 
   return rows.map((r) => ({
     id: r.id,
     date: r.date,
+    time: r.time,
     amount: r.amount.toNumber(),
     category: r.category,
     note: r.note,
@@ -139,12 +145,13 @@ export async function getTransactionsDB(
 export async function updateTransactionDB(
   userId: string,
   txId: string,
-  data: Partial<Pick<DbTransaction, "date" | "amount" | "category" | "note">> & { accountId?: string | null }
+  data: Partial<Pick<DbTransaction, "date" | "time" | "amount" | "category" | "note">> & { accountId?: string | null }
 ): Promise<void> {
   await prisma.transaction.updateMany({
     where: { id: txId, userId }, // pastikan milik user ini
     data: {
       ...(data.date !== undefined && { date: data.date }),
+      ...(data.time !== undefined && { time: normalizeTransactionTime(data.time) }),
       ...(data.amount !== undefined && { amount: data.amount }),
       ...(data.category !== undefined && { category: data.category }),
       ...(data.note !== undefined && { note: data.note }),

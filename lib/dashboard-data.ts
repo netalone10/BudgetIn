@@ -13,6 +13,7 @@ import { getTransactions, getAccountsWithBalance } from "@/utils/sheets";
 import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { compareTransactionDateTimeDesc, normalizeTransactionTime } from "@/lib/transaction-time";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -34,6 +35,7 @@ export interface DashboardInitialData {
 interface Transaction {
   id: string;
   date: string;
+  time: string;
   amount: number;
   category: string;
   note: string;
@@ -178,6 +180,7 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
 interface RawTxn {
   id: string;
   date: string;
+  time: string;
   amount: number;
   category: string;
   note: string;
@@ -202,6 +205,7 @@ async function fetchRawTransactions(
       return txs.map((t) => ({
         id: t.id,
         date: t.date,
+        time: normalizeTransactionTime(t.time),
         amount: t.amount,
         category: t.category,
         note: t.note,
@@ -218,6 +222,7 @@ async function fetchRawTransactions(
     return txs.map((t) => ({
       id: t.id,
       date: t.date,
+      time: normalizeTransactionTime(t.time),
       amount: t.amount,
       category: t.category,
       note: t.note,
@@ -236,10 +241,11 @@ async function fetchRawTransactions(
 }
 
 function mapTxnsForDisplay(raw: RawTxn[]): Transaction[] {
-  const sorted = [...raw].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const sorted = [...raw].sort(compareTransactionDateTimeDesc);
   return sorted.slice(0, 200).map((t) => ({
     id: t.id,
     date: t.date,
+    time: normalizeTransactionTime(t.time),
     amount: t.amount,
     category: t.category,
     note: t.note,

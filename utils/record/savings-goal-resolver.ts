@@ -25,6 +25,7 @@ export type SavingsGoalResolution =
         amount: number;
         accountName: string;
         date: string;
+        time?: string;
         category: string;
         note: string;
       };

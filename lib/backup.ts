@@ -13,6 +13,7 @@ import {
   getTransactions,
 } from "@/utils/sheets";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
+import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 export const BACKUP_SCHEMA_VERSION = 1;
 export const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
@@ -57,6 +58,7 @@ type CanonicalAccount = {
 type CanonicalTransaction = {
   id: string;
   date: string;
+  time?: string;
   amount: number;
   category: string;
   note: string;
@@ -345,6 +347,7 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
     canonicalTransactions.push({
       id: transaction.id,
       date: normalizeTransactionDate(transaction.date),
+      time: normalizeTransactionTime(transaction.time),
       amount: transaction.amount.toNumber(),
       category: transaction.category,
       note: transaction.note,
@@ -367,6 +370,7 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
         canonicalTransactions.push({
           id: transaction.id,
           date: normalizeTransactionDate(transaction.date),
+          time: normalizeTransactionTime(transaction.time),
           amount: transaction.amount.toNumber(),
           category: transaction.category,
           note: transaction.note,
@@ -386,6 +390,7 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
     canonicalTransactions.push({
       id: transferId,
       date: normalizeTransactionDate(out.date),
+      time: normalizeTransactionTime(out.time),
       amount: out.amount.toNumber(),
       category: "Transfer",
       note: out.note || input.note,
@@ -487,6 +492,7 @@ async function exportSheetsData(userId: string, sheetsId: string, categories: Ca
     transactions: sheetTransactions.map((transaction) => ({
       id: transaction.id,
       date: normalizeTransactionDate(transaction.date),
+      time: normalizeTransactionTime(transaction.time),
       amount: transaction.amount,
       category: transaction.category,
       note: transaction.note,
@@ -869,6 +875,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
         const outAccountId = transaction.fromAccountId ? maps.accountId.get(transaction.fromAccountId) : null;
         const inAccountId = transaction.toAccountId ? maps.accountId.get(transaction.toAccountId) : null;
         if (!outAccountId || !inAccountId) continue;
+        const transactionTime = normalizeTransactionTime(transaction.time);
         await tx.transaction.create({
           data: {
             id: randomUUID(),
@@ -878,6 +885,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
             amount: transaction.amount,
             category: "Transfer",
             date: normalizeTransactionDate(transaction.date),
+            time: transactionTime,
             note: transaction.note,
             transferId,
             createdAt: new Date(transaction.createdAt),
@@ -892,6 +900,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
             amount: transaction.amount,
             category: "Transfer",
             date: normalizeTransactionDate(transaction.date),
+            time: transactionTime,
             note: transaction.note,
             transferId,
             createdAt: new Date(transaction.createdAt),
@@ -912,6 +921,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
           amount: transaction.amount,
           category: transaction.category,
           date: normalizeTransactionDate(transaction.date),
+          time: normalizeTransactionTime(transaction.time),
           note: transaction.note,
           isInitialBalance: transaction.isInitialBalance,
           createdAt: new Date(transaction.createdAt),
@@ -1001,6 +1011,7 @@ async function restoreToSheets(
       transaction.fromAccountName ?? (transaction.fromAccountId ? accountNames.get(transaction.fromAccountId) ?? "" : ""),
       toId,
       transaction.toAccountName ?? (transaction.toAccountId ? accountNames.get(transaction.toAccountId) ?? "" : ""),
+      normalizeTransactionTime(transaction.time),
     ];
   });
 
@@ -1019,7 +1030,7 @@ async function restoreToSheets(
   if (transactionRows.length) {
     writes.push(sheets.spreadsheets.values.append({
       spreadsheetId: sheetsId,
-      range: "Transaksi!A:K",
+      range: "Transaksi!A:L",
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: transactionRows },

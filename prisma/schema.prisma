@@ -74,6 +74,7 @@ model Transaction {
   id               String   @id @default(uuid())
   userId           String   @map("user_id")
   date             String   // YYYY-MM-DD
+  time             String   @default("00:00") // HH:mm
   amount           Decimal  @db.Decimal(19, 4)
   category         String
   note             String   @default("")
@@ -88,6 +89,7 @@ model Transaction {
 
   @@index([userId, accountId])
   @@index([userId, date])
+  @@index([userId, date, time])
   @@index([userId, type, date])
   @@index([userId, accountId, date])
   @@index([userId, accountId, type])

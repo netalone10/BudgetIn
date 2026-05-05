@@ -1,5 +1,6 @@
 import { sheets as googleSheets } from "@googleapis/sheets";
 import { OAuth2Client } from "google-auth-library";
+import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 function getSheetsClient(accessToken: string) {
   const auth = new OAuth2Client();
@@ -26,7 +27,7 @@ export async function appendBillPaymentToSheet(
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A:K",
+    range: "Transaksi!A:L",
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [[
@@ -41,6 +42,7 @@ export async function appendBillPaymentToSheet(
         data.account,
         "",
         "",
+        normalizeTransactionTime(undefined),
       ]],
     },
   });

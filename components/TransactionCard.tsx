@@ -10,6 +10,7 @@ import { emitDataChanged } from "@/lib/data-events";
 export interface Transaction {
   id: string;
   date: string;
+  time?: string | null;
   amount: number;
   category: string;
   note: string;
@@ -49,6 +50,10 @@ function formatDate(dateStr: string) {
   return `${parseInt(day)} ${months[parseInt(month) - 1]}`;
 }
 
+function formatTime(time?: string | null) {
+  return time && /^\d{2}:\d{2}$/.test(time) ? time : "00:00";
+}
+
 // ── Edit Modal ────────────────────────────────────────────────────────────────
 
 interface EditModalProps {
@@ -61,6 +66,7 @@ interface EditModalProps {
 
 function EditModal({ transaction, categories, accounts, onClose, onSaved }: EditModalProps) {
   const [editDate, setEditDate] = useState(transaction.date);
+  const [editTime, setEditTime] = useState(formatTime(transaction.time));
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
@@ -88,6 +94,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: editDate,
+        time: editTime,
         note: editNote,
         amount: Number(editAmount),
         category: editCategory,
@@ -97,6 +104,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
     if (res.ok) {
       onSaved({
         date: editDate,
+        time: editTime,
         note: editNote,
         amount: Number(editAmount),
         category: editCategory,
@@ -137,16 +145,27 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
               />
             </div>
             <div>
-              <label className={LABEL_CLS}>Nominal (Rp)</label>
+              <label className={LABEL_CLS}>Jam</label>
               <input
-                type="number"
-                step="1"
-                value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
+                type="time"
+                value={editTime}
+                onChange={(e) => setEditTime(e.target.value)}
                 required
                 className={INPUT_CLS}
               />
             </div>
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Nominal (Rp)</label>
+            <input
+              type="number"
+              step="1"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              required
+              className={INPUT_CLS}
+            />
           </div>
 
           <div>
@@ -256,7 +275,8 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
       )}>
         {/* Tanggal */}
         <td className="py-2.5 pl-4 pr-3 text-xs text-muted-foreground whitespace-nowrap w-20">
-          {formatDate(transaction.date)}
+          <span className="block">{formatDate(transaction.date)}</span>
+          <span className="block text-[11px]">{formatTime(transaction.time)}</span>
         </td>
 
         {/* Deskripsi */}

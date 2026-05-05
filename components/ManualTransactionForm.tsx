@@ -24,6 +24,10 @@ interface ManualTransactionFormProps {
 type TabType = "expense" | "income" | "transfer";
 type CategoryOption = string | { name: string; type?: string | null };
 
+function currentLocalTime() {
+  return new Date().toTimeString().slice(0, 5);
+}
+
 export default function ManualTransactionForm({ accounts, categories, onSuccess, defaultAccountId }: ManualTransactionFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<TabType>("expense");
@@ -38,6 +42,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   const [toAccountId, setToAccountId] = useState("");
   const [category, setCategory] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [time, setTime] = useState(currentLocalTime);
   const [note, setNote] = useState("");
 
   // Reset form on tab change
@@ -47,6 +52,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
     setAccountId(defaultAccountId ?? "");
     setToAccountId("");
     setCategory("");
+    setTime(currentLocalTime());
     setNote("");
     setError(null);
     setSuccess(null);
@@ -113,7 +119,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       return;
     }
 
-    const payload: Record<string, unknown> = { type: tab, amount: parsedAmount, date, note };
+    const payload: Record<string, unknown> = { type: tab, amount: parsedAmount, date, time, note };
 
     if (tab === "transfer") {
       payload.accountId = accountId;
@@ -323,15 +329,25 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Jam</label>
             <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Tulis catatan..."
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              required
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Tulis catatan..."
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
 
         {/* Warnings */}

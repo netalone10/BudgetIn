@@ -3,9 +3,11 @@ import { OAuth2Client } from "google-auth-library";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { v4 as uuidv4 } from "uuid";
+import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 const TIMEZONE = "Asia/Jakarta";
 const SHEETS_CACHE_TTL_MS = 15_000;
+const TRANSACTION_HEADERS = ["id", "date", "amount", "category", "note", "created_at", "type", "fromAccountId", "fromAccountName", "toAccountId", "toAccountName", "time"];
 
 // Simple in-memory TTL cache for Sheets API calls (helps rapid period toggling)
 type CacheEntry<T> = { data: T; ts: number };
@@ -55,10 +57,10 @@ export async function createGoogleSheet(
   // Header row: double-entry columns — fromAccount (debit/kredit sumber) + toAccount (debit/kredit tujuan)
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Transaksi!A1:K1",
+    range: "Transaksi!A1:L1",
     valueInputOption: "RAW",
     requestBody: {
-      values: [["id", "date", "amount", "category", "note", "created_at", "type", "fromAccountId", "fromAccountName", "toAccountId", "toAccountName"]],
+      values: [TRANSACTION_HEADERS],
     },
   });
 
@@ -100,6 +102,7 @@ export async function createGoogleSheet(
 export interface Transaction {
   id: string;
   date: string;
+  time?: string;
   amount: number;
   category: string;
   note: string;
@@ -125,6 +128,7 @@ export async function appendTransaction(
     toZonedTime(new Date(), TIMEZONE),
     "yyyy-MM-dd'T'HH:mm:ssxxx"
   );
+  const time = normalizeTransactionTime(data.time);
 
   const row = [
     id,
@@ -138,17 +142,18 @@ export async function appendTransaction(
     data.fromAccountName ?? "",
     data.toAccountId ?? "",
     data.toAccountName ?? "",
+    time,
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A:K",
+    range: "Transaksi!A:L",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
   });
 
-  return { id, ...data, created_at };
+  return { id, ...data, time, created_at };
 }
 
 export async function getTransactions(
@@ -163,7 +168,7 @@ export async function getTransactions(
 
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetsId,
-      range: "Transaksi!A2:K",
+      range: "Transaksi!A2:L",
       valueRenderOption: "UNFORMATTED_VALUE",
       dateTimeRenderOption: "FORMATTED_STRING",
     });
@@ -186,6 +191,7 @@ export async function getTransactions(
           fromAccountName: row[8] || undefined,
           toAccountId: isLegacy ? undefined : (row[9] || undefined),
           toAccountName: isLegacy ? undefined : (row[10] || undefined),
+          time: normalizeTransactionTime(row[11]),
         };
       });
 
@@ -241,7 +247,7 @@ export async function updateTransaction(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:K${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:L${rowIndex}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
@@ -259,11 +265,12 @@ export async function updateTransaction(
     data.fromAccountName !== undefined ? (data.fromAccountName ?? "") : (current[8] ?? ""),
     current[9] ?? "",
     current[10] ?? "",
+    data.time !== undefined ? normalizeTransactionTime(data.time) : normalizeTransactionTime(current[11]),
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:K${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:L${rowIndex}`,
     valueInputOption: "RAW",
     requestBody: { values: [updated] },
   });
@@ -484,16 +491,16 @@ export async function ensureTransaksiHeader(sheetsId: string, accessToken: strin
   const sheets = getSheetsClient(accessToken);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Transaksi!A1:K1",
+    range: "Transaksi!A1:L1",
   });
   const header = res.data.values?.[0] ?? [];
-  if (header.length < 11) {
+  if (header.length < 12) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetsId,
-      range: "Transaksi!A1:K1",
+      range: "Transaksi!A1:L1",
       valueInputOption: "RAW",
       requestBody: {
-        values: [["id", "date", "amount", "category", "note", "created_at", "type", "fromAccountId", "fromAccountName", "toAccountId", "toAccountName"]],
+        values: [TRANSACTION_HEADERS],
       },
     });
   }
@@ -538,7 +545,7 @@ export async function clearBudgetInSheetData(sheetsId: string, accessToken: stri
   await sheets.spreadsheets.values.batchClear({
     spreadsheetId: sheetsId,
     requestBody: {
-      ranges: ["Transaksi!A2:K", "Budget!A2:C", "Akun!A2:J"],
+      ranges: ["Transaksi!A2:L", "Budget!A2:C", "Akun!A2:J"],
     },
   });
   sheetsCache.delete(`tx:${sheetsId}:${accessToken.slice(0, 20)}`);
@@ -605,7 +612,7 @@ export async function getTransactionRow(
   if (rowIndex === -1) return null;
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Transaksi!A${rowIndex}:K${rowIndex}`,
+    range: `Transaksi!A${rowIndex}:L${rowIndex}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
@@ -624,6 +631,7 @@ export async function getTransactionRow(
     fromAccountName: row[8] || undefined,
     toAccountId: isLegacy ? undefined : (row[9] || undefined),
     toAccountName: isLegacy ? undefined : (row[10] || undefined),
+    time: normalizeTransactionTime(row[11]),
   };
 }
 

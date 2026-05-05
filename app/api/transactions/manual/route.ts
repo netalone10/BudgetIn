@@ -6,6 +6,7 @@ import { Decimal } from "@prisma/client/runtime/library";
 import { randomUUID } from "crypto";
 import { getValidToken } from "@/utils/token";
 import { appendTransaction, getAccounts } from "@/utils/sheets";
+import { currentJakartaTime, isValidTransactionTime } from "@/lib/transaction-time";
 
 function isValidTransactionAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount !== 0 && Math.abs(amount) <= 1_000_000_000;
@@ -43,6 +44,12 @@ export async function POST(req: NextRequest) {
   if (!isValidDateString(date)) {
     return NextResponse.json({ error: "Format tanggal tidak valid (YYYY-MM-DD)." }, { status: 400 });
   }
+  const transactionTime = body.time === undefined || body.time === null || body.time === ""
+    ? currentJakartaTime()
+    : body.time;
+  if (!isValidTransactionTime(transactionTime)) {
+    return NextResponse.json({ error: "Format jam tidak valid (HH:mm)." }, { status: 400 });
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -73,6 +80,7 @@ export async function POST(req: NextRequest) {
 
       const transaction = await appendTransaction(user!.sheetsId!, accessToken, {
         date,
+        time: transactionTime,
         amount: parsedAmount,
         category: category.trim(),
         note: note ?? "",
@@ -114,6 +122,7 @@ export async function POST(req: NextRequest) {
 
       const transaction = await appendTransaction(user!.sheetsId!, accessToken, {
         date,
+        time: transactionTime,
         amount: parsedAmount,
         category: "Transfer",
         note: note ?? "",
@@ -128,6 +137,7 @@ export async function POST(req: NextRequest) {
       if (parsedFee > 0) {
         feeTransaction = await appendTransaction(user!.sheetsId!, accessToken, {
           date,
+          time: transactionTime,
           amount: parsedFee,
           category: TRANSFER_FEE_CATEGORY,
           note: note ? `Fee transfer - ${note}` : "Fee transfer",
@@ -186,6 +196,7 @@ export async function POST(req: NextRequest) {
         amount: decimalAmount,
         category: category.trim(),
         date,
+        time: transactionTime,
         note: note ?? "",
       },
     });
@@ -262,6 +273,7 @@ export async function POST(req: NextRequest) {
           amount: decimalAmount,
           category: "Transfer",
           date,
+          time: transactionTime,
           note: transferNote,
           transferId,
         },
@@ -274,6 +286,7 @@ export async function POST(req: NextRequest) {
           amount: decimalAmount,
           category: "Transfer",
           date,
+          time: transactionTime,
           note: transferNote,
           transferId,
         },
@@ -288,6 +301,7 @@ export async function POST(req: NextRequest) {
                 amount: new Decimal(parsedFee),
                 category: TRANSFER_FEE_CATEGORY,
                 date,
+                time: transactionTime,
                 note: transferNote ? `Fee transfer - ${transferNote}` : "Fee transfer",
               },
             }),

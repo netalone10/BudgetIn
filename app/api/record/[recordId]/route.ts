@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { updateTransaction, deleteTransaction, getAccounts, getTransactionRow } from "@/utils/sheets";
 import { updateTransactionDB, deleteTransactionDB } from "@/utils/db-transactions";
+import { isValidTransactionTime } from "@/lib/transaction-time";
 
 type Params = { params: Promise<{ recordId: string }> };
 
@@ -60,14 +61,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       body.amount = parsedAmount;
     }
+    if (body.time !== undefined && !isValidTransactionTime(body.time)) {
+      return NextResponse.json({ error: "Format jam tidak valid (HH:mm)." }, { status: 400 });
+    }
 
     try {
       // Transfer pair: update kedua row sekaligus via transferId
-      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.note !== undefined)) {
+      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined)) {
         await prisma.transaction.updateMany({
           where: { transferId: existing.transferId },
           data: {
             ...(body.date !== undefined && { date: body.date }),
+            ...(body.time !== undefined && { time: body.time }),
             ...(body.amount !== undefined && { amount: body.amount }),
             ...(body.note !== undefined && { note: body.note }),
           },
@@ -75,6 +80,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       } else {
         await updateTransactionDB(session.userId, recordId, {
           date: body.date,
+          time: body.time,
           amount: body.amount,
           category: body.category,
           note: body.note,
@@ -112,6 +118,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       body.amount = parsedAmount;
     }
+    if (body.time !== undefined && !isValidTransactionTime(body.time)) {
+      return NextResponse.json({ error: "Format jam tidak valid (HH:mm)." }, { status: 400 });
+    }
 
     let fromAccountId: string | undefined;
     let fromAccountName: string | undefined;
@@ -129,6 +138,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     await updateTransaction(user.sheetsId, accessToken, recordId, {
       date: body.date,
+      time: body.time,
       amount: body.amount,
       category: body.category,
       note: body.note,
