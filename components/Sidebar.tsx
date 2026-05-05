@@ -27,6 +27,7 @@ import {
   Calculator,
   ArrowUpRight,
   Layers3,
+  ArchiveRestore,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -173,6 +174,7 @@ export default function Sidebar() {
 
   const utilityItems: NavItem[] = [
     { name: "Tipe Akun", href: "/dashboard/settings/account-types", icon: Tags },
+    { name: "Backup & Restore", href: "/dashboard/settings/backup-restore", icon: ArchiveRestore },
     { name: "Panduan", href: "/dashboard/panduan", icon: BookOpen },
     { name: "Updates", href: "/dashboard/changelog", icon: History },
   ];

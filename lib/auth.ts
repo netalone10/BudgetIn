@@ -9,6 +9,17 @@ import { verifyTurnstile } from "@/lib/turnstile";
 import { DEMO_ACCOUNT } from "@/lib/demo-account";
 import bcrypt from "bcryptjs";
 
+const REQUIRED_GOOGLE_SCOPES = [
+  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive.file",
+];
+
+function hasRequiredGoogleScopes(scope: unknown) {
+  if (typeof scope !== "string") return false;
+  const granted = new Set(scope.split(/\s+/).filter(Boolean));
+  return REQUIRED_GOOGLE_SCOPES.every((required) => granted.has(required));
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     // ── Google OAuth ──────────────────────────────────────────────────────────
@@ -84,6 +95,9 @@ export const authOptions: NextAuthOptions = {
 
       // Google flow
       if (account.provider !== "google") return false;
+      if (!hasRequiredGoogleScopes(account.scope)) {
+        return "/auth/error?error=GooglePermissionRequired";
+      }
 
       let dbUser;
       try {
@@ -130,7 +144,7 @@ export const authOptions: NextAuthOptions = {
           await seedDefaultCategories(dbUser.id);
         } catch (sheetsError) {
           console.error("[signIn] createGoogleSheet error:", sheetsError);
-          // Lanjutkan login meski Sheets gagal — user masih bisa pakai DB storage
+          return "/auth/error?error=GooglePermissionRequired";
         }
       }
 

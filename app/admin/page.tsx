@@ -42,6 +42,7 @@ interface Stats {
   unverifiedEmailUsers: number;
   sheetsUsers: number;
   dbOnlyUsers: number;
+  googleSetupIssueUsers: number;
   newThisMonth: number;
   newLast7Days: number;
   activeLast7Days: number;
@@ -58,7 +59,7 @@ interface UserRow {
   name: string;
   email: string;
   type: "google" | "email";
-  hasSheets: boolean;
+  dataMode: "database" | "sheets" | "google_setup_required";
   emailVerified: boolean;
   budgetCount: number;
   categoryCount: number;
@@ -99,7 +100,8 @@ const verifiedOptions: SelectOption[] = [
 const dataModeOptions: SelectOption[] = [
   { value: "all", label: "Semua mode data" },
   { value: "sheets", label: "Google Sheets" },
-  { value: "db", label: "Database" },
+  { value: "database", label: "Database" },
+  { value: "google_setup_required", label: "Setup Required" },
 ];
 
 const sortOptions: SelectOption[] = [
@@ -335,7 +337,7 @@ export default function AdminPage() {
           <StatCard icon={<Users className="h-4 w-4" />} label="Total User" value={statsLoading ? "..." : fmt(stats?.totalUsers ?? 0)} sub={stats ? `${fmt(stats.newThisMonth)} baru bulan ini` : ""} />
           <StatCard icon={<Chrome className="h-4 w-4 text-blue-500" />} label="Google Users" value={statsLoading ? "..." : fmt(stats?.googleUsers ?? 0)} sub={stats ? pct(stats.googleUsers, stats.totalUsers) : ""} />
           <StatCard icon={<Mail className="h-4 w-4 text-purple-500" />} label="Email Users" value={statsLoading ? "..." : fmt(stats?.emailUsers ?? 0)} sub={stats ? `${fmt(stats.verifiedEmailUsers)} verified • ${fmt(stats.unverifiedEmailUsers)} pending` : ""} />
-          <StatCard icon={<Database className="h-4 w-4 text-teal-500" />} label="Mode Data" value={statsLoading ? "..." : `${fmt(stats?.dbOnlyUsers ?? 0)} DB`} sub={stats ? `${fmt(stats.sheetsUsers)} pakai Sheets` : ""} />
+          <StatCard icon={<Database className="h-4 w-4 text-teal-500" />} label="Mode Data" value={statsLoading ? "..." : `${fmt(stats?.dbOnlyUsers ?? 0)} DB`} sub={stats ? `${fmt(stats.sheetsUsers)} Sheets • ${fmt(stats.googleSetupIssueUsers)} setup issue` : ""} />
           <StatCard icon={<Wallet className="h-4 w-4 text-emerald-500" />} label="Akun/Wallet" value={statsLoading ? "..." : fmt(stats?.totalAccounts ?? 0)} sub="Total account records" />
           <StatCard icon={<TrendingUp className="h-4 w-4 text-orange-500" />} label="Budget" value={statsLoading ? "..." : fmt(stats?.totalBudgets ?? 0)} sub="Budget aktif tersimpan" />
           <StatCard icon={<PiggyBank className="h-4 w-4 text-pink-500" />} label="Savings Goals" value={statsLoading ? "..." : fmt(stats?.totalSavingsGoals ?? 0)} sub="Target tabungan user" />
@@ -438,9 +440,15 @@ export default function AdminPage() {
                         </div>
                       </td>
                       <td className="px-3 py-4">
-                        <Badge className={u.hasSheets ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-slate-100 text-slate-700 dark:bg-slate-900/50 dark:text-slate-300"}>
-                          <Database className="h-3 w-3" />
-                          {u.hasSheets ? "Sheets" : "DB"}
+                        <Badge className={
+                          u.dataMode === "sheets"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            : u.dataMode === "google_setup_required"
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500"
+                              : "bg-slate-100 text-slate-700 dark:bg-slate-900/50 dark:text-slate-300"
+                        }>
+                          {u.dataMode === "google_setup_required" ? <AlertTriangle className="h-3 w-3" /> : <Database className="h-3 w-3" />}
+                          {u.dataMode === "sheets" ? "Sheets" : u.dataMode === "google_setup_required" ? "Setup Required" : "DB"}
                         </Badge>
                       </td>
                       <td className="px-3 py-4">
@@ -524,6 +532,7 @@ export default function AdminPage() {
             <SidePanel icon={<Sparkles className="h-4 w-4 text-primary" />} title="Ops Queue">
               <SideMetric label="Email belum verified" value={stats ? fmt(stats.unverifiedEmailUsers) : "-"} sub="Butuh follow-up" />
               <SideMetric label="DB-only users" value={stats ? fmt(stats.dbOnlyUsers) : "-"} sub="Tanpa Sheets sync" />
+              <SideMetric label="Google setup issue" value={stats ? fmt(stats.googleSetupIssueUsers) : "-"} sub="Perlu reconnect permission" />
               <SideMetric label="Sheets users" value={stats ? fmt(stats.sheetsUsers) : "-"} sub="Google-connected" />
             </SidePanel>
           </div>

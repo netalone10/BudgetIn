@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
   const pageSize = getPageSize(searchParams.get("pageSize"));
 
   const where: Prisma.UserWhereInput = {};
+  const andConditions: Prisma.UserWhereInput[] = [];
 
   if (search) {
     where.OR = [
@@ -53,9 +54,11 @@ export async function GET(req: NextRequest) {
   if (provider === "google") where.googleId = { not: null };
   if (provider === "email") where.googleId = null;
   if (verified === "verified") where.emailVerified = { not: null };
-  if (verified === "unverified") where.AND = [{ googleId: null }, { emailVerified: null }];
+  if (verified === "unverified") andConditions.push({ googleId: null }, { emailVerified: null });
   if (dataMode === "sheets") where.sheetsId = { not: null };
-  if (dataMode === "db") where.sheetsId = null;
+  if (dataMode === "database" || dataMode === "db") andConditions.push({ googleId: null }, { sheetsId: null });
+  if (dataMode === "google_setup_required") andConditions.push({ googleId: { not: null } }, { sheetsId: null });
+  if (andConditions.length) where.AND = andConditions;
 
   const [total, users] = await Promise.all([
     prisma.user.count({ where }),
@@ -97,7 +100,7 @@ export async function GET(req: NextRequest) {
       name: u.name,
       email: u.email,
       type: u.googleId ? "google" : "email",
-      hasSheets: !!u.sheetsId,
+      dataMode: u.sheetsId ? "sheets" : u.googleId ? "google_setup_required" : "database",
       emailVerified: !!u.emailVerified,
       budgetCount: u._count.budgets,
       categoryCount: u._count.categories,

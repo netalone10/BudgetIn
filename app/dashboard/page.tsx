@@ -3,12 +3,18 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { fetchDashboardData } from "@/lib/dashboard-data";
+import { prisma } from "@/lib/prisma";
 import DashboardClient from "./DashboardClient";
 import DashboardSuspenseFallback from "./DashboardSuspenseFallback";
+import GoogleSetupRecovery from "./GoogleSetupRecovery";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.userId) redirect("/");
+
+  const setupState = await getGoogleSetupState(session.userId);
+  if (setupState === "reconnect") return <GoogleSetupRecovery mode="reconnect" />;
+  if (setupState === "migrate") return <GoogleSetupRecovery mode="migrate" />;
 
   const firstName = session.user?.name?.split(" ")[0] ?? "";
 
@@ -79,4 +85,21 @@ export default async function DashboardPage() {
 async function DashboardData() {
   const initialData = await fetchDashboardData();
   return <DashboardClient initialData={initialData} />;
+}
+
+async function getGoogleSetupState(userId: string): Promise<"ready" | "reconnect" | "migrate"> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { googleId: true, sheetsId: true, googleSetupMigratedAt: true },
+  });
+  if (!user?.googleId) return "ready";
+  if (!user.sheetsId) return "reconnect";
+  if (user.googleSetupMigratedAt) return "ready";
+
+  const [accounts, transactions, budgets] = await Promise.all([
+    prisma.account.count({ where: { userId } }),
+    prisma.transaction.count({ where: { userId } }),
+    prisma.budget.count({ where: { userId } }),
+  ]);
+  return accounts + transactions + budgets > 0 ? "migrate" : "ready";
 }

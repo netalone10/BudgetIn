@@ -20,6 +20,7 @@ model User {
   refreshToken String?   @map("refresh_token")
   tokenExpiry  DateTime? @map("token_expiry")
   sheetsId                String?   @map("sheets_id")          // null untuk email users
+  googleSetupMigratedAt   DateTime? @map("google_setup_migrated_at")
   emailVerified           DateTime? @map("email_verified")
   verificationToken       String?   @unique @map("verification_token")
   verificationTokenExpiry DateTime? @map("verification_token_expiry")
