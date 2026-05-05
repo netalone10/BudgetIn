@@ -28,6 +28,7 @@ import {
   ArrowUpRight,
   Layers3,
   ArchiveRestore,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -173,6 +174,7 @@ export default function Sidebar() {
   ];
 
   const utilityItems: NavItem[] = [
+    { name: "Akun & Data", href: "/dashboard/settings/account", icon: UserCog },
     { name: "Tipe Akun", href: "/dashboard/settings/account-types", icon: Tags },
     { name: "Backup & Restore", href: "/dashboard/settings/backup-restore", icon: ArchiveRestore },
     { name: "Panduan", href: "/dashboard/panduan", icon: BookOpen },

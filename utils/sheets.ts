@@ -529,6 +529,22 @@ export async function ensureAccountHeader(sheetsId: string, accessToken: string)
   }
 }
 
+export async function clearBudgetInSheetData(sheetsId: string, accessToken: string): Promise<void> {
+  const sheets = getSheetsClient(accessToken);
+  await Promise.all([
+    ensureTransaksiHeader(sheetsId, accessToken),
+    ensureAccountHeader(sheetsId, accessToken),
+  ]);
+  await sheets.spreadsheets.values.batchClear({
+    spreadsheetId: sheetsId,
+    requestBody: {
+      ranges: ["Transaksi!A2:K", "Budget!A2:C", "Akun!A2:J"],
+    },
+  });
+  sheetsCache.delete(`tx:${sheetsId}:${accessToken.slice(0, 20)}`);
+  sheetsCache.delete(`acc:${sheetsId}:${accessToken.slice(0, 20)}`);
+}
+
 /**
  * @deprecated Cache-write helper kept as escape hatch only. App now reads balance
  * via `computeAccountBalances` (pure-ledger). Avoid calling in new code.

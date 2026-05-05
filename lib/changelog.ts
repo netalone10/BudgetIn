@@ -14,6 +14,19 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.4.0",
+    date: "2026-05-05",
+    title: "Reset data dan delete account di Settings",
+    description: "User sekarang bisa mereset data, mereset setup akun, dan menghapus akun langsung dari halaman Settings dengan konfirmasi eksplisit.",
+    type: "release",
+    changes: [
+      "Menambahkan halaman Akun & Data untuk reset data finansial, reset setup akun, dan delete account.",
+      "Mengosongkan data Google Sheets untuk user Sheets tanpa menghapus file Drive.",
+      "Menambahkan proteksi confirmation text sebelum aksi destruktif diproses server.",
+      "Menyiapkan ulang kategori dan tipe akun default setelah reset data.",
+    ],
+  },
+  {
     version: "v1.3.1",
     date: "2026-05-05",
     title: "Perbaikan Google Sheets setup lock",
