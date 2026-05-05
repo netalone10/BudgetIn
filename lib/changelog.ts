@@ -14,6 +14,22 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.3.0",
+    date: "2026-05-05",
+    title: "Backup Restore dan Google Permission Migration",
+    description: "BudgetIn sekarang mendukung backup/restore lintas storage serta recovery akun Google yang perlu permission Sheets dan Drive.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/commit/0f5e78e`,
+    changes: [
+      "Menambahkan Backup & Restore JSON untuk migrasi data Database dan Google Sheets.",
+      "Mendukung restore Database ke Database, Database ke Google Sheets, Google Sheets ke Database, dan Google Sheets ke Google Sheets.",
+      "Memblok partial consent Google agar akun baru tidak masuk ke fallback database diam-diam.",
+      "Menambahkan recovery flow untuk akun Google yang perlu reconnect permission Sheets dan Drive.",
+      "Menambahkan preview dan eksekusi migrasi data fallback ke Google Sheets dengan marker idempotency.",
+      "Menampilkan status Google setup required di admin panel agar issue setup lebih mudah dipantau.",
+    ],
+  },
+  {
     version: "v1.0.0",
     date: "2026-05-05",
     title: "Production changelog untuk user",
