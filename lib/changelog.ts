@@ -14,6 +14,18 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.3.1",
+    date: "2026-05-05",
+    title: "Perbaikan Google Sheets setup lock",
+    description: "Dashboard tidak lagi terkunci di layar migrasi fallback saat data Google Sheets sudah sesuai.",
+    type: "fix",
+    changes: [
+      "Menambahkan opsi untuk menandai Google Sheets setup selesai tanpa restore data.",
+      "Mempertahankan blokir migrasi otomatis saat target Sheets sudah berisi data agar tidak terjadi duplikasi.",
+      "Membuka kembali akses dashboard untuk akun Google yang sudah memiliki data Sheets valid.",
+    ],
+  },
+  {
     version: "v1.3.0",
     date: "2026-05-05",
     title: "Backup Restore dan Google Permission Migration",

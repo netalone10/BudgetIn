@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import {
   createGoogleSetupMigrationPreview,
+  markGoogleSetupMigrationComplete,
   migrateGoogleSetupFallbackToSheets,
 } from "@/lib/backup";
 
@@ -21,14 +22,17 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const preview = await migrateGoogleSetupFallbackToSheets(session.userId);
+    const body = await request.json().catch(() => ({}));
+    const preview = body?.action === "mark-complete"
+      ? await markGoogleSetupMigrationComplete(session.userId)
+      : await migrateGoogleSetupFallbackToSheets(session.userId);
     return NextResponse.json({ success: true, preview });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal menjalankan migrasi.";

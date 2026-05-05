@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Summary = { accounts: number; transactions: number; budgets: number; categories: number; savingsGoals: number; savingsContributions: number; recurringBills: number; billPayments: number; totalRecords: number };
-type Preview = { summary: Summary; existing: Summary; warnings: string[]; canMigrate: boolean; migratedAt: string | null };
+type Preview = { summary: Summary; existing: Summary; warnings: string[]; canMigrate: boolean; canMarkComplete: boolean; migratedAt: string | null };
 
 function fmt(n: number) {
   return new Intl.NumberFormat("id-ID").format(n);
@@ -42,6 +42,26 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
       setDone(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal migrasi.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function markComplete() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/google-setup-migration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "mark-complete" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal menandai setup selesai.");
+      setPreview(data.preview);
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menandai setup selesai.");
     } finally {
       setBusy(false);
     }
@@ -94,6 +114,11 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Migrasikan data saya ke Google Sheets
               </Button>
+              {preview?.canMarkComplete && (
+                <Button variant="outline" onClick={markComplete} disabled={busy || done}>
+                  Data di Sheets sudah sesuai
+                </Button>
+              )}
               {done && <Button variant="outline" onClick={() => window.location.reload()}>Buka dashboard</Button>}
             </div>
           </div>

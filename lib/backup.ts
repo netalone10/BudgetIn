@@ -174,6 +174,7 @@ export type RestorePreview = {
 export type GoogleSetupMigrationPreview = RestorePreview & {
   migratedAt: string | null;
   canMigrate: boolean;
+  canMarkComplete: boolean;
 };
 
 function toNumber(value: unknown) {
@@ -567,6 +568,7 @@ export async function createGoogleSetupMigrationPreview(userId: string): Promise
   const backup = await createBudgetInBackup(userId, { forceDatabaseSource: true });
   const preview = await createRestorePreview(userId, backup);
   const canMigrate = !user.googleSetupMigratedAt && preview.existing.accounts === 0 && preview.existing.transactions === 0 && preview.existing.budgets === 0;
+  const canMarkComplete = !user.googleSetupMigratedAt && !canMigrate && (preview.existing.accounts > 0 || preview.existing.transactions > 0 || preview.existing.budgets > 0);
   const warnings = [...preview.warnings];
   if (user.googleSetupMigratedAt) warnings.push("Data fallback sudah pernah dimigrasikan.");
   if (preview.existing.accounts > 0 || preview.existing.transactions > 0 || preview.existing.budgets > 0) {
@@ -577,6 +579,7 @@ export async function createGoogleSetupMigrationPreview(userId: string): Promise
     warnings,
     migratedAt: user.googleSetupMigratedAt?.toISOString() ?? null,
     canMigrate,
+    canMarkComplete,
   };
 }
 
@@ -586,6 +589,17 @@ export async function migrateGoogleSetupFallbackToSheets(userId: string): Promis
 
   const backup = await createBudgetInBackup(userId, { forceDatabaseSource: true });
   await restoreBudgetInBackup(userId, backup, { skipCommonDbBackedData: true });
+  await prisma.user.update({
+    where: { id: userId },
+    data: { googleSetupMigratedAt: new Date() },
+  });
+  return createGoogleSetupMigrationPreview(userId);
+}
+
+export async function markGoogleSetupMigrationComplete(userId: string): Promise<GoogleSetupMigrationPreview> {
+  const preview = await createGoogleSetupMigrationPreview(userId);
+  if (!preview.canMarkComplete) throw new Error("Setup Google tidak bisa ditandai selesai dari kondisi saat ini.");
+
   await prisma.user.update({
     where: { id: userId },
     data: { googleSetupMigratedAt: new Date() },
