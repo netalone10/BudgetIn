@@ -19,8 +19,43 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BudgetIn",
-  description: "Catat pengeluaran, pahami uangmu, cukup dengan ketik.",
+  metadataBase: new URL("https://budget.amuharr.com"),
+  applicationName: "BudgetIn",
+  title: {
+    default: "BudgetIn — Catat Pengeluaran dan Kelola Keuangan Pribadi",
+    template: "%s | BudgetIn",
+  },
+  description:
+    "BudgetIn membantu kamu mencatat pengeluaran, memantau saldo, mengatur budget, tagihan, dan tabungan pribadi dengan input cepat berbasis teks.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    locale: "id_ID",
+    url: "https://budget.amuharr.com",
+    siteName: "BudgetIn",
+    title: "BudgetIn — Catat Pengeluaran dan Kelola Keuangan Pribadi",
+    description:
+      "Catat transaksi seperti chat, pahami pola pengeluaran, dan kelola budget pribadi dengan lebih ringan bersama BudgetIn.",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "BudgetIn - Catat pengeluaran dan kelola keuangan pribadi",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BudgetIn — Catat Pengeluaran dan Kelola Keuangan Pribadi",
+    description:
+      "Catat transaksi seperti chat, pahami pola pengeluaran, dan kelola budget pribadi dengan lebih ringan bersama BudgetIn.",
+    images: ["/twitter-image"],
+  },
+  creator: "Akbar Muharram",
+  publisher: "BudgetIn",
   verification: {
     google: "5ee8c7cbea14c8b4",
   },

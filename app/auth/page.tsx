@@ -12,6 +12,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import Link from "next/link";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type { TurnstileInstance } from "@marsidev/react-turnstile";
+import PublicFooter from "@/components/PublicFooter";
 
 type Tab = "login" | "register";
 
@@ -530,14 +531,27 @@ function AuthForm() {
 export default function AuthPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <a href="#main-content" className="skip-link">
+        Lewati ke konten utama
+      </a>
       <header className="flex h-14 items-center justify-between border-b px-6">
         <Link href="/" className="font-bold tracking-tight text-lg">
           BudgetIn
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-4">
+          <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground sm:flex" aria-label="Navigasi informasi">
+            <Link href="/about" className="transition-colors hover:text-primary">
+              Tentang
+            </Link>
+            <Link href="/contact" className="transition-colors hover:text-primary">
+              Kontak
+            </Link>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
 
-      <main className="flex flex-1 items-center justify-center px-4 py-12">
+      <main id="main-content" className="flex flex-1 items-center justify-center px-4 py-12">
         <Suspense fallback={
           <div className="flex items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -546,6 +560,7 @@ export default function AuthPage() {
           <AuthForm />
         </Suspense>
       </main>
+      <PublicFooter />
     </div>
   );
 }

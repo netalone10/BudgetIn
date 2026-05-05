@@ -1,23 +1,47 @@
 import ThemeToggle from "@/components/ThemeToggle";
+import PublicFooter from "@/components/PublicFooter";
 import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Kebijakan Privasi — BudgetIn",
-  description: "Kebijakan privasi penggunaan aplikasi BudgetIn.",
+  title: "Kebijakan Privasi BudgetIn — Perlindungan Data Pengguna",
+  description:
+    "Pelajari bagaimana BudgetIn mengumpulkan, menggunakan, menyimpan, dan melindungi data akun, transaksi, Google Sheets, serta hak privasi pengguna.",
+  alternates: {
+    canonical: "/privacy",
+  },
+  openGraph: {
+    title: "Kebijakan Privasi BudgetIn — Perlindungan Data Pengguna",
+    description:
+      "Informasi privasi BudgetIn tentang data akun, transaksi, Google Sheets, layanan pihak ketiga, hak pengguna, dan permintaan penghapusan data.",
+    url: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <a href="#main-content" className="skip-link">
+        Lewati ke konten utama
+      </a>
       <header className="flex h-14 items-center justify-between border-b px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
         <Link href="/" className="font-bold tracking-tight text-lg hover:opacity-80 transition-opacity">
           BudgetIn
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-4">
+          <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground sm:flex" aria-label="Navigasi informasi">
+            <Link href="/about" className="transition-colors hover:text-primary">
+              Tentang
+            </Link>
+            <Link href="/contact" className="transition-colors hover:text-primary">
+              Kontak
+            </Link>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
 
-      <main className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
+      <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
         <div className="space-y-2 mb-10">
           <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Legal</p>
           <h1 className="text-3xl font-bold tracking-tight">Kebijakan Privasi</h1>
@@ -96,7 +120,17 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">8. Hubungi Kami</h2>
+            <h2 className="text-base font-semibold text-foreground">8. Retensi dan Penghapusan Data</h2>
+            <p>
+              Data akun dan transaksi disimpan selama akun masih aktif atau selama diperlukan untuk menjalankan layanan. Kamu dapat meminta reset data, penghapusan akun, atau pencabutan akses Google melalui pengaturan aplikasi dan kanal kontak resmi BudgetIn.
+            </p>
+            <p>
+              Setelah permintaan penghapusan diproses, data yang terkait dengan akun akan dihapus dari sistem aktif sesuai kemampuan teknis dan kewajiban hukum yang berlaku. Salinan cadangan sementara dapat tetap ada dalam periode terbatas untuk keamanan operasional.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-base font-semibold text-foreground">9. Hubungi Kami</h2>
             <p>
               Jika ada pertanyaan terkait privasi, silakan hubungi:{" "}
               <a href="mailto:akbar.rm10@gmail.com" className="text-primary hover:underline underline-offset-4">akbar.rm10@gmail.com</a>
@@ -110,11 +144,7 @@ export default function PrivacyPage() {
         </div>
       </main>
 
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        <p>&copy; 2026 BudgetIn &mdash; Dikembangkan oleh{" "}
-          <a href="https://amuharr.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline underline-offset-4">Akbar Muharram</a>
-        </p>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

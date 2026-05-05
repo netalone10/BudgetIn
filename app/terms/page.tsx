@@ -1,23 +1,47 @@
 import ThemeToggle from "@/components/ThemeToggle";
+import PublicFooter from "@/components/PublicFooter";
 import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Syarat & Ketentuan — BudgetIn",
-  description: "Syarat dan ketentuan penggunaan aplikasi BudgetIn.",
+  title: "Syarat dan Ketentuan BudgetIn — Aturan Penggunaan Aplikasi",
+  description:
+    "Baca syarat penggunaan BudgetIn, tanggung jawab pengguna, kepemilikan data, batasan layanan, dan ketentuan aplikasi keuangan pribadi.",
+  alternates: {
+    canonical: "/terms",
+  },
+  openGraph: {
+    title: "Syarat dan Ketentuan BudgetIn — Aturan Penggunaan Aplikasi",
+    description:
+      "Ketentuan penggunaan BudgetIn untuk pencatatan keuangan pribadi, pengelolaan data, tanggung jawab pengguna, dan batasan layanan.",
+    url: "/terms",
+  },
 };
 
 export default function TermsPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      <a href="#main-content" className="skip-link">
+        Lewati ke konten utama
+      </a>
       <header className="flex h-14 items-center justify-between border-b px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
         <Link href="/" className="font-bold tracking-tight text-lg hover:opacity-80 transition-opacity">
           BudgetIn
         </Link>
-        <ThemeToggle />
+        <div className="flex items-center gap-4">
+          <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground sm:flex" aria-label="Navigasi informasi">
+            <Link href="/about" className="transition-colors hover:text-primary">
+              Tentang
+            </Link>
+            <Link href="/contact" className="transition-colors hover:text-primary">
+              Kontak
+            </Link>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
 
-      <main className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
+      <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
         <div className="space-y-2 mb-10">
           <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Legal</p>
           <h1 className="text-3xl font-bold tracking-tight">Syarat &amp; Ketentuan</h1>
@@ -121,11 +145,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <footer className="border-t py-6 text-center text-xs text-muted-foreground">
-        <p>&copy; 2026 BudgetIn &mdash; Dikembangkan oleh{" "}
-          <a href="https://amuharr.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline underline-offset-4">Akbar Muharram</a>
-        </p>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

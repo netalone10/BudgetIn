@@ -1,4 +1,6 @@
 import ThemeToggle from "@/components/ThemeToggle";
+import PublicFooter from "@/components/PublicFooter";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,9 +59,27 @@ const budgetBars = [
 // Halaman ini fully static agar LCP optimal (CDN cache, no DB hit).
 export const dynamic = "force-static";
 
+export const metadata: Metadata = {
+  title: "BudgetIn — Catat Pengeluaran dan Kelola Keuangan Pribadi",
+  description:
+    "BudgetIn membantu kamu mencatat transaksi seperti chat, memantau saldo, mengatur budget, tagihan, dan tabungan pribadi dengan lebih cepat.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "BudgetIn — Catat Pengeluaran dan Kelola Keuangan Pribadi",
+    description:
+      "Catat transaksi seperti chat, pahami pola pengeluaran, dan kelola budget pribadi dengan lebih ringan bersama BudgetIn.",
+    url: "/",
+  },
+};
+
 export default function LandingPage() {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+      <a href="#main-content" className="skip-link">
+        Lewati ke konten utama
+      </a>
       <div className="hero-atmospheric-gradient pointer-events-none absolute inset-0 z-0 h-[800px] w-full" />
       <div className="pointer-events-none absolute inset-x-0 top-24 z-0 mx-auto h-[520px] w-[min(92vw,1100px)] rounded-full bg-primary/8 blur-3xl" />
 
@@ -67,10 +87,20 @@ export default function LandingPage() {
         <span className="text-[17px] font-semibold tracking-tight text-foreground">
           BudgetIn
         </span>
-        <ThemeToggle />
+        <div className="flex items-center gap-4">
+          <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground sm:flex" aria-label="Navigasi utama">
+            <Link href="/about" className="transition-colors hover:text-primary">
+              Tentang
+            </Link>
+            <Link href="/contact" className="transition-colors hover:text-primary">
+              Kontak
+            </Link>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
 
-      <main className="relative z-10 flex flex-1 flex-col">
+      <main id="main-content" className="relative z-10 flex flex-1 flex-col">
         <section className="mx-auto grid w-full max-w-6xl gap-16 px-4 pb-24 pt-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:px-6 lg:pt-24">
           <div className="text-center lg:text-left">
             <div className="mb-6 inline-flex items-center gap-3 rounded-full border border-border bg-card/85 px-4 py-2 text-sm shadow-sm backdrop-blur">
@@ -327,6 +357,9 @@ export default function LandingPage() {
               BudgetIn membantu kamu tetap rapi tanpa mengubah cara berpikir.
               Cukup catat seperti biasa, lalu biarkan sistemnya bekerja.
             </p>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              Dari pengeluaran harian, transfer antar akun, biaya admin, sampai target tabungan, semua dicatat dalam alur yang mudah dipahami dan siap dianalisis kapan saja.
+            </p>
             <Link
               href="/auth"
               className={cn(
@@ -349,23 +382,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="relative z-10 space-y-4 border-t border-border py-10 text-center">
-        <span className="block text-[15px] font-semibold tracking-tight text-foreground">
-          BudgetIn
-        </span>
-        <p className="text-[13px] font-medium text-muted-foreground">
-          &copy; 2026 BudgetIn - Aplikasi pencatat keuangan responsif dan aman.
-        </p>
-        <div className="mt-4 flex items-center justify-center gap-4 text-[13px] font-medium text-muted-foreground">
-          <Link href="/privacy" className="transition-colors hover:text-primary">
-            Kebijakan Privasi
-          </Link>
-          <span>&middot;</span>
-          <Link href="/terms" className="transition-colors hover:text-primary">
-            Syarat &amp; Ketentuan
-          </Link>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

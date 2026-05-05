@@ -14,6 +14,21 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.6.0",
+    date: "2026-05-05",
+    title: "SEO audit dan halaman publik",
+    description: "Halaman publik BudgetIn diperkuat untuk crawlability, metadata sharing, trust signal, dan aksesibilitas berdasarkan audit SquirrelScan.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.6.0`,
+    changes: [
+      "Menambahkan robots.txt dan sitemap.xml untuk halaman publik BudgetIn.",
+      "Memperkuat metadata SEO global, canonical URL, Open Graph, Twitter card, dan preview image.",
+      "Menambahkan halaman Tentang dan Kontak sebagai trust pages publik.",
+      "Menandai halaman auth sebagai noindex agar login/demo tidak ditargetkan SEO.",
+      "Menambahkan footer publik, internal link legal/informasi, skip link, dan polish konten privacy/homepage.",
+    ],
+  },
+  {
     version: "v1.5.0",
     date: "2026-05-05",
     title: "Jam transaksi end-to-end",
