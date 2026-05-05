@@ -1,239 +1,278 @@
-# Project Summary
+﻿# Project Summary
 
-- **Tujuan**: Aplikasi manajemen keuangan personal berbasis AI — pencatatan transaksi via natural language prompt, budget tracking, tabungan, cashflow, dan analisis keuangan.
-- **Tech stack**: Next.js 15 (App Router), TypeScript, NextAuth v4, Prisma ORM, PostgreSQL (Supabase + PgBouncer), Google Sheets API, Groq AI (llama-3.1-8b-instant), Cloudflare Turnstile CAPTCHA.
-- **Arsitektur**: Full-stack Next.js monolith — React Server/Client Components + API Routes. Dual storage: Google Sheets (Google OAuth users) vs PostgreSQL (email/password users).
+- **Tujuan**: Aplikasi manajemen keuangan personal berbasis AI untuk mencatat transaksi natural language, input manual, budget tracking, tabungan per goal, recurring bills, cashflow, kalender transaksi, net worth, dan analisis/prediksi keuangan.
+- **Tech stack**: Next.js 16 App Router, React 19, TypeScript, NextAuth v4, Prisma ORM, PostgreSQL/Supabase, Google Sheets API, Groq AI, Cloudflare Turnstile, Tailwind CSS v4, shadcn/ui-style components.
+- **Arsitektur**: Full-stack Next.js monolith dengan React Server/Client Components dan API Routes. Storage bercabang: Google OAuth users memakai Google Sheets sebagai ledger utama; email/password users memakai PostgreSQL. Beberapa metadata shared tetap disimpan di PostgreSQL.
+- **Prinsip ledger**: Saldo akun dihitung dari ledger transaksi, bukan cache saldo. Transfer principal dikecualikan dari spending/expense analytics; fee transfer tetap expense kategori `Biaya Admin`.
 
 ---
 
-# Core Logic Flow (Function-Level Flowchart)
+# Core Logic Flow
 
-**Pencatatan transaksi (AI prompt):**
-```
-DashboardPage[handleSubmit] → POST /api/record
-  → getServerSession[authOptions]
-  → classifyIntent[groq.ts] (Groq llama-3.1-8b-instant, JSON output)
-  → resolveAccount() → matchAccount() | createMissingAccount()
-  → [Google user] appendTransaction[sheets.ts] + updateAccountBalance[sheets.ts]
-  → [Email user] appendTransactionDB[db-transactions.ts] → prisma.transaction.create
-  → prisma.category.upsert
+**AI prompt recording:**
+```text
+Dashboard / account detail prompt UI → POST /api/record
+  → getServerSession(authOptions)
+  → load user storage mode, categories, active accounts
+  → pre-validate monetary input
+  → classifyIntent(utils/groq.ts)
+  → dispatch to utils/record/intent-handlers.ts
+    → account resolver (match, clarify, or auto-create)
+    → amount parser/correction
+    → savings goal resolver when category/prompt is Tabungan
+    → write to Sheets or PostgreSQL
+    → upsert category / savings contribution when needed
 ```
 
-**Pencatatan manual:**
+**Supported AI intents:**
+```text
+transaksi         → expense, allows negative non-zero corrections/refunds
+transaksi_bulk    → multiple expense items from one prompt
+pemasukan         → income, allows negative non-zero corrections/reversals
+transfer          → positive-only account transfer with optional fee
+budget_setting    → create/update budget for current month
+laporan           → AI summary using current ledger + budgets
+unknown           → clarification response
 ```
+
+**Manual transaction recording:**
+```text
 ManualTransactionForm → POST /api/transactions/manual
-  → getServerSession
-  → prisma.transaction.create (DB) | appendTransaction[sheets.ts] (Sheets)
-  → updateAccountBalance (Sheets only)
+  → expense/income: validate non-zero signed amount + account + category
+  → transfer: validate positive amount, source/destination account, same currency
+  → [Sheets] append one Transfer row with from+to account fields; optional fee expense row
+  → [DB] create transfer_out + transfer_in rows sharing transferId; optional fee expense row
 ```
 
-**Baca transaksi:**
-```
-DashboardPage[fetchTransactions] → GET /api/record?period=
-  → [Google user] getValidToken[token.ts] → getTransactions[sheets.ts]
-  → [Email user] getTransactionsDB[db-transactions.ts]
-```
-
-**Auth flow:**
-```
-/auth page → NextAuth signIn
-  → [Google] signIn callback → prisma.user.upsert → createGoogleSheet[sheets.ts] → seedDefaultCategories
-  → [Email] authorize callback → prisma.user.findUnique → bcrypt.compare → verifyTurnstile
-  → jwt callback → session callback → JWT cookie
+**Read transactions:**
+```text
+GET /api/record?period=...
+  → [Sheets user] getValidToken → getTransactions(utils/sheets.ts)
+  → [DB user] getTransactionsDB(utils/db-transactions.ts)
+  → return latest 200 rows
 ```
 
-**Saldo akun (DB users):**
-```
-GET /api/accounts → getAccountBalances[account-balance.ts]
-  → prisma.account.findMany + prisma.transaction.groupBy (pure ledger)
-  → calculateNetWorth
-```
-
-**Laporan AI:**
-```
-DashboardPage → POST /api/record (intent: laporan)
-  → getTransactions/getTransactionsDB → prisma.budget.findMany
-  → callWithRotation[groq.ts] (llama-3.1-8b-instant, narrative summary)
+**Account balances and account detail:**
+```text
+GET /api/accounts → getAccountBalances(utils/account-balance.ts)
+GET /api/accounts/[accountId]/transactions → account transaction history
+app/dashboard/accounts/[accountId]/page.tsx → getAccountDetailData(lib/account-detail-data.ts)
 ```
 
-**Analyst (analisis mendalam):**
+**Dashboard server data:**
+```text
+app/dashboard/page.tsx
+  → getDashboardData(lib/dashboard-data.ts)
+  → DashboardClient + DashboardTabs + TransactionCard
+  → preserves transfer from/to account fields so Sheets transfers are classified correctly
 ```
-/dashboard/analyst → GET /api/analyst?period=
-  → getTransactions/getTransactionsDB
-  → callWithRotation[groq.ts] → AI narrative analysis
+
+**Savings goals:**
+```text
+/dashboard/savings → /api/savings
+  → SavingsGoal rows define goals
+  → SavingsContribution rows define actual per-goal progress
+  → prompt savings flow auto-allocates 0/1/matched goals or asks clarification for multiple ambiguous goals
+```
+
+**Recurring bills:**
+```text
+/dashboard/bills → /api/bills, /api/bills/summary
+  → RecurringBill definitions
+  → pay/skip actions under /api/bills/[id]
+  → optional cron endpoint /api/cron/bills
+```
+
+**AI analysis:**
+```text
+/dashboard/analyst → GET /api/analyst?period=...
+/api/prediction → AI spending prediction
+POST /api/record intent=laporan → narrative report
 ```
 
 ---
 
 # Clean Tree
 
-```
+```text
 BudgetIn/
 ├── app/
 │   ├── api/
-│   │   ├── account-types/         # CRUD account types
-│   │   │   ├── route.ts
-│   │   │   └── [typeId]/route.ts
-│   │   ├── accounts/              # CRUD accounts + balance
-│   │   │   ├── route.ts
-│   │   │   └── [accountId]/
-│   │   │       ├── route.ts
-│   │   │       └── adjust/route.ts
-│   │   ├── admin/                 # Admin panel API
-│   │   │   ├── stats/route.ts
-│   │   │   └── users/[userId]/route.ts
-│   │   ├── analyst/route.ts       # AI deep analysis
-│   │   ├── auth/                  # Email auth
-│   │   │   ├── register/route.ts
-│   │   │   ├── resend-verification/route.ts
-│   │   │   └── verify/route.ts
-│   │   ├── budget/                # Budget CRUD
-│   │   │   ├── route.ts
-│   │   │   └── [id]/route.ts
-│   │   ├── cashflow/route.ts      # Cashflow + credit card billing
-│   │   ├── categories/            # Category CRUD
-│   │   │   ├── route.ts
-│   │   │   └── [categoryId]/route.ts
-│   │   ├── prediction/route.ts    # AI spending prediction
-│   │   ├── record/                # Core: AI transaction input
-│   │   │   ├── route.ts
-│   │   │   └── [recordId]/route.ts
-│   │   ├── savings/               # Savings goals
-│   │   │   ├── route.ts
-│   │   │   └── [goalId]/route.ts
-│   │   ├── transactions/
-│   │   │   └── manual/route.ts    # Manual transaction input
-│   │   ├── user/
-│   │   │   ├── route.ts           # Update profil user
-│   │   │   └── password/route.ts  # Ganti password
+│   │   ├── account-types/                     # Account type CRUD
+│   │   ├── accounts/                          # Account CRUD, balances, history, net worth
+│   │   │   ├── [accountId]/adjust/route.ts
+│   │   │   ├── [accountId]/transactions/route.ts
+│   │   │   └── networth-history/route.ts
+│   │   ├── admin/                             # Admin stats/user controls
+│   │   ├── analyst/route.ts                   # AI financial analyst
+│   │   ├── auth/                              # NextAuth + email auth helpers
+│   │   ├── bills/                             # Recurring bill CRUD, pay/skip, summary
+│   │   ├── budget/                            # Budget CRUD + rollover
+│   │   ├── cashflow/route.ts                  # Cashflow and credit-card billing data
+│   │   ├── categories/                        # Category CRUD
+│   │   ├── cron/bills/route.ts                # Scheduled bill processing endpoint
+│   │   ├── prediction/route.ts                # AI prediction
+│   │   ├── record/                            # Core AI prompt record/read/update/delete
+│   │   ├── savings/                           # Savings goals and progress
+│   │   ├── transactions/                      # Manual and calendar transaction APIs
+│   │   ├── user/                              # Profile/password update
 │   │   └── verify-email/route.ts
-│   ├── auth/page.tsx              # Login/register page
-│   ├── admin/page.tsx             # Admin panel
+│   ├── admin/                                 # Admin UI
+│   ├── auth/                                  # Auth/error pages
 │   ├── dashboard/
-│   │   ├── page.tsx               # Main dashboard (AI prompt input + tx list)
-│   │   ├── layout.tsx             # Sidebar layout
-│   │   ├── accounts/page.tsx      # Manajemen akun & net worth
-│   │   ├── analyst/page.tsx       # AI financial analyst
-│   │   ├── cashflow/page.tsx      # Cashflow & credit card billing
-│   │   ├── savings/page.tsx       # Savings goals
-│   │   └── settings/
-│   │       └── account-types/page.tsx
-│   ├── layout.tsx                 # Root layout + Providers
-│   └── page.tsx                   # Landing page
+│   │   ├── accounts/                          # Accounts list + account detail page
+│   │   ├── analyst/                           # Analyst UI
+│   │   ├── bills/                             # Recurring bills UI
+│   │   ├── budget/                            # Budget UI
+│   │   ├── calendar/                          # Transaction calendar UI
+│   │   ├── cashflow/                          # Cashflow UI
+│   │   ├── panduan/                           # Guide/help page
+│   │   ├── savings/                           # Savings goals UI
+│   │   ├── settings/account-types/            # Account type settings
+│   │   ├── DashboardClient.tsx
+│   │   └── page.tsx
+│   ├── layout.tsx
+│   └── page.tsx
 ├── components/
-│   ├── ui/                        # shadcn/ui primitives
-│   ├── BudgetStatus.tsx           # Budget chart per kategori
-│   ├── DashboardTabs.tsx          # Tab navigasi (Transaksi/Budget/Laporan)
-│   ├── ManageCategoriesModal.tsx  # CRUD kategori
-│   ├── ManualTransactionForm.tsx  # Form input manual
-│   ├── NetWorthSummaryCard.tsx    # Ringkasan aset/liabilitas
-│   ├── ReportView.tsx             # Tampilan laporan AI
-│   ├── SavingsGoalCard.tsx        # Kartu tabungan goal
-│   ├── Sidebar.tsx                # Navigasi sidebar
-│   ├── TransactionCard.tsx        # Item transaksi
-│   └── Providers.tsx              # SessionProvider + ThemeProvider
+│   ├── ui/                                    # UI primitives
+│   ├── DashboardTabs.tsx                      # Main dashboard tabs and aggregations
+│   ├── ManualTransactionForm.tsx              # Expense/income/transfer manual form
+│   ├── TransactionCard.tsx                    # Transaction display/edit/delete card
+│   ├── SavingsGoalCard.tsx
+│   ├── BillCard.tsx
+│   └── Providers.tsx
 ├── lib/
-│   ├── auth.ts                    # NextAuth config (Google + Credentials)
-│   ├── email.ts                   # Nodemailer — kirim email verifikasi
-│   ├── is-admin.ts                # Cek apakah email adalah admin
-│   ├── prisma.ts                  # Prisma client singleton
-│   ├── savings-utils.ts           # Helper: deteksi transaksi savings
-│   ├── token-utils.ts             # Generate/verify email token
-│   └── turnstile.ts               # Cloudflare Turnstile verifikasi
+│   ├── auth.ts                                # NextAuth Google + Credentials config
+│   ├── account-detail-data.ts                 # Server data for account detail
+│   ├── dashboard-data.ts                      # Server data for dashboard
+│   ├── budget-data.ts                         # Server data for budget page
+│   ├── transaction-classification.ts          # Transfer vs expense classification helpers
+│   ├── savings-utils.ts                       # Savings keyword helpers
+│   ├── prisma.ts                              # Prisma singleton
+│   └── __tests__/                             # Jest/property tests
 ├── utils/
-│   ├── account-balance.ts         # Pure-ledger balance calc (DB users)
-│   ├── account-types.ts           # Seed default account types
-│   ├── db-transactions.ts         # DB CRUD transaksi (email users)
-│   ├── groq.ts                    # Groq AI client + classifyIntent + callWithRotation
-│   ├── seed-categories.ts         # Seed kategori default saat onboarding
-│   ├── sheets.ts                  # Google Sheets API (CRUD transaksi, akun, budget)
-│   └── token.ts                   # Refresh Google OAuth token
-├── hooks/
-│   └── useTheme.ts
+│   ├── record/
+│   │   ├── account-resolver.ts                # Match/clarify/auto-create accounts
+│   │   ├── amount-parser.ts                   # Amount correction and validation
+│   │   ├── intent-handlers.ts                 # /api/record intent handlers
+│   │   └── savings-goal-resolver.ts           # Goal allocation/clarification logic
+│   ├── account-balance.ts                     # Pure-ledger balance/net worth
+│   ├── db-transactions.ts                     # DB transaction CRUD
+│   ├── groq.ts                                # Groq client, key rotation, intent prompt
+│   ├── sheets.ts                              # Google Sheets ledger/account/budget API
+│   └── token.ts                               # Google OAuth token refresh
 ├── prisma/
-│   └── schema.prisma              # DB schema
-└── .env.local                     # (tidak di-commit)
+│   └── schema.prisma
+├── package.json
+└── SYSTEM_MAP.md
 ```
 
 ---
 
-# Module Map (The Chapters)
+# Module Map
 
-| File | Fungsi/Class Utama | Peran |
+| File | Main exports / role | Notes |
 |---|---|---|
-| `app/api/record/route.ts` | `GET`, `POST` | Inti sistem: baca + simpan transaksi via AI prompt |
-| `app/api/transactions/manual/route.ts` | `POST` | Input transaksi manual (form, tanpa AI) |
-| `app/api/accounts/route.ts` | `GET`, `POST` | CRUD akun + saldo ledger |
-| `app/api/accounts/[accountId]/adjust/route.ts` | `POST` | Adjust saldo paksa (buat transaksi koreksi) |
-| `app/api/cashflow/route.ts` | `GET` | Cashflow bulanan + tagihan kartu kredit per billing period |
-| `app/api/savings/route.ts` | `GET`, `POST` | CRUD savings goals + progress tracking |
-| `app/api/budget/route.ts` | `GET`, `POST` | CRUD budget per kategori per bulan |
-| `app/api/analyst/route.ts` | `GET` | AI financial analyst — narasi mendalam |
-| `app/api/prediction/route.ts` | `GET` | Prediksi pengeluaran akhir bulan via AI |
-| `app/api/auth/register/route.ts` | `POST` | Registrasi email/password + kirim verifikasi |
-| `app/dashboard/page.tsx` | `DashboardPage` | Main UI: prompt input, riwayat tx, budget tab |
-| `app/dashboard/accounts/page.tsx` | `AccountsPage` | UI manajemen akun + net worth card |
-| `app/dashboard/cashflow/page.tsx` | `CashflowPage` | UI cashflow + kartu kredit billing |
-| `lib/auth.ts` | `authOptions` | NextAuth config: Google OAuth + email/password |
-| `lib/prisma.ts` | `prisma` | Prisma client singleton |
-| `utils/groq.ts` | `classifyIntent`, `callWithRotation` | AI intent parser + Groq key rotation |
-| `utils/sheets.ts` | `appendTransaction`, `getTransactions`, `updateAccountBalance`, `appendAccount`, `getAccounts`, `createGoogleSheet` | Google Sheets CRUD untuk Google users |
-| `utils/db-transactions.ts` | `appendTransactionDB`, `getTransactionsDB`, `updateTransactionDB`, `deleteTransactionDB` | DB CRUD transaksi untuk email users |
-| `utils/account-balance.ts` | `getAccountBalances`, `calculateNetWorth`, `getSingleAccountBalance` | Hitung saldo akun dari ledger transaksi |
-| `utils/token.ts` | `getValidToken` | Refresh Google OAuth token jika expired |
-| `lib/email.ts` | `sendVerificationEmail` | Kirim email verifikasi via Nodemailer |
+| `app/api/record/route.ts` | `GET`, `POST` | Main AI prompt API; dispatches classified intents to record handlers. |
+| `utils/record/intent-handlers.ts` | `handleTransaksi`, `handleTransaksiBulk`, `handlePemasukan`, `handleTransfer`, `handleBudgetSetting`, `handleLaporan` | Authoritative prompt-side write logic. |
+| `utils/record/account-resolver.ts` | `buildAccountResolver` | Resolves named accounts, asks clarification, or auto-creates inferred account type. |
+| `utils/record/amount-parser.ts` | `correctAmount`, `isValidAmount` | Normalizes `rb`/`jt` and validates signed non-zero expense/income amounts. |
+| `utils/record/savings-goal-resolver.ts` | `resolveSavingsGoalForPrompt` | Allocates savings prompts to a goal or returns goal-selection clarification. |
+| `app/api/transactions/manual/route.ts` | `POST` | Manual expense/income/transfer entry, including optional transfer fee. |
+| `app/api/record/[recordId]/route.ts` | update/delete transaction | Edit/delete existing records. |
+| `app/api/accounts/route.ts` | account list/create | Uses pure-ledger balances. |
+| `app/api/accounts/[accountId]/transactions/route.ts` | account transaction history | Used by account detail page. |
+| `app/api/accounts/networth-history/route.ts` | net worth time series | Account/net worth analytics. |
+| `app/api/savings/route.ts` | savings goal list/create | Progress comes from `SavingsContribution`, not all Tabungan transactions. |
+| `app/api/bills/route.ts` | recurring bill CRUD | Works with pay/skip/summary endpoints. |
+| `app/api/budget/route.ts` | budget CRUD | Budget by category/month. |
+| `app/api/budget/rollover/route.ts` | rollover handling | Category rollover support. |
+| `app/api/cashflow/route.ts` | cashflow data | Includes credit-card billing behavior. |
+| `app/api/analyst/route.ts` | AI analyst | Uses ledger data + Groq. |
+| `app/api/prediction/route.ts` | AI forecast | Spending prediction. |
+| `lib/transaction-classification.ts` | `isTransferTransaction`, `isExpenseTransaction` | Central filter for excluding transfer principal from expenses. |
+| `lib/dashboard-data.ts` | `getDashboardData` | Initial dashboard payload for server-rendered dashboard. |
+| `lib/account-detail-data.ts` | account detail data | Account summary/history server data. |
+| `utils/sheets.ts` | Sheets CRUD and ledger helpers | Google-user storage path. |
+| `utils/db-transactions.ts` | DB transaction CRUD | Email-user storage path. |
+| `utils/account-balance.ts` | account balance/net worth calculations | Pure ledger account balance logic. |
+| `utils/groq.ts` | `classifyIntent`, `callWithRotation` | Groq prompt parser and API-key rotation. |
+| `lib/auth.ts` | `authOptions` | Google OAuth + Credentials auth. |
 
 ---
 
-# Data & Config
+# Data Model
 
-**Config:**
-- `.env.local` — semua secrets (DB, Google OAuth, Groq keys, Turnstile, SMTP)
-- `GROQ_API_KEY_1`, `GROQ_API_KEY_2`, ... — rotasi key Groq
-
-**Skema DB (Prisma → PostgreSQL):**
+```text
+User
+├── Category
+│   ├── Budget
+│   └── RecurringBill?
+├── Transaction
+│   └── Account?
+├── SavingsGoal
+│   └── SavingsContribution
+├── AccountType
+│   └── Account
+│       ├── Transaction
+│       └── RecurringBill
+└── RecurringBill
+    └── BillPayment
 ```
-User (1) ──── (*) Category
-User (1) ──── (*) Budget → Category
-User (1) ──── (*) Transaction → Account (nullable)
-User (1) ──── (*) SavingsGoal
-User (1) ──── (*) AccountType
-User (1) ──── (*) Account → AccountType
-AccountType (1) ── (*) Account
-```
 
-**Tabel utama:**
-- `users` — id, email, googleId, sheetsId, password, tokens OAuth
-- `transactions` — id, userId, date, amount (Decimal 19,4), category, type, accountId, transferId, isInitialBalance
-- `accounts` — id, userId, accountTypeId, name, initialBalance, tanggalSettlement, tanggalJatuhTempo
-- `account_types` — id, userId, name, classification (asset/liability)
-- `categories` — id, userId, name, type, isSavings
-- `budgets` — userId + categoryId + month (unique)
-- `savings_goals` — id, userId, name, targetAmount, deadline
+**Primary tables:**
 
-**Migration:** `prisma/` (Prisma schema)
-**Seed:** `utils/seed-categories.ts` (dijalankan saat onboarding Google user)
+- **`users`**: auth identity, Google tokens, optional `sheetsId`, email verification fields.
+- **`transactions`**: ledger rows with signed Decimal amount, `type`, optional `accountId`, optional `transferId`, and `isInitialBalance`.
+- **`accounts`**: account metadata, type, currency, active state, optional credit-card billing dates.
+- **`account_types`**: user-defined classifications: `asset` or `liability`.
+- **`categories`**: expense/income categories, savings flag, rollover flag.
+- **`budgets`**: category budget per month.
+- **`savings_goals`**: target amount/deadline metadata.
+- **`savings_contributions`**: per-goal progress linked to transaction ID.
+- **`recurring_bills`**: recurring bill definitions and schedule metadata.
+- **`bill_payments`**: monthly bill payment records linked to recurring bills.
+
+---
+
+# Transaction Semantics
+
+- **Expense/income amount**: non-zero signed value. Negative values are valid for refunds, returns, corrections, and reversals.
+- **Transfer amount**: positive-only. DB users get paired `transfer_out` and `transfer_in` rows with the same `transferId`; Sheets users get one `Transfer` row with both source and destination account fields.
+- **Transfer fee**: optional positive expense from the source account, category `Biaya Admin`.
+- **Expense analytics**: always use `isExpenseTransaction`; this excludes transfer principal and includes transfer fee.
+- **Sheets transfer detection**: `category === "Transfer"` plus from/to account IDs or names counts as transfer principal.
+- **Savings progress**: only `savings_contributions` counts toward goal progress. Generic `Tabungan` transactions without an allocated contribution do not increase a specific goal.
 
 ---
 
 # External Integrations
 
-| Service | Tujuan | Modul |
+| Service | Purpose | Module |
 |---|---|---|
-| **Groq API** (llama-3.1-8b-instant) | Intent classification, laporan AI, analyst, prediction | `utils/groq.ts` |
-| **Google OAuth + Sheets API** | Auth Google + storage transaksi/akun Google users | `lib/auth.ts`, `utils/sheets.ts` |
-| **Supabase PostgreSQL** | Primary DB (via PgBouncer port 6543 runtime, port 5432 direct) | `lib/prisma.ts` |
-| **Cloudflare Turnstile** | CAPTCHA verifikasi login email | `lib/turnstile.ts` |
-| **Nodemailer (SMTP)** | Kirim email verifikasi saat registrasi | `lib/email.ts` |
-| **NextAuth** | Session management (JWT strategy) | `lib/auth.ts` |
+| Groq API | Intent classification, reports, analyst, prediction | `utils/groq.ts` |
+| Google OAuth | Login and token access for Sheets users | `lib/auth.ts`, `utils/token.ts` |
+| Google Sheets API | Ledger/account/budget storage for Google users | `utils/sheets.ts` |
+| PostgreSQL/Supabase | Primary relational DB for email users and metadata | `lib/prisma.ts`, `prisma/schema.prisma` |
+| Cloudflare Turnstile | CAPTCHA verification for credentials flow | `lib/turnstile.ts` |
+| Email provider | Verification email delivery | `lib/email.ts` |
+| NextAuth | Session/JWT management | `lib/auth.ts` |
+
+---
+
+# Validation Notes
+
+- **Typecheck**: use `npx tsc --noEmit`.
+- **Focused tests**: use `npx jest <test files> --runInBand`.
+- **Lint caveat**: `npm run lint` currently calls `next lint` and may fail because the current Next CLI treats `lint` as an invalid project directory in this setup.
 
 ---
 
 # Risks / Blind Spots
 
-- **Dual storage complexity**: logika split Google Sheets vs DB tersebar di setiap route handler — rawan divergensi behavior.
-- **Google token refresh**: `utils/token.ts` refresh token OAuth; kalau refresh token expired/revoked, Google users tidak bisa login tanpa re-auth.
-- **Sheets sebagai source of truth**: untuk Google users, saldo akun dihitung di-server dari Sheets API — tidak ada cache, tiap request baca ulang.
-- **`app/api/record/route.ts` monolitik**: 730 baris, handle 5 intent berbeda — kandidat utama untuk splitting ke subhandlers.
-- **Groq rate limit**: key rotation ada, tapi kalau semua key habis user dapat 503 tanpa retry logic.
-- **`transferId`**: mekanisme transfer antar akun ada di schema (kolom `transferId`), tapi UI transfer belum terlihat di dashboard — kemungkinan belum fully implemented.
+- **Dual storage divergence**: Sheets and DB paths must stay behaviorally aligned for transaction validation, transfers, savings, and account balances.
+- **Transfer modeling differs by storage**: DB uses two rows; Sheets uses one row with from/to metadata. Any aggregation must use `lib/transaction-classification.ts` instead of checking only `type === "expense"`.
+- **Savings allocation is explicit**: goal progress depends on `SavingsContribution`; edits/deletes of savings transactions need care to avoid orphaned or stale contributions.
+- **Google token failure**: revoked/expired refresh tokens can break Sheets reads/writes until re-auth.
+- **Groq dependency**: AI flows rely on external API availability and configured `GROQ_API_KEY_*` rotation.
+- **Signed amounts**: many UI summaries must preserve sign for corrections while still presenting totals intuitively.

@@ -16,12 +16,13 @@ interface Account {
 
 interface ManualTransactionFormProps {
   accounts: Account[];
-  categories: string[];
+  categories: CategoryOption[];
   onSuccess: () => void;
   defaultAccountId?: string;
 }
 
 type TabType = "expense" | "income" | "transfer";
+type CategoryOption = string | { name: string; type?: string | null };
 
 export default function ManualTransactionForm({ accounts, categories, onSuccess, defaultAccountId }: ManualTransactionFormProps) {
   const router = useRouter();
@@ -77,8 +78,15 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   // Liability target label
   const isLiabilityTarget = tab === "transfer" && toAcc?.accountType.classification === "liability";
 
-  const expenseCategories = categories.filter((c) => !["Gaji", "Freelance", "Bonus", "Investasi", "Bisnis", "THR", "Dividen", "Lainnya", "Pemasukan"].includes(c));
-  const incomeCategories = categories.filter((c) => ["Gaji", "Freelance", "Bonus", "Investasi", "Bisnis", "THR", "Dividen", "Lainnya", "Pemasukan"].includes(c));
+  const categoryOptions = categories.map((c) => typeof c === "string" ? { name: c } : c);
+  const hasTypedCategories = categoryOptions.some((c) => c.type === "expense" || c.type === "income");
+  const incomeNames = ["Gaji", "Freelance", "Bonus", "Investasi", "Bisnis", "THR", "Dividen", "Lainnya", "Pemasukan"];
+  const expenseCategories = categoryOptions
+    .filter((c) => hasTypedCategories ? c.type !== "income" : !incomeNames.includes(c.name))
+    .map((c) => c.name);
+  const incomeCategories = categoryOptions
+    .filter((c) => hasTypedCategories ? c.type === "income" : incomeNames.includes(c.name))
+    .map((c) => c.name);
   const currentCategories = tab === "income" ? incomeCategories : expenseCategories;
 
   async function handleSubmit(e: React.FormEvent) {

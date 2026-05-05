@@ -20,6 +20,7 @@ import {
   Tags,
   TrendingDown,
   BookOpen,
+  History,
   Bell,
   CalendarDays,
   Banknote,
@@ -173,6 +174,7 @@ export default function Sidebar() {
   const utilityItems: NavItem[] = [
     { name: "Tipe Akun", href: "/dashboard/settings/account-types", icon: Tags },
     { name: "Panduan", href: "/dashboard/panduan", icon: BookOpen },
+    { name: "Updates", href: "/dashboard/changelog", icon: History },
   ];
 
   if (isAdminUser) {

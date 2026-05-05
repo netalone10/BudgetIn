@@ -204,9 +204,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [budgetData, setBudgetData] = useState<BudgetData | null>(initialData.budgetData);
   const [budgetLoading, setBudgetLoading] = useState(false);
 
-  const [categories, setCategories] = useState<string[]>(
-    initialData.categories.map((c) => c.name)
-  );
   const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(
     initialData.categories.map((c) => ({ name: c.name, type: c.type }))
   );
@@ -261,7 +258,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       const r = await fetch("/api/categories");
       const d = await r.json();
       const cats = d.categories ?? [];
-      setCategories(cats.map((c: { name: string }) => c.name));
       setTransactionCategories(
         cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type }))
       );
@@ -818,7 +814,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </p>
             <ManualTransactionForm
               accounts={accounts}
-              categories={categories}
+              categories={transactionCategories}
               onSuccess={() => {
                 fetchTransactions();
                 fetchBudget();

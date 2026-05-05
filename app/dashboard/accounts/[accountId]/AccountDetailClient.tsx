@@ -72,7 +72,6 @@ export default function AccountDetailClient({ initialData }: Props) {
   const [page, setPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>([]);
   const [modalDataLoading, setModalDataLoading] = useState(false);
   const [modalDataError, setModalDataError] = useState<string | null>(null);
@@ -148,7 +147,6 @@ export default function AccountDetailClient({ initialData }: Props) {
         categoriesRes.json(),
       ]);
       setAccounts(accountsJson.accounts ?? []);
-      setCategories((categoriesJson.categories ?? []).map((c: { name: string }) => c.name));
       setTransactionCategories((categoriesJson.categories ?? []).map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
     } catch {
       setModalDataError("Gagal memuat data akun/kategori.");
@@ -647,7 +645,7 @@ export default function AccountDetailClient({ initialData }: Props) {
               ) : (
                 <ManualTransactionForm
                   accounts={accounts}
-                  categories={categories}
+                  categories={transactionCategories}
                   defaultAccountId={account.id}
                   onSuccess={handleManualTransactionCreated}
                 />
