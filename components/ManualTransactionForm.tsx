@@ -43,6 +43,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   const [category, setCategory] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState(currentLocalTime);
+  const [timeManuallyEdited, setTimeManuallyEdited] = useState(false);
   const [note, setNote] = useState("");
 
   // Reset form on tab change
@@ -53,6 +54,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
     setToAccountId("");
     setCategory("");
     setTime(currentLocalTime());
+    setTimeManuallyEdited(false);
     setNote("");
     setError(null);
     setSuccess(null);
@@ -119,7 +121,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       return;
     }
 
-    const payload: Record<string, unknown> = { type: tab, amount: parsedAmount, date, time, note };
+    const submitTime = timeManuallyEdited ? time : currentLocalTime();
+    const payload: Record<string, unknown> = { type: tab, amount: parsedAmount, date, time: submitTime, note };
 
     if (tab === "transfer") {
       payload.accountId = accountId;
@@ -147,6 +150,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       setFee("");
       setNote("");
       setCategory("");
+      setTime(currentLocalTime());
+      setTimeManuallyEdited(false);
       onSuccess();
       emitDataChanged(["transactions", "budget", "accounts"]);
     } catch {
@@ -333,7 +338,10 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             <input
               type="time"
               value={time}
-              onChange={(e) => setTime(e.target.value)}
+              onChange={(e) => {
+                setTime(e.target.value);
+                setTimeManuallyEdited(true);
+              }}
               required
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />

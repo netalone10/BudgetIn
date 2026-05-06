@@ -14,6 +14,19 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.6.1",
+    date: "2026-05-06",
+    title: "Perbaikan tampilan mobile dan jam transaksi",
+    description: "Rilis patch untuk merapikan ringkasan Akun & Dompet di layar kecil dan memastikan jam transaksi manual tetap akurat saat submit.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.6.1`,
+    changes: [
+      "Mencegah nominal Total Aset, Kekayaan Bersih, dan Total Utang saling bertumpuk di halaman Akun & Dompet mobile.",
+      "Membuat ukuran nominal ringkasan akun lebih responsif dan aman untuk nilai panjang.",
+      "Memastikan form transaksi manual memakai jam terkini saat submit kecuali user mengubah jam secara manual.",
+    ],
+  },
+  {
     version: "v1.6.0",
     date: "2026-05-05",
     title: "SEO audit dan halaman publik",

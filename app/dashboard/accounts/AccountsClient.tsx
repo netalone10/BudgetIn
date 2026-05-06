@@ -716,26 +716,26 @@ export default function AccountsPage() {
       {loading && !summary ? (
         <AccountsSkeleton />
       ) : summary ? (
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+          <div className="grid grid-cols-3 gap-2 text-center sm:gap-4">
+            <div className="min-w-0">
               <p className="text-xs text-muted-foreground mb-1">Total Aset</p>
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <p className="truncate text-[clamp(0.875rem,3.2vw,1.125rem)] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
                 {formatIDR(assetTotal)}
               </p>
             </div>
-            <div className="border-x border-border">
+            <div className="min-w-0 border-x border-border px-2">
               <p className="text-xs text-muted-foreground mb-1">Kekayaan Bersih</p>
               <p className={cn(
-                "text-xl font-bold tabular-nums",
+                "truncate text-[clamp(0.875rem,3.4vw,1.25rem)] font-bold tabular-nums",
                 isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
               )}>
                 {formatIDR(netWorth)}
               </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs text-muted-foreground mb-1">Total Utang</p>
-              <p className="text-lg font-bold text-red-500 tabular-nums">
+              <p className="truncate text-[clamp(0.875rem,3.2vw,1.125rem)] font-bold text-red-500 tabular-nums">
                 {formatIDR(liabTotal)}
               </p>
             </div>
