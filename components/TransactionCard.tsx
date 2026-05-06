@@ -284,6 +284,11 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
           <span className="text-sm block">
             {transaction.note || <span className="text-muted-foreground">—</span>}
           </span>
+          {displayAccount && (
+            <span className="text-[11px] text-muted-foreground block sm:hidden">
+              {displayAccount}
+            </span>
+          )}
         </td>
 
         {/* Kategori */}

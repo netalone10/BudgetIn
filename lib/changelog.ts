@@ -14,6 +14,18 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.6.2",
+    date: "2026-05-06",
+    title: "Perbaikan layout admin dan riwayat transaksi mobile",
+    description: "Rilis patch untuk memperbaiki layout admin panel yang terpotong saat sidebar terbuka dan menampilkan sumber akun di riwayat transaksi mobile.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.6.2`,
+    changes: [
+      "Memperbaiki admin panel yang terpotong saat sidebar terbuka dengan mengaktifkan horizontal scroll dan padding topbar mobile.",
+      "Menampilkan nama akun sumber di bawah deskripsi transaksi pada tampilan mobile di riwayat transaksi dashboard.",
+    ],
+  },
+  {
     version: "v1.6.1",
     date: "2026-05-06",
     title: "Perbaikan tampilan mobile dan jam transaksi",
