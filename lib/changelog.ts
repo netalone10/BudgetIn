@@ -14,6 +14,21 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.7.1",
+    date: "2026-05-07",
+    title: "Perbaikan tampilan mobile dashboard",
+    description: "Rilis patch untuk merapikan tampilan mobile dashboard, Akun & Dompet, detail akun, dan validasi pilihan tipe akun.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.7.1`,
+    changes: [
+      "Merapikan kartu dashboard, budget, riwayat transaksi, dan tombol aksi agar lebih nyaman digunakan di layar kecil.",
+      "Memperbaiki tampilan Akun & Dompet mobile agar nama akun, saldo, ringkasan aset/utang, dan transaksi terbaru tidak terpotong.",
+      "Mengaktifkan horizontal scroll riwayat transaksi di dashboard dan detail akun pada mobile.",
+      "Memperbaiki header detail akun agar tombol Tambah Transaksi tidak menutup rincian atau deskripsi akun.",
+      "Memperbaiki edge case pilihan tipe akun seperti Lainnya (Aset) yang bisa dianggap belum dipilih saat menambah akun.",
+    ],
+  },
+  {
     version: "v1.7.0",
     date: "2026-05-07",
     title: "Enkripsi token Google OAuth",

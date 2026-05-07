@@ -272,9 +272,9 @@ export default function BudgetClient({ initialData, categories }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border bg-card p-4 shadow-sm space-y-4">
+      <div className="space-y-4 rounded-2xl border bg-card p-4 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
             <Button variant="outline" size="icon-sm" onClick={() => loadMonth(shiftMonth(month, -1))} disabled={loading || saving}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -285,25 +285,25 @@ export default function BudgetClient({ initialData, categories }: Props) {
                 if (e.target.value) loadMonth(e.target.value);
               }}
               disabled={loading || saving}
-              className="w-40 text-sm font-medium"
+              className="w-full text-sm font-medium sm:w-40"
             />
             <Button variant="outline" size="icon-sm" onClick={() => loadMonth(shiftMonth(month, 1))} disabled={loading || saving}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="grid gap-2 sm:flex sm:items-center">
             <Button variant="outline" size="sm" onClick={() => loadMonth(getCurrentMonth())} disabled={loading || saving || month === getCurrentMonth()}>
               Bulan Ini
             </Button>
-            <Button size="sm" onClick={handleCopyPreviousMonth} disabled={loading || saving}>
+            <Button size="sm" onClick={handleCopyPreviousMonth} disabled={loading || saving} className="whitespace-normal sm:whitespace-nowrap">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
               {copyConfirm ? "Klik Lagi untuk Overwrite" : hasExistingBudget ? "Overwrite dari Bulan Lalu" : "Copy dari Bulan Lalu"}
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Bulan" value={formatMonthLabel(month)} />
           <Metric label="Budget" value={`Rp ${fmt(totals.budget)}`} />
           <Metric label="Realisasi" value={`Rp ${fmt(totals.spent)}`} valueClass="text-destructive" />
@@ -338,7 +338,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
             value={selectedNewCategory}
             onChange={(e) => setNewCategory(e.target.value)}
             disabled={availableCategories.length === 0 || saving || loading}
-            className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+            className="h-9 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
           >
             {availableCategories.length === 0 ? (
               <option value="">Semua kategori sudah punya budget</option>
@@ -356,7 +356,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
             onChange={(e) => setNewAmount(e.target.value)}
             disabled={availableCategories.length === 0 || saving || loading}
           />
-          <Button type="submit" size="sm" disabled={!selectedNewCategory || !newAmount || saving || loading}>
+          <Button type="submit" size="sm" disabled={!selectedNewCategory || !newAmount || saving || loading} className="w-full md:w-auto">
             Tambah
           </Button>
         </div>

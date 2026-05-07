@@ -273,8 +273,8 @@ export default function DashboardTabs({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 rounded-[26px] border border-border/70 bg-background p-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col gap-4 rounded-[22px] border border-border/70 bg-background p-3 sm:rounded-[26px] sm:p-4 md:flex-row md:items-center md:justify-between">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {(["cashflow", "budget"] as const).map((tab) => (
             <button
               key={tab}
@@ -291,13 +291,13 @@ export default function DashboardTabs({
           ))}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
           {(["today", "week", "month", "custom"] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => handlePeriodChange(p)}
               className={cn(
-                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                "flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                 period === p
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted/70 text-muted-foreground hover:text-foreground"
@@ -311,19 +311,19 @@ export default function DashboardTabs({
       </div>
 
       {period === "custom" && (
-        <div className="flex flex-wrap items-center gap-2 rounded-[22px] border border-border/70 bg-background p-3">
+        <div className="grid gap-2 rounded-[22px] border border-border/70 bg-background p-3 sm:flex sm:flex-wrap sm:items-center">
           <input
             type="date"
             value={customFrom}
             onChange={(e) => setCustomFrom(e.target.value)}
-            className="h-10 rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-auto"
           />
-          <span className="text-sm text-muted-foreground">s/d</span>
+          <span className="hidden text-sm text-muted-foreground sm:inline">s/d</span>
           <input
             type="date"
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
-            className="h-10 rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-auto"
           />
           <button
             onClick={handleCustomSubmit}
@@ -372,10 +372,10 @@ export default function DashboardTabs({
           {transactions.length === 0 ? (
             <EmptyState text="Belum ada transaksi bulan ini." />
           ) : (
-            <div className="-mx-4 overflow-x-auto px-4 pb-2 [scrollbar-width:thin]">
+            <div className="pb-2">
               <div
                 className={cn(
-                  "grid w-max grid-flow-col auto-cols-[minmax(320px,calc(100vw-3rem))] gap-4",
+                  "grid gap-4",
                   "xl:w-full xl:grid-flow-row xl:auto-cols-fr",
                   cashflowSectionCount >= 3
                     ? "xl:grid-cols-3"
@@ -425,7 +425,7 @@ export default function DashboardTabs({
 
       {activeTab === "budget" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-[24px] border border-border/70 bg-background px-4 py-3">
+          <div className="flex flex-col gap-3 rounded-[24px] border border-border/70 bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
@@ -457,7 +457,174 @@ export default function DashboardTabs({
             <EmptyState text='Belum ada budget. Ketik "Budget makan 500rb" untuk mulai.' />
           ) : (
             <>
-              <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background">
+              <div className="space-y-3 sm:hidden">
+                {budgetData.budgets.map((item) => {
+                  const fixed = isFixed(item.category);
+                  const effectiveBudget = item.budget + (item.rollover ?? 0);
+                  const prorated = fixed
+                    ? effectiveBudget
+                    : Math.round((effectiveBudget * dayOfMonth) / totalDays);
+                  const remaining = prorated - item.spent;
+                  const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
+                  const isNear = pct >= 80 && pct < 100;
+                  const isOver = pct >= 100;
+                  const isEditing = editingId === item.id;
+                  const isConfirmDelete = deletingId === item.id;
+                  const hasRollover = (item.rollover ?? 0) > 0;
+
+                  return (
+                    <div key={item.id} className="rounded-[22px] border border-border/70 bg-background p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <p className="break-words text-sm font-semibold text-foreground">{item.category}</p>
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                                fixed ? "bg-muted text-muted-foreground" : "bg-primary/12 text-primary"
+                              )}
+                            >
+                              {fixed ? "Fixed" : "Variable"}
+                            </span>
+                            {item.rolloverEnabled && (
+                              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                                Rollover
+                              </span>
+                            )}
+                          </div>
+                          {hasRollover && (
+                            <p className="mt-1 text-[11px] text-violet-600 dark:text-violet-400">
+                              +{fmtCompact(item.rollover)} sisa dari bulan lalu
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={cn(
+                            "shrink-0 text-sm font-semibold tabular-nums",
+                            remaining < 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"
+                          )}
+                        >
+                          {remaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(remaining))}
+                        </span>
+                      </div>
+                      <div className="mt-3 h-1.5 w-full rounded-full bg-muted">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary"
+                          )}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Budget</p>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleEditSave(item);
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              className="mt-1 w-full rounded-xl border border-border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                              autoFocus
+                            />
+                          ) : (
+                            <p className="font-medium text-foreground">{fmt(item.budget)}</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Realisasi</p>
+                          <p className={cn("font-medium", isOver ? "text-destructive" : isNear ? "text-yellow-600 dark:text-yellow-400" : "text-foreground")}>
+                            {fmt(item.spent)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Prorata</p>
+                          <p className="font-medium text-foreground">{fmtCompact(prorated)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-end gap-1">
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => handleEditSave(item)}
+                              disabled={editLoading}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
+                              title="Simpan"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setEditingId(null)}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+                              title="Batal"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        ) : isConfirmDelete ? (
+                          <>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              disabled={deleteLoading}
+                              className="rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                            >
+                              Hapus
+                            </button>
+                            <button
+                              onClick={() => setDeletingId(null)}
+                              className="rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              Batal
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleToggleRollover(item)}
+                              className={cn(
+                                "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                                item.rolloverEnabled
+                                  ? "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+                                  : "text-muted-foreground hover:bg-violet-100 hover:text-violet-600 dark:hover:bg-violet-900/30"
+                              )}
+                              title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover"}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEditingId(item.id);
+                                setEditAmount(item.budget.toString());
+                                setDeletingId(null);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              title="Edit budget"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeletingId(item.id);
+                                setEditingId(null);
+                              }}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                              title="Hapus budget"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="hidden overflow-hidden rounded-[28px] border border-border/70 bg-background sm:block">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[860px]">
                     <thead>

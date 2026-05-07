@@ -311,8 +311,8 @@ export default function AccountDetailClient({ initialData }: Props) {
   return (
     <>
       {/* Account Header */}
-      <div className="rounded-2xl border border-border bg-card p-5">
-        <div className="flex items-center gap-4">
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div
             className="h-12 w-12 rounded-xl shrink-0 flex items-center justify-center text-white text-lg font-bold"
             style={{ backgroundColor: color }}
@@ -320,8 +320,8 @@ export default function AccountDetailClient({ initialData }: Props) {
             {account.name.slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold truncate">{account.name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="break-words text-xl font-bold leading-tight">{account.name}</h1>
               {isLiability && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium shrink-0">
                   Hutang
@@ -329,6 +329,11 @@ export default function AccountDetailClient({ initialData }: Props) {
               )}
             </div>
             <p className="text-sm text-muted-foreground">{account.accountType.name}</p>
+            {account.note && (
+              <p className="mt-1 break-words text-xs leading-relaxed text-muted-foreground">
+                {account.note}
+              </p>
+            )}
             {account.accountType.name === "Kartu Kredit" &&
               account.tanggalSettlement &&
               account.tanggalJatuhTempo && (
@@ -338,20 +343,11 @@ export default function AccountDetailClient({ initialData }: Props) {
                 </p>
               )}
           </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setShowAddModal(true)}
-            className="shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-1.5" />
-            Tambah Transaksi
-          </Button>
-          <div className="text-right shrink-0">
+          <div className="shrink-0 text-left sm:text-right">
             <p className="text-xs text-muted-foreground mb-0.5">Saldo Saat Ini</p>
             <p
               className={cn(
-                "text-xl font-bold tabular-nums",
+                "break-words text-xl font-bold tabular-nums",
                 isLiability
                   ? "text-red-500"
                   : balance < 0
@@ -362,6 +358,15 @@ export default function AccountDetailClient({ initialData }: Props) {
               {formatIDR(balance)}
             </p>
           </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setShowAddModal(true)}
+            className="w-full shrink-0 sm:w-auto"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            Tambah Transaksi
+          </Button>
         </div>
       </div>
 
@@ -441,9 +446,10 @@ export default function AccountDetailClient({ initialData }: Props) {
           </div>
         ) : (
           <>
-            <div className="rounded-xl border border-border overflow-hidden">
-              <table className="w-full text-left">
-                <thead>
+            <div className="overflow-hidden rounded-xl border border-border">
+              <div className="overflow-x-auto [scrollbar-width:thin]">
+                <table className="w-full min-w-[560px] text-left">
+                <thead className="hidden sm:table-header-group">
                   <tr className="border-b bg-muted/30">
                     <th className="py-2 pl-4 pr-3 text-xs font-medium text-muted-foreground w-20">
                       Tanggal
@@ -474,7 +480,8 @@ export default function AccountDetailClient({ initialData }: Props) {
                     />
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}

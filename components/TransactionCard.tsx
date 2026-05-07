@@ -270,18 +270,18 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
   return (
     <>
       <tr className={cn(
-        "group border-b last:border-0 transition-colors hover:bg-muted/30",
+        "group block border-b p-3 transition-colors last:border-0 hover:bg-muted/30 sm:table-row sm:p-0",
         justSaved && "bg-green-50/70 dark:bg-green-950/20"
       )}>
         {/* Tanggal */}
-        <td className="py-2.5 pl-4 pr-3 text-xs text-muted-foreground whitespace-nowrap w-20">
+        <td className="flex w-full items-center justify-between pb-2 text-xs text-muted-foreground sm:table-cell sm:w-20 sm:whitespace-nowrap sm:py-2.5 sm:pl-4 sm:pr-3">
           <span className="block">{formatDate(transaction.date)}</span>
           <span className="block text-[11px]">{formatTime(transaction.time)}</span>
         </td>
 
         {/* Deskripsi */}
-        <td className="py-2.5 pr-3 min-w-0">
-          <span className="text-sm block">
+        <td className="block min-w-0 pb-2 sm:table-cell sm:py-2.5 sm:pr-3">
+          <span className="block text-sm font-medium sm:font-normal">
             {transaction.note || <span className="text-muted-foreground">—</span>}
           </span>
           {displayAccount && (
@@ -292,8 +292,8 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
         </td>
 
         {/* Kategori */}
-        <td className="py-2.5 pr-3 whitespace-nowrap">
-          <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+        <td className="block pb-2 sm:table-cell sm:whitespace-nowrap sm:py-2.5 sm:pr-3">
+          <span className="inline-block max-w-full truncate rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
             {transaction.category}
           </span>
         </td>
@@ -306,7 +306,8 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
         </td>
 
         {/* Jumlah */}
-        <td className="py-2.5 pr-2 text-right whitespace-nowrap">
+        <td className="flex items-center justify-between pb-2 sm:table-cell sm:whitespace-nowrap sm:py-2.5 sm:pr-2 sm:text-right">
+          <span className="text-xs font-medium text-muted-foreground sm:hidden">Jumlah</span>
           <span className={cn(
             "text-sm font-semibold tabular-nums",
             isPositiveEffect ? "text-green-600 dark:text-green-400" : ""
@@ -316,8 +317,8 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
         </td>
 
         {/* Actions */}
-        <td className="py-2.5 pr-3 w-16">
-          <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <td className="block w-full sm:table-cell sm:w-16 sm:py-2.5 sm:pr-3">
+          <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
             <Button
               size="icon"
               variant="ghost"

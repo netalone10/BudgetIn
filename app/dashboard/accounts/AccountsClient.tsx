@@ -127,6 +127,11 @@ function getAccountBadgeColor(account: Pick<AccountData, "color" | "accountType"
   return account.color ?? account.accountType.color ?? ACCOUNT_TYPE_COLOR_BY_NAME[account.accountType.name] ?? "#6b7280";
 }
 
+function getAccountTypeValue(type?: Pick<AccountType, "id" | "name" | "classification">): string {
+  if (!type) return "";
+  return type.id || `${type.name}::${type.classification}`;
+}
+
 // Urutan likuiditas grup akun (asset → liability).
 // Index lebih kecil = lebih liquid / lebih dahulu tampil.
 const LIQUIDITY_ORDER: Record<string, number> = {
@@ -164,7 +169,9 @@ interface AccountFormModalProps {
 
 function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSaved }: AccountFormModalProps) {
   const [name, setName] = useState(editAccount?.name ?? "");
-  const [accountTypeId, setAccountTypeId] = useState(editAccount?.accountType.id ?? (accountTypes[0]?.id ?? ""));
+  const [accountTypeId, setAccountTypeId] = useState(
+    getAccountTypeValue(editAccount?.accountType) || getAccountTypeValue(accountTypes[0])
+  );
   const [initialBalance, setInitialBalance] = useState("");
   const [currency, setCurrency] = useState(editAccount?.currency ?? "IDR");
   const [note, setNote] = useState(editAccount?.note ?? "");
@@ -184,7 +191,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
   );
   
   // Check if selected type is Kartu Kredit
-  const selectedType = selectableAccountTypes.find(t => t.id === accountTypeId);
+  const selectedType = selectableAccountTypes.find((t) => getAccountTypeValue(t) === accountTypeId);
   const isKartuKredit = selectedType?.name === "Kartu Kredit";
 
   useEffect(() => {
@@ -193,7 +200,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
       return;
     }
 
-    if (accountTypeId && selectableAccountTypes.some((t) => t.id === accountTypeId)) return;
+    if (accountTypeId && selectableAccountTypes.some((t) => getAccountTypeValue(t) === accountTypeId)) return;
 
     const editType = editAccount
       ? selectableAccountTypes.find((t) =>
@@ -202,15 +209,15 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
         )
       : undefined;
 
-    setAccountTypeId((editType ?? selectableAccountTypes[0]).id);
+    setAccountTypeId(getAccountTypeValue(editType ?? selectableAccountTypes[0]));
   }, [selectableAccountTypes, accountTypeId, editAccount]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const selectedType = selectableAccountTypes.find(t => t.id === accountTypeId);
-    if (!selectedType) {
+    const selectedType = selectableAccountTypes.find((t) => getAccountTypeValue(t) === accountTypeId);
+    if (!selectedType || (!isSheets && !selectedType.id)) {
       setError("Tipe akun harus dipilih.");
       return;
     }
@@ -223,8 +230,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
         name, 
         note, 
         currency,
-        accountTypeName: selectedType?.name,
-        classification: selectedType?.classification,
+        accountTypeName: selectedType.name,
+        classification: selectedType.classification,
       } : { accountTypeId: selectedType.id, name, note, currency };
       
       // Add credit card fields if Kartu Kredit
@@ -290,7 +297,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
             >
               {selectableAccountTypes.length === 0 && <option value="">Tipe akun belum tersedia</option>}
               {selectableAccountTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.name} ({t.classification === "asset" ? "Aset" : "Liability"})</option>
+                <option key={getAccountTypeValue(t)} value={getAccountTypeValue(t)}>{t.name} ({t.classification === "asset" ? "Aset" : "Liability"})</option>
               ))}
             </select>
             <Link href="/dashboard/settings/account-types" className="text-xs text-primary hover:underline mt-1 inline-block">
@@ -488,33 +495,33 @@ const AccountCard = memo(function AccountCard({
   const AccountIcon = getAccountIcon(account.icon ?? account.accountType.icon, account.accountType.name);
 
   return (
-    <div className="rounded-xl border border-border bg-background hover:border-border/80 transition-colors overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-border bg-background transition-colors hover:border-border/80">
       {/* Header row */}
-      <div className="flex items-center justify-between p-4 gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
           <div
             className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-white"
             style={{ backgroundColor: color }}
           >
             <AccountIcon className="h-4 w-4" />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium text-sm truncate">{account.name}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="break-words text-sm font-medium leading-snug">{account.name}</span>
               {isLiability && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium shrink-0">
                   Hutang
                 </span>
               )}
             </div>
-            <span className="text-xs text-muted-foreground">{account.accountType.name}</span>
+            <span className="block text-xs text-muted-foreground">{account.accountType.name}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:shrink-0 sm:justify-end sm:gap-3">
           <span
             className={cn(
-              "text-sm font-semibold tabular-nums",
+              "text-base font-semibold tabular-nums sm:text-sm",
               isLiability ? "text-red-500" : balance < 0 ? "text-amber-500" : "text-foreground"
             )}
           >
@@ -553,16 +560,16 @@ const AccountCard = memo(function AccountCard({
 
       {/* Recent transactions preview */}
       {recent.length > 0 && (
-        <div className="border-t border-border px-4 py-2.5 space-y-1">
+        <div className="space-y-1 border-t border-border px-4 py-2.5">
           {recent.map((t) => {
             const isIn = t.type === "income" || t.type === "transfer_in";
             return (
-              <div key={t.id} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 min-w-0">
+              <div key={t.id} className="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-start gap-2 text-xs">
+                <>
                   <span className="text-muted-foreground w-12 shrink-0">{formatShortDate(t.date)}</span>
-                  <span className="truncate">{t.note || "—"}</span>
-                </div>
-                <span className={cn("tabular-nums shrink-0 ml-2", isIn ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
+                  <span className="break-words leading-snug">{t.note || "—"}</span>
+                </>
+                <span className={cn("shrink-0 tabular-nums", isIn ? "text-emerald-600 dark:text-emerald-400" : "text-foreground")}>
                   {isIn ? "+" : "-"}{formatShortAmount(t.amount)}
                 </span>
               </div>
@@ -574,7 +581,7 @@ const AccountCard = memo(function AccountCard({
       {/* View all link */}
       <button
         onClick={() => router.push(`/dashboard/accounts/${account.id}`)}
-        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 border-t border-border text-xs text-primary cursor-pointer hover:bg-muted/40 hover:text-primary/80 active:bg-muted/60 active:scale-[0.98] transition-all"
+        className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-t border-border px-4 py-2 text-xs text-primary transition-all hover:bg-muted/40 hover:text-primary/80 active:scale-[0.98] active:bg-muted/60"
       >
         <Eye className="h-3 w-3" />
         Lihat semua transaksi
@@ -762,14 +769,14 @@ export default function AccountsPage() {
           <div className="grid grid-cols-3 gap-2 text-center sm:gap-4">
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground mb-1">Total Aset</p>
-              <p className="truncate text-[clamp(0.875rem,3.2vw,1.125rem)] font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+              <p className="break-words text-[clamp(0.75rem,3vw,1.125rem)] font-bold leading-tight text-emerald-600 tabular-nums dark:text-emerald-400">
                 {formatIDR(assetTotal)}
               </p>
             </div>
             <div className="min-w-0 border-x border-border px-2">
               <p className="text-xs text-muted-foreground mb-1">Kekayaan Bersih</p>
               <p className={cn(
-                "truncate text-[clamp(0.875rem,3.4vw,1.25rem)] font-bold tabular-nums",
+                "break-words text-[clamp(0.75rem,3vw,1.25rem)] font-bold leading-tight tabular-nums",
                 isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
               )}>
                 {formatIDR(netWorth)}
@@ -777,7 +784,7 @@ export default function AccountsPage() {
             </div>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground mb-1">Total Utang</p>
-              <p className="truncate text-[clamp(0.875rem,3.2vw,1.125rem)] font-bold text-red-500 tabular-nums">
+              <p className="break-words text-[clamp(0.75rem,3vw,1.125rem)] font-bold leading-tight text-red-500 tabular-nums">
                 {formatIDR(liabTotal)}
               </p>
             </div>
@@ -806,20 +813,20 @@ export default function AccountsPage() {
         <div className="space-y-8">
           {assetGroups.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-3 px-1">
-                <h2 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+              <div className="mb-3 flex items-start justify-between gap-3 px-1">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                   Aset
                 </h2>
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                <span className="min-w-0 text-right text-xs font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">
                   {formatIDR(assetTotal)}
                 </span>
               </div>
               <div className="space-y-4">
                 {assetGroups.map((g) => (
                   <div key={g.typeName}>
-                    <div className="flex items-center justify-between mb-2 px-1">
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{g.typeName}</h3>
-                      <span className="text-xs text-muted-foreground">
+                    <div className="mb-2 flex items-start justify-between gap-3 px-1">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.typeName}</h3>
+                      <span className="min-w-0 text-right text-xs text-muted-foreground">
                         {formatIDR(g.accounts.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
                       </span>
                     </div>
@@ -842,20 +849,20 @@ export default function AccountsPage() {
 
           {liabilityGroups.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-3 px-1">
-                <h2 className="text-xs font-bold text-red-500 uppercase tracking-widest">
+              <div className="mb-3 flex items-start justify-between gap-3 px-1">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-red-500">
                   Liabilitas
                 </h2>
-                <span className="text-xs font-semibold text-red-500 tabular-nums">
+                <span className="min-w-0 text-right text-xs font-semibold text-red-500 tabular-nums">
                   {formatIDR(liabTotal)}
                 </span>
               </div>
               <div className="space-y-4">
                 {liabilityGroups.map((g) => (
                   <div key={g.typeName}>
-                    <div className="flex items-center justify-between mb-2 px-1">
-                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{g.typeName}</h3>
-                      <span className="text-xs text-muted-foreground">
+                    <div className="mb-2 flex items-start justify-between gap-3 px-1">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.typeName}</h3>
+                      <span className="min-w-0 text-right text-xs text-muted-foreground">
                         {formatIDR(g.accounts.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
                       </span>
                     </div>

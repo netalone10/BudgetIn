@@ -121,13 +121,13 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-border/70 bg-card/90 p-5 shadow-sm md:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="space-y-1">
+    <section className="rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm sm:rounded-[30px] md:p-6">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             {eyebrow}
           </p>
-          <h3 className="text-xl font-semibold tracking-tight text-foreground">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
             {title}
           </h3>
           {description && (
@@ -136,7 +136,7 @@ function SectionCard({
             </p>
           )}
         </div>
-        {action}
+        {action && <div className="shrink-0 self-start">{action}</div>}
       </div>
       {children}
     </section>
@@ -498,7 +498,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 md:space-y-6">
       <SectionCard
         eyebrow="Overview"
         title="Kontrol harian"
@@ -510,7 +510,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             size="sm"
             onClick={handleManualRefresh}
             disabled={dataLoading}
-            className="rounded-full"
+            className="w-full rounded-full sm:w-auto"
           >
             <RefreshCw className={cn("h-4 w-4", dataLoading && "animate-spin")} />
             Refresh data
@@ -519,14 +519,14 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       >
         <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr] lg:items-stretch">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[26px] border border-border/70 bg-background p-5">
+            <div className="min-w-0 rounded-[22px] border border-border/70 bg-background p-4 sm:rounded-[26px] sm:p-5">
               <div className="mb-2 flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-destructive" />
                 <span className="text-[13px] font-medium text-muted-foreground">
                   Keluar hari ini
                 </span>
               </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground">
+              <p className="break-words text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
                 {todayStats.expense !== 0 ? (
                   formatSignedIDR(todayStats.expense)
                 ) : (
@@ -538,7 +538,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </p>
             </div>
 
-            <div className="rounded-[26px] border border-border/70 bg-background p-5">
+            <div className="min-w-0 rounded-[22px] border border-border/70 bg-background p-4 sm:rounded-[26px] sm:p-5">
               <div className="mb-2 flex items-center gap-2">
                 <TrendingUp
                   className={cn(
@@ -552,7 +552,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </div>
               <p
                 className={cn(
-                  "text-2xl font-semibold tracking-tight",
+                  "break-words text-xl font-semibold tracking-tight sm:text-2xl",
                   todayStats.income >= 0
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-destructive"
@@ -656,7 +656,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
 
             {response && (
-              <div className="rounded-[28px] border border-border/70 bg-background p-4">
+              <div className="rounded-[22px] border border-border/70 bg-background p-3 sm:rounded-[28px] sm:p-4">
                 {"error" in response ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3">
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
@@ -866,10 +866,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             Belum ada transaksi bulan ini.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background">
-            <div className="overflow-x-auto">
+          <div className="overflow-hidden rounded-[24px] border border-border/70 bg-background sm:rounded-[28px]">
+            <div className="overflow-x-auto [scrollbar-width:thin]">
               <table className="w-full min-w-[560px]">
-                <thead>
+                <thead className="hidden sm:table-header-group">
                   <tr className="border-b border-border bg-muted/35">
                     <th className="label-mono w-16 px-5 py-3 text-left text-muted-foreground">
                       Tgl
@@ -904,8 +904,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </table>
             </div>
 
-            <div className="flex flex-col gap-4 border-t border-border bg-muted/20 px-5 py-4 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-4 border-t border-border bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[13px] font-medium text-muted-foreground">
                   Tampilkan
                 </span>
