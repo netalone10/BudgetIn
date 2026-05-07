@@ -7,6 +7,7 @@ import { seedDefaultCategories } from "@/utils/seed-categories";
 import { isAdmin } from "@/lib/is-admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { DEMO_ACCOUNT } from "@/lib/demo-account";
+import { encryptSecret } from "@/lib/crypto";
 import bcrypt from "bcryptjs";
 
 const REQUIRED_GOOGLE_SCOPES = [
@@ -101,13 +102,16 @@ export const authOptions: NextAuthOptions = {
 
       let dbUser;
       try {
+        const encryptedAccessToken = encryptSecret(account.access_token);
+        const encryptedRefreshToken = encryptSecret(account.refresh_token);
+
         dbUser = await prisma.user.upsert({
           where: { googleId: user.id! },
           update: {
             name: user.name ?? "",
             image: user.image ?? null,
-            accessToken: account.access_token ?? null,
-            refreshToken: account.refresh_token ?? null,
+            accessToken: encryptedAccessToken,
+            ...(encryptedRefreshToken ? { refreshToken: encryptedRefreshToken } : {}),
             tokenExpiry: account.expires_at
               ? new Date(account.expires_at * 1000)
               : null,
@@ -117,8 +121,8 @@ export const authOptions: NextAuthOptions = {
             email: user.email!,
             name: user.name ?? "",
             image: user.image ?? null,
-            accessToken: account.access_token ?? null,
-            refreshToken: account.refresh_token ?? null,
+            accessToken: encryptedAccessToken,
+            refreshToken: encryptedRefreshToken,
             tokenExpiry: account.expires_at
               ? new Date(account.expires_at * 1000)
               : null,
@@ -166,7 +170,6 @@ export const authOptions: NextAuthOptions = {
           });
           token.userId = dbUser?.id;
           token.sheetsId = dbUser?.sheetsId ?? undefined;
-          token.accessToken = undefined;
           token.isAdmin = isAdmin(dbUser?.email);
         } else if (account?.provider === "google") {
           const dbUser = await prisma.user.findUnique({
@@ -175,7 +178,6 @@ export const authOptions: NextAuthOptions = {
           });
           token.userId = dbUser?.id;
           token.sheetsId = dbUser?.sheetsId;
-          token.accessToken = account.access_token ?? undefined;
           token.isAdmin = isAdmin(dbUser?.email);
         }
       }
@@ -186,7 +188,6 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       session.userId = token.userId as string;
       session.sheetsId = token.sheetsId as string | null;
-      session.accessToken = token.accessToken as string | null;
       // Expose isAdmin ke client — dihitung server-side, tidak bocorkan list email
       session.isAdmin = token.isAdmin as boolean ?? false;
       return session;

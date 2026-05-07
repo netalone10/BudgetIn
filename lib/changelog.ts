@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.7.0",
+    date: "2026-05-07",
+    title: "Enkripsi token Google OAuth",
+    description: "BudgetIn memperkuat penyimpanan token Google OAuth dengan enkripsi application-level dan migrasi bertahap untuk token lama.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.7.0`,
+    changes: [
+      "Mengenkripsi Google access token dan refresh token sebelum disimpan ke database.",
+      "Menambahkan pembacaan token backward-compatible agar token plaintext lama tetap bisa digunakan dan dienkripsi ulang bertahap.",
+      "Menghapus exposure access token Google dari session client NextAuth.",
+      "Menambahkan script dry-run untuk migrasi token lama serta test enkripsi/token.",
+    ],
+  },
+  {
     version: "v1.6.5",
     date: "2026-05-07",
     title: "Perbaikan waktu transaksi prompt",

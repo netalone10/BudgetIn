@@ -1,12 +1,13 @@
 {
   "name": "budgetin",
-  "version": "1.6.5",
+  "version": "1.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "migrate:encrypt-tokens": "node scripts/encrypt-existing-tokens.js",
     "postinstall": "prisma generate"
   },
   "dependencies": {

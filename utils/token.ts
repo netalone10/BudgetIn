@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { decryptSecret, encryptSecret, isEncryptedSecret } from "@/lib/crypto";
 
 const REFRESH_URL = "https://oauth2.googleapis.com/token";
 const EXPIRY_BUFFER_MS = 5 * 60 * 1000; // refresh 5 menit sebelum expiry
@@ -13,15 +14,27 @@ export async function getValidToken(userId: string): Promise<string> {
     throw new Error("No access token found for user");
   }
 
+  const accessToken = decryptSecret(user.accessToken);
+  const refreshToken = decryptSecret(user.refreshToken);
+  if (!accessToken) {
+    throw new Error("No access token found for user");
+  }
+
   // Token masih valid (lebih dari 5 menit sebelum expiry)
   const now = Date.now();
   const expiry = user.tokenExpiry?.getTime() ?? 0;
   if (expiry - now > EXPIRY_BUFFER_MS) {
-    return user.accessToken;
+    if (!isEncryptedSecret(user.accessToken)) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { accessToken: encryptSecret(accessToken) },
+      });
+    }
+    return accessToken;
   }
 
   // Token expired atau hampir expired — refresh
-  if (!user.refreshToken) {
+  if (!refreshToken) {
     throw new Error("No refresh token — user must re-authenticate");
   }
 
@@ -31,7 +44,7 @@ export async function getValidToken(userId: string): Promise<string> {
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-      refresh_token: user.refreshToken,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -48,7 +61,8 @@ export async function getValidToken(userId: string): Promise<string> {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      accessToken: data.access_token,
+      accessToken: encryptSecret(data.access_token),
+      ...(!isEncryptedSecret(user.refreshToken) ? { refreshToken: encryptSecret(refreshToken) } : {}),
       tokenExpiry: newExpiry,
     },
   });
