@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const { accountId } = await params;
   const body = await req.json();
-  const { accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
+  const { accountTypeId, accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -91,10 +91,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
-  // accountTypeId validation for Prisma users only
-
   if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
     return NextResponse.json({ error: "Nama tidak boleh kosong." }, { status: 400 });
+  }
+
+  let accountType:
+    | { id: string; userId: string; name: string; classification: string; isActive: boolean }
+    | null = null;
+
+  if (accountTypeId !== undefined) {
+    if (typeof accountTypeId !== "string" || accountTypeId.trim().length === 0) {
+      return NextResponse.json({ error: "Tipe akun harus dipilih." }, { status: 400 });
+    }
+
+    accountType = await prisma.accountType.findUnique({ where: { id: accountTypeId } });
+    if (!accountType || accountType.userId !== session.userId || !accountType.isActive) {
+      return NextResponse.json({ error: "Tipe akun tidak valid." }, { status: 400 });
+    }
   }
 
   if (tanggalSettlement !== undefined) {
@@ -108,9 +121,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
+  const effectiveAccountTypeName = accountType?.name ?? (await prisma.accountType.findUnique({ where: { id: existing.accountTypeId }, select: { name: true } }))?.name;
+
+  if (effectiveAccountTypeName === "Kartu Kredit") {
+    const nextTanggalSettlement = tanggalSettlement !== undefined ? tanggalSettlement : existing.tanggalSettlement;
+    const nextTanggalJatuhTempo = tanggalJatuhTempo !== undefined ? tanggalJatuhTempo : existing.tanggalJatuhTempo;
+
+    if (nextTanggalSettlement == null) {
+      return NextResponse.json({ error: "Tanggal Settlement (1-31) wajib diisi untuk Kartu Kredit." }, { status: 400 });
+    }
+    if (nextTanggalJatuhTempo == null) {
+      return NextResponse.json({ error: "Tanggal Jatuh Tempo (1-31) wajib diisi untuk Kartu Kredit." }, { status: 400 });
+    }
+  }
+
   const updated = await prisma.account.update({
     where: { id: accountId },
     data: {
+      ...(accountType && { accountTypeId: accountType.id }),
       ...(name !== undefined && { name: name.trim() }),
       ...(color !== undefined && { color }),
       ...(icon !== undefined && { icon }),

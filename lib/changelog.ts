@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.6.4",
+    date: "2026-05-07",
+    title: "Hardening edit tipe akun",
+    description: "Rilis patch lanjutan untuk menutup edge case pada tambah/edit akun dan menjaga validasi tipe akun lebih konsisten.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.6.4`,
+    changes: [
+      "Memastikan edit akun database benar-benar menyimpan perubahan tipe akun.",
+      "Menyembunyikan tipe akun nonaktif dari pilihan tambah akun, kecuali tipe tersebut sedang dipakai akun yang diedit.",
+      "Membersihkan field kartu kredit saat akun dipindahkan ke tipe non-kartu dan memperketat validasi tanggal kartu kredit di server.",
+      "Menangani kegagalan load tipe akun tanpa membuat halaman terus loading.",
+    ],
+  },
+  {
     version: "v1.6.3",
     date: "2026-05-07",
     title: "Perbaikan pilihan tipe akun",

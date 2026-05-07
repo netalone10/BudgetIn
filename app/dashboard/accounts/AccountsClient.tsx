@@ -23,6 +23,7 @@ interface AccountType {
   classification: "asset" | "liability";
   icon: string;
   color: string;
+  isActive?: boolean;
 }
 
 interface RecentTransaction {
@@ -174,34 +175,41 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
 
   const isEdit = !!editAccount;
   const hasTransactions = editAccount ? editAccount.transactionCount > 0 : false;
+  const selectableAccountTypes = useMemo(
+    () => accountTypes.filter((t) =>
+      t.isActive !== false ||
+      (editAccount && (t.id === editAccount.accountType.id || (t.name === editAccount.accountType.name && t.classification === editAccount.accountType.classification)))
+    ),
+    [accountTypes, editAccount]
+  );
   
   // Check if selected type is Kartu Kredit
-  const selectedType = accountTypes.find(t => t.id === accountTypeId);
+  const selectedType = selectableAccountTypes.find(t => t.id === accountTypeId);
   const isKartuKredit = selectedType?.name === "Kartu Kredit";
 
   useEffect(() => {
-    if (accountTypes.length === 0) {
+    if (selectableAccountTypes.length === 0) {
       if (accountTypeId !== "") setAccountTypeId("");
       return;
     }
 
-    if (accountTypeId && accountTypes.some((t) => t.id === accountTypeId)) return;
+    if (accountTypeId && selectableAccountTypes.some((t) => t.id === accountTypeId)) return;
 
     const editType = editAccount
-      ? accountTypes.find((t) =>
+      ? selectableAccountTypes.find((t) =>
           t.id === editAccount.accountType.id ||
           (t.name === editAccount.accountType.name && t.classification === editAccount.accountType.classification)
         )
       : undefined;
 
-    setAccountTypeId((editType ?? accountTypes[0]).id);
-  }, [accountTypes, accountTypeId, editAccount]);
+    setAccountTypeId((editType ?? selectableAccountTypes[0]).id);
+  }, [selectableAccountTypes, accountTypeId, editAccount]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const selectedType = accountTypes.find(t => t.id === accountTypeId);
+    const selectedType = selectableAccountTypes.find(t => t.id === accountTypeId);
     if (!selectedType) {
       setError("Tipe akun harus dipilih.");
       return;
@@ -223,6 +231,9 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
       if (isKartuKredit) {
         payload.tanggalSettlement = tanggalSettlement;
         payload.tanggalJatuhTempo = tanggalJatuhTempo;
+      } else if (isEdit) {
+        payload.tanggalSettlement = null;
+        payload.tanggalJatuhTempo = null;
       }
 
       const res = isEdit
@@ -274,11 +285,11 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
               value={accountTypeId}
               onChange={(e) => setAccountTypeId(e.target.value)}
               required
-              disabled={loading || accountTypes.length === 0}
+              disabled={loading || selectableAccountTypes.length === 0}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              {accountTypes.length === 0 && <option value="">Tipe akun belum tersedia</option>}
-              {accountTypes.map((t) => (
+              {selectableAccountTypes.length === 0 && <option value="">Tipe akun belum tersedia</option>}
+              {selectableAccountTypes.map((t) => (
                 <option key={t.id} value={t.id}>{t.name} ({t.classification === "asset" ? "Aset" : "Liability"})</option>
               ))}
             </select>
@@ -607,6 +618,13 @@ export default function AccountsPage() {
       if (!accRes.ok) {
         const errData = await accRes.json().catch(() => ({}));
         setError((errData as { error?: string }).error || "Gagal memuat data akun.");
+        setLoading(false);
+        return;
+      }
+      if (!typeRes.ok) {
+        const errData = await typeRes.json().catch(() => ({}));
+        setError((errData as { error?: string }).error || "Gagal memuat tipe akun.");
+        setLoading(false);
         return;
       }
       const accData = await accRes.json();
