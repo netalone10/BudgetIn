@@ -14,6 +14,19 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.6.3",
+    date: "2026-05-07",
+    title: "Perbaikan pilihan tipe akun",
+    description: "Rilis patch untuk memastikan modal Tambah Akun selalu menyimpan pilihan tipe akun yang valid sebelum akun dibuat.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.6.3`,
+    changes: [
+      "Memperbaiki error Tipe akun harus dipilih yang bisa muncul walau user sudah memilih tipe akun seperti Lainnya (Aset).",
+      "Menyinkronkan pilihan tipe akun ketika daftar tipe akun selesai dimuat atau berubah.",
+      "Mencegah submit akun baru sebelum tipe akun valid tersedia di form.",
+    ],
+  },
+  {
     version: "v1.6.2",
     date: "2026-05-06",
     title: "Perbaikan layout admin dan riwayat transaksi mobile",

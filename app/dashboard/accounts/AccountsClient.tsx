@@ -179,15 +179,37 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
   const selectedType = accountTypes.find(t => t.id === accountTypeId);
   const isKartuKredit = selectedType?.name === "Kartu Kredit";
 
+  useEffect(() => {
+    if (accountTypes.length === 0) {
+      if (accountTypeId !== "") setAccountTypeId("");
+      return;
+    }
+
+    if (accountTypeId && accountTypes.some((t) => t.id === accountTypeId)) return;
+
+    const editType = editAccount
+      ? accountTypes.find((t) =>
+          t.id === editAccount.accountType.id ||
+          (t.name === editAccount.accountType.name && t.classification === editAccount.accountType.classification)
+        )
+      : undefined;
+
+    setAccountTypeId((editType ?? accountTypes[0]).id);
+  }, [accountTypes, accountTypeId, editAccount]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const selectedType = accountTypes.find(t => t.id === accountTypeId);
+    if (!selectedType) {
+      setError("Tipe akun harus dipilih.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Get the selected account type info
-      const selectedType = accountTypes.find(t => t.id === accountTypeId);
-      
       // For Sheets users, send accountTypeName and classification instead of accountTypeId
       const payload: Record<string, unknown> = isSheets ? { 
         name, 
@@ -195,7 +217,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
         currency,
         accountTypeName: selectedType?.name,
         classification: selectedType?.classification,
-      } : { accountTypeId, name, note, currency };
+      } : { accountTypeId: selectedType.id, name, note, currency };
       
       // Add credit card fields if Kartu Kredit
       if (isKartuKredit) {
@@ -252,8 +274,10 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
               value={accountTypeId}
               onChange={(e) => setAccountTypeId(e.target.value)}
               required
+              disabled={loading || accountTypes.length === 0}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             >
+              {accountTypes.length === 0 && <option value="">Tipe akun belum tersedia</option>}
               {accountTypes.map((t) => (
                 <option key={t.id} value={t.id}>{t.name} ({t.classification === "asset" ? "Aset" : "Liability"})</option>
               ))}
@@ -356,7 +380,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
 
           <div className="flex gap-3 pt-1">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Batal</Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
+            <Button type="submit" className="flex-1" disabled={loading || !selectedType}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Simpan" : "Tambah Akun"}
             </Button>
           </div>
