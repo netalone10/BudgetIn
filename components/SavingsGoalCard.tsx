@@ -73,9 +73,9 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{goal.name}</CardTitle>
-        <CardAction>
-          <div className="flex items-center gap-1">
+        <CardTitle className="break-words">{goal.name}</CardTitle>
+        <CardAction className="col-start-1 row-start-auto justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
+          <div className="flex flex-wrap items-center gap-1">
             {achieved && (
               <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
                 Tercapai
@@ -109,8 +109,8 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
         <Progress value={progressValue} />
 
         {/* Nominal */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
+        <div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="break-words text-muted-foreground">
             Rp {formatRupiah(goal.totalContributed)} / Rp {formatRupiah(goal.targetAmount)}
           </span>
           <span className="font-medium tabular-nums">{progressValue}%</span>
@@ -136,13 +136,13 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
                 goal.contributions.map((c) => (
                   <div
                     key={c.id}
-                    className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs"
+                    className="flex flex-col gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span className="text-muted-foreground">{formatDate(c.date)}</span>
                       {c.note && <span className="text-foreground">{c.note}</span>}
                     </div>
-                    <span className="font-medium tabular-nums text-green-600 dark:text-green-400">
+                    <span className="break-words font-medium tabular-nums text-green-600 dark:text-green-400">
                       +Rp {formatRupiah(c.amount)}
                     </span>
                   </div>

@@ -89,15 +89,15 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
       "bg-card border border-border rounded-xl p-4 border-l-4 transition-shadow hover:shadow-md",
       cfg.border
     )}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 min-w-0">
           <div className="mt-0.5 shrink-0">{cfg.icon}</div>
           <div className="min-w-0">
-            <p className="font-semibold text-foreground truncate">{bill.name}</p>
+            <p className="break-words font-semibold text-foreground">{bill.name}</p>
             <p className="text-sm text-muted-foreground">
               Rp {amount.toLocaleString("id-ID")}
               {bill.category && (
-                <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">{bill.category.name}</span>
+                <span className="ml-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-xs">{bill.category.name}</span>
               )}
             </p>
             {bill.account && (
@@ -108,11 +108,11 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
           </div>
         </div>
 
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
           <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", cfg.badgeClass)}>
             {cfg.badge}
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {status !== "paid" && (
               <>
                 <button

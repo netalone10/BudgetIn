@@ -179,19 +179,19 @@ function TypeCard({
 }) {
   return (
     <div className={cn(
-      "flex items-center justify-between rounded-xl border border-border bg-background p-3.5 gap-4",
+      "flex flex-col gap-3 rounded-xl border border-border bg-background p-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4",
       !type.isActive && "opacity-50"
     )}>
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <div
           className="h-8 w-8 rounded-lg shrink-0 flex items-center justify-center text-white text-xs font-bold"
           style={{ backgroundColor: type.color }}
         >
           {type.name.slice(0, 1).toUpperCase()}
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{type.name}</span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="break-words text-sm font-medium">{type.name}</span>
             {!type.isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Arsip</span>}
           </div>
           <span className={cn(
@@ -203,7 +203,7 @@ function TypeCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center justify-end gap-1">
         <button
           onClick={() => onEdit(type)}
           title="Edit"
@@ -294,7 +294,7 @@ export default function AccountTypesPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
             <Tags className="h-5 w-5 text-primary" />
@@ -304,7 +304,7 @@ export default function AccountTypesPage() {
             <p className="text-xs text-muted-foreground">Kelola kategori akun kamu</p>
           </div>
         </div>
-        <Button onClick={() => setShowAddModal(true)} size="sm" className="gap-1.5">
+        <Button onClick={() => setShowAddModal(true)} size="sm" className="w-full gap-1.5 sm:w-auto">
           <Plus className="h-4 w-4" /> Tambah Tipe
         </Button>
       </div>

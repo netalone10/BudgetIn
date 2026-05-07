@@ -14,6 +14,22 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.7.2",
+    date: "2026-05-07",
+    title: "Perbaikan prompt real-time dan audit mobile",
+    description: "Rilis patch untuk memastikan prompt tanpa jam eksplisit memakai waktu submit real-time dan memperkuat layout mobile di halaman utama dashboard.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.7.2`,
+    changes: [
+      "Mengabaikan waktu hasil AI seperti 08:00 atau 00:00 jika user tidak menyebut jam eksplisit di prompt transaksi.",
+      "Memastikan prompt seperti beli ketoprak 20rb cash dicatat dengan waktu submit real-time Asia/Jakarta.",
+      "Memperketat instruksi AI agar tidak membuat preset jam untuk pagi, siang, sore, malam, atau tadi tanpa angka jam eksplisit.",
+      "Menambahkan test regresi untuk menjaga fallback waktu prompt tetap real-time.",
+      "Menghapus blok Input, Output, dan Rhythm dari hero dashboard agar user langsung masuk ke fitur utama.",
+      "Merapikan mobile view dashboard, detail akun, budget, calendar, cashflow, tipe akun, tabungan, dan tagihan rutin agar nominal penting tidak tersembunyi atau terpotong.",
+    ],
+  },
+  {
     version: "v1.7.1",
     date: "2026-05-07",
     title: "Perbaikan tampilan mobile dashboard",

@@ -867,8 +867,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           </div>
         ) : (
           <div className="overflow-hidden rounded-[24px] border border-border/70 bg-background sm:rounded-[28px]">
-            <div className="overflow-x-auto [scrollbar-width:thin]">
-              <table className="w-full min-w-[560px]">
+            <div className="sm:overflow-x-auto sm:[scrollbar-width:thin]">
+              <table className="w-full sm:min-w-[560px]">
                 <thead className="hidden sm:table-header-group">
                   <tr className="border-b border-border bg-muted/35">
                     <th className="label-mono w-16 px-5 py-3 text-left text-muted-foreground">

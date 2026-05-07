@@ -372,7 +372,168 @@ export default function BudgetClient({ initialData, categories }: Props) {
             Belum ada budget untuk {formatMonthLabel(month)}. Tambahkan budget atau copy dari bulan sebelumnya.
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="divide-y md:hidden">
+            {data.budgets.map((item) => {
+              const fixed = isFixed(item.category);
+              const effectiveBudget = item.budget + (item.rollover ?? 0);
+              const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
+              const remaining = prorated - item.spent;
+              const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
+              const isOver = pct >= 100;
+              const isNear = pct >= 80 && !isOver;
+              const isEditing = editingId === item.id;
+              const isConfirmDelete = deletingId === item.id;
+              const hasRollover = (item.rollover ?? 0) > 0;
+
+              return (
+                <div key={item.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="break-words text-sm font-medium">{item.category}</span>
+                        <span className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                          fixed ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-muted text-muted-foreground"
+                        )}>
+                          {fixed ? "Fixed" : "Variable"}
+                        </span>
+                        {item.rolloverEnabled && (
+                          <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                            Rollover
+                          </span>
+                        )}
+                      </div>
+                      {hasRollover && (
+                        <span className="mt-0.5 block text-[10px] text-violet-600 dark:text-violet-400">
+                          +{fmtCompact(item.rollover)} sisa bulan lalu
+                        </span>
+                      )}
+                    </div>
+                    <div className={cn("shrink-0 text-right text-sm font-semibold tabular-nums", remaining < 0 ? "text-destructive" : "text-green-600 dark:text-green-400")}>
+                      {remaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(remaining))}
+                    </div>
+                  </div>
+
+                  <div className="h-1.5 w-full rounded-full bg-muted">
+                    <div
+                      className={cn("h-full rounded-full transition-all", isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary")}
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground">Budget</p>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSave(item);
+                            if (e.key === "Escape") setEditingId(null);
+                          }}
+                          className="mt-1 h-8 w-full text-xs"
+                          autoFocus
+                        />
+                      ) : (
+                        <p className="break-words font-medium tabular-nums">
+                          {fmt(item.budget)}
+                          {hasRollover && <span className="block text-[10px] text-violet-500">+{fmtCompact(item.rollover)}</span>}
+                        </p>
+                      )}
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="text-muted-foreground">Terpakai</p>
+                      <p className={cn("break-words font-medium tabular-nums", isOver ? "text-destructive" : isNear ? "text-yellow-600 dark:text-yellow-400" : "")}>
+                        {fmt(item.spent)}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground">Prorated</p>
+                      <p className={cn("break-words tabular-nums", fixed ? "text-muted-foreground" : "font-medium text-foreground")}>
+                        {fmtCompact(prorated)}
+                      </p>
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="text-muted-foreground">Progress</p>
+                      <p className="break-words font-medium tabular-nums">{Math.round(pct)}%</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-1">
+                    {isEditing ? (
+                      <>
+                        <Button variant="ghost" size="icon-xs" onClick={() => handleSave(item)} disabled={saving}>
+                          <Check className="h-3.5 w-3.5 text-green-600" />
+                        </Button>
+                        <Button variant="ghost" size="icon-xs" onClick={() => setEditingId(null)} disabled={saving}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    ) : isConfirmDelete ? (
+                      <>
+                        <Button variant="destructive" size="xs" onClick={() => handleDelete(item.id)} disabled={saving}>Hapus</Button>
+                        <Button variant="ghost" size="xs" onClick={() => setDeletingId(null)} disabled={saving}>Batal</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => handleToggleRollover(item)}
+                          disabled={saving}
+                          className={item.rolloverEnabled ? "text-violet-600 bg-violet-100 dark:bg-violet-900/30" : "text-muted-foreground"}
+                          title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover"}
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => {
+                            setEditingId(item.id);
+                            setEditAmount(item.budget.toString());
+                            setDeletingId(null);
+                          }}
+                          disabled={saving}
+                          title="Edit budget"
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() => {
+                            setDeletingId(item.id);
+                            setEditingId(null);
+                          }}
+                          disabled={saving}
+                          className="text-muted-foreground hover:text-destructive"
+                          title="Hapus budget"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="grid grid-cols-2 gap-3 bg-muted/20 p-4 text-xs font-semibold">
+              <span className="text-muted-foreground">Total Budget</span>
+              <span className="text-right tabular-nums text-muted-foreground">{fmt(totals.budget)}</span>
+              <span className="text-muted-foreground">Total Terpakai</span>
+              <span className="text-right tabular-nums text-destructive">{fmt(totals.spent)}</span>
+              <span className="text-muted-foreground">Total Sisa</span>
+              <span className={cn("text-right tabular-nums", totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive")}>
+                {totalRemaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(totalRemaining))}
+              </span>
+            </div>
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[760px]">
               <thead>
                 <tr className="border-b bg-muted/30">
@@ -532,6 +693,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
               </tfoot>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -541,16 +703,14 @@ export default function BudgetClient({ initialData, categories }: Props) {
             <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-[11px] font-medium text-muted-foreground">Pengeluaran tanpa budget</span>
           </div>
-          <table className="w-full">
-            <tbody>
-              {data.unbudgeted.map((item) => (
-                <tr key={item.category} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="py-3 pl-4 pr-2 text-sm font-medium">{item.category}</td>
-                  <td className="py-3 pr-4 text-right text-sm font-medium tabular-nums text-muted-foreground">{fmt(item.spent)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="divide-y">
+            {data.unbudgeted.map((item) => (
+              <div key={item.category} className="flex items-start justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/20">
+                <span className="min-w-0 break-words text-sm font-medium">{item.category}</span>
+                <span className="shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">{fmt(item.spent)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

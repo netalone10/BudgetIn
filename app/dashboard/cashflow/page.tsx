@@ -181,29 +181,29 @@ export default function CashflowPage() {
       {data && data.creditCards.length > 0 && (
         <>
           {/* Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-3 text-center sm:p-4">
               <p className="text-xs text-muted-foreground mb-1">Total Pengeluaran</p>
-              <p className="text-lg font-bold text-red-500 tabular-nums">
+              <p className="break-words text-[clamp(0.8rem,3vw,1.125rem)] font-bold leading-tight text-red-500 tabular-nums">
                 {formatIDR(data.summary.totalSpend)}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4 text-center">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-3 text-center sm:p-4">
               <p className="text-xs text-muted-foreground mb-1">Total Pembayaran</p>
-              <p className="text-lg font-bold text-emerald-500 tabular-nums">
+              <p className="break-words text-[clamp(0.8rem,3vw,1.125rem)] font-bold leading-tight text-emerald-500 tabular-nums">
                 {formatIDR(data.summary.totalPayment)}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4 text-center">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-3 text-center sm:p-4">
               <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
-              <p className="text-lg font-bold text-amber-500 tabular-nums">
+              <p className="break-words text-[clamp(0.8rem,3vw,1.125rem)] font-bold leading-tight text-amber-500 tabular-nums">
                 {formatIDR(data.summary.totalOutstanding)}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4 text-center">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-3 text-center sm:p-4">
               <p className="text-xs text-muted-foreground mb-1">Terlambat</p>
               <p className={cn(
-                "text-lg font-bold tabular-nums",
+                "break-words text-[clamp(0.8rem,3vw,1.125rem)] font-bold leading-tight tabular-nums",
                 data.summary.overdueCount > 0 ? "text-red-500" : "text-emerald-500"
               )}>
                 {data.summary.overdueCount} Kartu
@@ -214,7 +214,7 @@ export default function CashflowPage() {
           {/* Period Info */}
           {data.period && (
             <div className="rounded-lg bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
-              Perioda: {formatDate(data.period.start)} — {formatDate(data.period.end)} • 
+              Perioda: {formatDate(data.period.start)} â€” {formatDate(data.period.end)} â€¢
               Jatuh Tempo: {formatDate(data.period.dueDate)}
             </div>
           )}
@@ -228,9 +228,9 @@ export default function CashflowPage() {
               >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
                     <CreditCard className="h-4 w-4 text-red-500 shrink-0" />
-                    <span className="font-medium text-sm truncate">{cc.accountName}</span>
+                    <span className="break-words text-sm font-medium">{cc.accountName}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {cc.isOverdue ? (
@@ -247,26 +247,26 @@ export default function CashflowPage() {
 
                 {/* Details */}
                 <div className="p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
+                  <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 sm:gap-4">
+                    <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">Pengeluaran</p>
-                      <p className="font-semibold text-red-500 tabular-nums">
+                      <p className="break-words font-semibold text-red-500 tabular-nums">
                         {formatIDR(cc.totalSpend)}
                       </p>
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">Pembayaran</p>
-                      <p className="font-semibold text-emerald-500 tabular-nums">
+                      <p className="break-words font-semibold text-emerald-500 tabular-nums">
                         {formatIDR(cc.totalPayment)}
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="pt-2 border-t border-border/50">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-xs text-muted-foreground">Outstanding</span>
                       <span className={cn(
-                        "font-bold tabular-nums",
+                        "break-words font-bold tabular-nums",
                         parseFloat(cc.outstanding) > 0 ? "text-amber-500" : "text-emerald-500"
                       )}>
                         {formatIDR(cc.outstanding)}
@@ -274,7 +274,7 @@ export default function CashflowPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                  <div className="flex flex-col gap-1 pt-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
                     <span>Settlement: tgl {cc.settlementDate}</span>
                     <span>Jatuh Tempo: tgl {cc.jatuhTempoDate}</span>
                   </div>
@@ -300,15 +300,15 @@ export default function CashflowPage() {
                     {cc.transactions.map((tx) => (
                       <div
                         key={tx.id}
-                        className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 hover:bg-muted/20 transition-colors gap-3"
+                        className="grid gap-1 border-b px-4 py-2.5 text-xs transition-colors last:border-0 hover:bg-muted/20 sm:grid-cols-[4rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-3"
                       >
-                        <span className="text-xs text-muted-foreground w-16 shrink-0">
+                        <span className="text-muted-foreground sm:w-16 sm:shrink-0">
                           {format(new Date(tx.date), "d MMM", { locale: id })}
                         </span>
-                        <span className="text-xs flex-1 truncate">{tx.note || "—"}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">{tx.category}</span>
+                        <span className="break-words">{tx.note || "â€”"}</span>
+                        <span className="text-muted-foreground sm:shrink-0">{tx.category}</span>
                         <span className={cn(
-                          "text-xs font-semibold tabular-nums shrink-0",
+                          "font-semibold tabular-nums sm:shrink-0",
                           tx.type === "payment" ? "text-emerald-500" : "text-red-500"
                         )}>
                           {tx.type === "payment" ? "+" : "-"}

@@ -21,7 +21,7 @@ import { buildAccountResolver, type RuntimeAccount } from "./account-resolver";
 import { correctAmount, isValidAmount } from "./amount-parser";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { isSavingsPrompt, resolveSavingsGoalForPrompt } from "./savings-goal-resolver";
-import { normalizeTransactionTime, parseTransactionTimeFromPrompt } from "@/lib/transaction-time";
+import { resolvePromptTransactionTime } from "@/lib/transaction-time";
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
@@ -50,7 +50,7 @@ function isValidTransferAmount(amount: number): boolean {
 }
 
 function resolveTransactionTime(parsed: ParsedIntent, ctx: RecordContext): string {
-  return normalizeTransactionTime(parsed.time, parseTransactionTimeFromPrompt(ctx.prompt, ctx.currentTime));
+  return resolvePromptTransactionTime(ctx.prompt, parsed.time, ctx.currentTime);
 }
 
 export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {

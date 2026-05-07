@@ -122,23 +122,23 @@ export default function CalendarClient() {
       {calData && (
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
+            <div className="min-w-0">
               <div className="text-xs text-muted-foreground mb-0.5">Total Masuk</div>
-              <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+              <div className="break-words text-[clamp(0.7rem,2.8vw,0.875rem)] font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
                 {formatIDR(calData.summary.totalIncome)}
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="text-xs text-muted-foreground mb-0.5">Total Keluar</div>
-              <div className="text-sm font-semibold text-red-500">
+              <div className="break-words text-[clamp(0.7rem,2.8vw,0.875rem)] font-semibold leading-tight text-red-500">
                 {formatIDR(calData.summary.totalExpense)}
               </div>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="text-xs text-muted-foreground mb-0.5">Net</div>
               <div
                 className={cn(
-                  "text-sm font-semibold",
+                  "break-words text-[clamp(0.7rem,2.8vw,0.875rem)] font-semibold leading-tight",
                   calData.summary.net >= 0
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-red-500"

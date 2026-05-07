@@ -447,8 +447,8 @@ export default function AccountDetailClient({ initialData }: Props) {
         ) : (
           <>
             <div className="overflow-hidden rounded-xl border border-border">
-              <div className="overflow-x-auto [scrollbar-width:thin]">
-                <table className="w-full min-w-[560px] text-left">
+              <div className="sm:overflow-x-auto sm:[scrollbar-width:thin]">
+                <table className="w-full text-left sm:min-w-[560px]">
                 <thead className="hidden sm:table-header-group">
                   <tr className="border-b bg-muted/30">
                     <th className="py-2 pl-4 pr-3 text-xs font-medium text-muted-foreground w-20">

@@ -33,33 +33,6 @@ export default async function DashboardPage() {
                 jadi keputusan finansial yang lebih tenang.
               </p>
             </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl bg-muted/70 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Input
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  Natural language
-                </p>
-              </div>
-              <div className="rounded-2xl bg-primary/10 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-primary/80">
-                  Output
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  Budget + insight
-                </p>
-              </div>
-              <div className="rounded-2xl bg-muted/70 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-                  Rhythm
-                </p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  Built for every day
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 

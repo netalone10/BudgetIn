@@ -147,8 +147,8 @@ RULES:
 4b. Resolve waktu transaksi ke format HH:mm timezone Asia/Jakarta:
    - "jam 14:30" / "pukul 14.30" → "14:30"
    - "jam 2 siang" → "14:00"
-   - "tadi pagi" → "08:00", "siang" → "12:00", "sore" → "16:00", "malam"/"semalam" → "20:00"
-   - Jika waktu tidak disebutkan, jangan isi time.
+   - Jika waktu/jam tidak disebutkan secara eksplisit, jangan isi time.
+   - Kata konteks seperti "pagi", "siang", "sore", "malam", atau "tadi" TANPA angka jam tidak boleh menghasilkan preset 08:00/12:00/16:00/20:00.
 
 5. Output HANYA JSON valid, tanpa teks tambahan, tanpa markdown backticks.
 
