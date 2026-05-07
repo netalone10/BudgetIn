@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.6.5",
+    date: "2026-05-07",
+    title: "Perbaikan waktu transaksi prompt",
+    description: "Rilis patch untuk memastikan transaksi dari prompt memakai waktu submit real-time saat user tidak menyebut jam eksplisit.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.6.5`,
+    changes: [
+      "Menghapus default jam preset untuk kata pagi, siang, sore, dan malam pada prompt transaksi.",
+      "Memastikan prompt tanpa jam eksplisit memakai waktu submit real-time Asia/Jakarta.",
+      "Tetap mempertahankan parsing jam eksplisit seperti jam 1 atau pukul 08:30.",
+      "Menambahkan test untuk menjaga perilaku waktu transaksi prompt.",
+    ],
+  },
+  {
     version: "v1.6.4",
     date: "2026-05-07",
     title: "Hardening edit tipe akun",

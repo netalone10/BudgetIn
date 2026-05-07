@@ -32,10 +32,6 @@ export function parseTransactionTimeFromPrompt(prompt: string, fallback: string)
     return `${String(hour).padStart(2, "0")}:00`;
   }
 
-  if (/\b(?:tadi\s+pagi|pagi)\b/.test(text)) return "08:00";
-  if (/\b(?:tadi\s+siang|siang)\b/.test(text)) return "12:00";
-  if (/\b(?:tadi\s+sore|sore)\b/.test(text)) return "16:00";
-  if (/\b(?:semalam|tadi\s+malam|malam)\b/.test(text)) return "20:00";
   if (/\b(?:barusan|sekarang)\b/.test(text)) return fallback;
   return fallback;
 }
