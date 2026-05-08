@@ -1,473 +1,752 @@
-# PRD — BudgetIn
+﻿# PRD — BudgetIn
 
-**Version**: 0.1.0  
-**Status**: Active Development  
-**Last Updated**: April 2026  
-**Language**: Indonesian (all UI, prompts, copy)  
-**Live**: https://budget.amuharr.com
+**Product Version**: 1.8.0
+**Document Version**: 1.0.0
+**Status**: Production / Active Development
+**Last Updated**: May 2026
+**Primary Language**: Bahasa Indonesia
+**Live URL**: https://budget.amuharr.com
 
 ---
 
-## 1. Overview
+## 1. Ringkasan Produk
 
-BudgetIn adalah AI-powered personal finance tracker. User catat pengeluaran/pemasukan lewat natural language, app auto-kategorisasi + simpan ke storage, dan kasih budget tracking dengan analisis keuangan bulanan.
+BudgetIn adalah aplikasi personal finance berbasis web untuk membantu pengguna Indonesia mencatat transaksi, mengelola akun/dompet, memantau budget, menabung menuju goal, mengatur tagihan rutin, dan membaca insight keuangan dengan bantuan AI.
 
-**Tagline**: "Catat pengeluaran, pahami uangmu — cukup dengan ketik"
+Produk berfokus pada pencatatan yang cepat melalui natural language prompt seperti `beli makan siang 35rb dari BCA`, tetapi tetap menyediakan form manual untuk kasus yang butuh kontrol detail.
+
+**Tagline**: Catat pengeluaran, pahami uangmu — cukup dengan ketik.
 
 ---
 
 ## 2. Problem Statement
 
-Kebanyakan orang malas catat keuangan karena:
-- Form entry tradisional ribet (pilih kategori, masukkan tanggal, dll)
-- Tidak ada konteks realtime vs budget
-- Tidak ada insight actionable
+Pengguna personal finance sering gagal konsisten mencatat keuangan karena:
 
-**BudgetIn solves**: Natural language input ("makan siang 35rb") → otomatis tersimpan, terkategorisasi, terbudget.
+- **Input terlalu lambat**: Form tradisional mengharuskan pilih tanggal, kategori, akun, nominal, dan catatan secara manual.
+- **Tidak ada konteks akun**: Banyak pencatat hanya melihat transaksi, bukan saldo per dompet, kartu kredit, atau net worth.
+- **Budget tidak actionable**: Budget sering terpisah dari transaksi aktual dan tidak memberi status berjalan.
+- **Sulit membaca pola**: Pengguna perlu bantuan untuk memahami cashflow, kategori boros, dan anomali.
+- **Kepercayaan data**: Sebagian pengguna ingin data tersimpan di Google Sheets miliknya sendiri, sebagian lain ingin pengalaman database yang lebih simpel.
 
----
-
-## 3. Target Users
-
-- Mahasiswa / pekerja muda Indonesia
-- Pengguna yang paham Google Sheets tapi malas input manual
-- Pengguna yang mau tracking keuangan tanpa aplikasi yang kompleks
+BudgetIn menyelesaikan ini dengan kombinasi prompt AI, ledger akun, budget bulanan, analisis, dan dual storage.
 
 ---
 
-## 4. Tech Stack
+## 3. Target Pengguna
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
+- **Pekerja muda dan mahasiswa Indonesia** yang ingin tracking keuangan tanpa spreadsheet manual.
+- **Pengguna Google Sheets** yang ingin data tetap ada di file milik sendiri.
+- **Pengguna non-teknis** yang ingin pengalaman seperti chat/prompt.
+- **Pengguna yang memiliki banyak akun** seperti cash, bank, e-wallet, tabungan, dan kartu kredit.
+- **Pengguna yang ingin budgeting ringan** tanpa kompleksitas aplikasi akuntansi penuh.
+
+---
+
+## 4. Tujuan Produk
+
+### 4.1 Tujuan Utama
+
+- Mempercepat pencatatan transaksi harian.
+- Membuat saldo akun dan cashflow mudah dipantau.
+- Memberikan kontrol budget bulanan per kategori.
+- Membantu pengguna menabung dengan target yang jelas.
+- Mengingatkan dan mencatat tagihan rutin.
+- Menyediakan insight AI yang tetap berbasis angka deterministik.
+
+### 4.2 Non-Goals Saat Ini
+
+- Tidak menjadi aplikasi akuntansi bisnis penuh.
+- Tidak menyediakan mobile app native.
+- Tidak mendukung multi-currency conversion otomatis.
+- Tidak mendukung multi-user household/shared wallet.
+- Tidak menyediakan sinkronisasi bank otomatis.
+- Tidak menggantikan financial advisor profesional.
+
+---
+
+## 5. Success Metrics
+
+- **Activation**: pengguna berhasil membuat akun dan mencatat transaksi pertama.
+- **Retention**: pengguna kembali mencatat transaksi dalam 7 dan 30 hari.
+- **Engagement**: jumlah transaksi prompt/manual per pengguna per bulan.
+- **Budget adoption**: persentase pengguna aktif yang membuat budget bulanan.
+- **Account coverage**: persentase pengguna yang membuat lebih dari satu akun/dompet.
+- **AI utility**: penggunaan prompt laporan, analyst, atau prediction.
+- **Data safety**: keberhasilan backup/restore dan minim error storage Google Sheets.
+
+---
+
+## 6. Tech Stack
+
+| Layer | Teknologi |
+|---|---|
+| Framework | Next.js 16 App Router |
 | Language | TypeScript 5 |
-| Styling | TailwindCSS 4 + shadcn/ui + Base UI |
-| Auth | NextAuth.js 4 (Google OAuth + Credentials) |
-| Database | PostgreSQL via Prisma 6 (Supabase) |
-| AI/NLP | Groq SDK (LLaMA 3.1 8B Instant) |
-| Storage (OAuth) | Google Sheets API v4 |
-| Email | Resend SDK |
+| UI | React 19, TailwindCSS 4, shadcn/ui, Base UI, Lucide |
+| Auth | NextAuth.js 4, Google OAuth, Credentials |
+| Database | PostgreSQL via Prisma 6 |
+| AI | Groq SDK, LLaMA 3.1 8B Instant |
+| Sheets Storage | Google Sheets API v4 |
+| Email | Resend |
+| CAPTCHA | Cloudflare Turnstile untuk credentials login |
 | Hosting | Vercel |
-| Timezone | Asia/Jakarta (WIB, hardcoded) |
+| Timezone | Asia/Jakarta |
+| Testing | Jest, ts-jest, fast-check |
 
 ---
 
-## 5. Architecture
+## 7. Arsitektur Produk
 
-### Dual Storage Model
+### 7.1 Storage Model
 
-User type menentukan storage:
+BudgetIn memakai model storage hybrid:
 
+```text
+Email/password user
+  → transaksi utama di PostgreSQL
+  → akun, budget, kategori, savings, bills di PostgreSQL
+
+Google OAuth user
+  → transaksi/account/budget tertentu dapat dibaca/tulis ke Google Sheets
+  → metadata penting tetap ada di PostgreSQL
+  → fallback/migration flow tersedia saat izin Google belum lengkap
 ```
-Google OAuth user  → transaksi di Google Sheets ("Catatuang - {name}")
-Email/Password user → transaksi di PostgreSQL
-```
 
-Budget + kategori → selalu di PostgreSQL (untuk UI dropdown + budget tab).
+### 7.2 Data Flow Prompt
 
-### Data Flow
-
-```
-User input (NLP)
+```text
+User mengetik prompt
   → POST /api/record
-    → Groq intent classification
-      → transaksi / pemasukan → save ke Sheets atau DB
-      → budget_setting         → save ke DB (Budget table)
-      → laporan                → fetch data → Groq summary → return
-      → unknown                → return clarification
+  → ambil akun + kategori user
+  → Groq classifyIntent
+  → deterministic post-processing
+  → dispatch intent handler
+  → tulis ke DB atau Sheets sesuai user/storage
+  → refresh dashboard, budget, akun
 ```
+
+### 7.3 Prinsip Ledger
+
+- Saldo akun dihitung dari transaksi ledger, bukan angka manual semata.
+- Transfer DB menggunakan dua baris: `transfer_out` dan `transfer_in`.
+- Transfer Sheets menggunakan satu baris `Transfer` dengan metadata akun asal/tujuan.
+- Transfer principal tidak dihitung sebagai expense.
+- Fee transfer dicatat sebagai expense kategori `Biaya Admin`.
+- Expense/income boleh bernilai negatif untuk koreksi/refund/reversal.
+- Transfer harus positif.
+- Waktu transaksi disimpan terpisah sebagai `date` (`YYYY-MM-DD`) dan `time` (`HH:mm`).
 
 ---
 
-## 6. Pages & Routes
+## 8. Role dan Hak Akses
 
-### Public
-| Route | Description |
-|-------|-------------|
-| `/` | Landing page — hero, feature grid, CTA ke /auth |
-| `/auth` | Login + Register (tab), Google OAuth button |
-| `/privacy` | Halaman privasi (static) |
-| `/terms` | Syarat penggunaan (static) |
-| `/auth/error` | OAuth error handler |
-
-### Protected (session required)
-| Route | Description |
-|-------|-------------|
-| `/dashboard` | Main app — prompt input, transaction table, budget tabs |
-| `/admin` | Admin panel — stats + user management |
+| Role | Deskripsi | Akses |
+|---|---|---|
+| Public visitor | Belum login | Landing, About, Contact, Privacy, Terms, Auth |
+| Authenticated user | Pengguna biasa | Dashboard dan seluruh fitur finansial miliknya |
+| Admin | Email masuk allowlist admin | Admin command center dan aksi operasional user |
+| Demo account | Akun publik demo | Akses cepat tanpa CAPTCHA, dibatasi pada kebijakan demo |
 
 ---
 
-## 7. API Endpoints
+## 9. Halaman Produk
 
-### Auth
+### 9.1 Public Pages
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register email user, send verification email |
-| GET | `/api/auth/[...nextauth]` | NextAuth handler (Google + Credentials) |
-| GET | `/api/verify-email?token=` | Verifikasi token email |
-| POST | `/api/auth/resend-verification` | Resend link verifikasi (rate limit 5 menit) |
+| Route | Fungsi |
+|---|---|
+| `/` | Landing page, hero, benefit, CTA |
+| `/about` | Penjelasan produk |
+| `/contact` | Kontak |
+| `/privacy` | Kebijakan privasi |
+| `/terms` | Syarat penggunaan |
+| `/auth` | Login/register |
+| `/auth/error` | Error OAuth/Google permission |
 
-### Transactions
+### 9.2 Protected Dashboard
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/record?period=bulan+ini` | Fetch transaksi by period |
-| POST | `/api/record` | Submit NLP prompt → parse → save |
-| PATCH | `/api/record/[recordId]` | Edit transaksi |
-| DELETE | `/api/record/[recordId]` | Hapus transaksi |
+| Route | Fungsi |
+|---|---|
+| `/dashboard` | Prompt utama, ringkasan hari ini, riwayat transaksi, budget ringkas |
+| `/dashboard/accounts` | Daftar akun/dompet, saldo, net worth |
+| `/dashboard/accounts/[accountId]` | Detail akun, transaksi akun, tambah transaksi akun |
+| `/dashboard/budget` | Budget bulanan, rollover, progress kategori |
+| `/dashboard/cashflow` | Analisis cashflow periode |
+| `/dashboard/savings` | Savings goals dan progress kontribusi |
+| `/dashboard/bills` | Tagihan rutin, pay/skip, summary |
+| `/dashboard/calendar` | Kalender transaksi |
+| `/dashboard/analyst` | AI financial analyst |
+| `/dashboard/panduan` | Panduan penggunaan |
+| `/dashboard/changelog` | Update produksi dan link rilis |
+| `/dashboard/settings/account` | Reset data, reset akun, delete account |
+| `/dashboard/settings/account-types` | Kelola tipe akun |
+| `/dashboard/settings/backup-restore` | Export, preview, restore backup JSON |
 
-### Budget & Categories
+### 9.3 Admin
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/budget` | Ambil budgets + spent + unbudgeted bulan ini |
-| POST | `/api/budget` | Set/update budget kategori |
-| GET | `/api/categories` | List semua kategori user |
-
-### User
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/user` | Profile user |
-| PUT | `/api/user` | Update nama |
-| PATCH | `/api/user/password` | Ganti password (email users only) |
-
-### Admin
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/admin/stats` | Stats + 20 recent users |
-| DELETE | `/api/admin/users/[userId]` | Hapus user + cascade data |
-| POST | `/api/admin/users/[userId]?action=reset-password` | Reset password → send email |
-| POST | `/api/admin/users/[userId]?action=resend-verification` | Resend verifikasi email |
+| Route | Fungsi |
+|---|---|
+| `/admin` | Admin command center, KPI, user table, actions |
 
 ---
 
-## 8. Feature Specs
+## 10. Core Feature Requirements
 
-### 8.1 NLP Input (Core Feature)
+### 10.1 Natural Language Transaction Input
 
-**Model**: Groq LLaMA 3.1 8B Instant  
-**Mode**: JSON response_format, temperature=0.1
+Pengguna dapat mencatat transaksi dari prompt berbahasa Indonesia.
 
-**Supported Intents**:
+**Contoh prompt**:
 
-| Intent | Trigger Examples | Output |
-|--------|-----------------|--------|
-| `transaksi` | "makan siang 35rb", "bayar kos 1.3jt" | amount, category, note, date |
-| `pemasukan` | "gajian 5jt", "freelance dapat 2jt" | incomeAmount, incomeCategory, note, date |
-| `budget_setting` | "budget makan 500rb" | budgetCategory, budgetAmount |
-| `laporan` | "rekap bulan ini", "analisis pengeluaran" | totalSpent, spentByCategory, AI summary |
-| `unknown` | Ambigu / non-monetary | clarification message |
+- `beli makan siang 35rb dari BCA`
+- `gaji 8jt masuk ke BNI`
+- `transfer 1jt dari BCA ke Jago fee 2500`
+- `isi bensin 150rb lalu tol 23rb dari BCA`
+- `budget makan 1.2jt bulan ini`
+- `tabungan liburan 750rb ke Jago`
+- `rekap bulan ini`
 
-**Nominal Parsing**:
-- `rb` / `ribu` = ×1.000
-- `jt` / `juta` = ×1.000.000
-- `k` = ×1.000
-- Post-processing cross-check: jika AI output ~1000× off dari raw prompt → koreksi otomatis
+**Intent yang didukung**:
 
-**Unit Validation**:
-- Input non-monetary (kg, pcs, ekor, lot, dll) tanpa nominal IDR → reject dengan pesan helpful
-- Exception: "dapat emas senilai 3jt" → valid (ada nominal IDR)
+| Intent | Fungsi |
+|---|---|
+| `transaksi` | Expense tunggal |
+| `transaksi_bulk` | Beberapa expense dari satu prompt |
+| `pemasukan` | Income |
+| `transfer` | Transfer antar akun dengan optional fee |
+| `budget_setting` | Set/update budget kategori |
+| `laporan` | Laporan ringkas berbasis transaksi |
+| `unknown` | Klarifikasi jika prompt ambigu |
 
-**Groq Key Rotation**:
-- Load dari env: `GROQ_API_KEY_1`, `GROQ_API_KEY_2`, ...
-- Fallback ke `GROQ_API_KEY` (legacy)
-- On 429 → try next key
+**Aturan nominal**:
 
-**Auto-categorization** (expense):
-- Makan/kafe/resto → "Makan"
-- Grab/Gojek/bensin → "Transport"
-- Netflix/game → "Hiburan"
-- Kos/sewa → "Kos"
-- Listrik/tagihan → "Tagihan"
-- Obat/dokter → "Kesehatan"
-- Prioritizes user's existing categories
+- Mendukung `rb`, `ribu`, `k`, `jt`, `juta`.
+- Validasi unit non-moneter agar prompt seperti jumlah barang tidak salah dibaca sebagai uang.
+- Koreksi post-processing untuk kasus nominal 1000x off.
+- Expense/income dapat negatif untuk koreksi, refund, return, dan reversal.
 
-**Date Inference** (WIB):
-- "kemarin" → yesterday
-- "tadi pagi" / "barusan" → today
-- "minggu lalu" → 7 days ago
+**Aturan waktu**:
 
-### 8.2 Budget Tracking
+- Jika prompt menyebut tanggal relatif, sistem infer tanggal berdasarkan WIB.
+- Jika prompt menyebut jam eksplisit, sistem simpan `time`.
+- Jika hanya ada kata seperti pagi/siang/sore/malam tanpa jam eksplisit, sistem memakai waktu submit/current Jakarta time.
+- Legacy/missing time dinormalisasi ke `00:00`.
 
-**Set Budget**: Ketik "Budget makan 500rb" → intent `budget_setting` → POST `/api/budget`
+### 10.2 Manual Transaction Entry
 
-**Fixed vs Variable**:
-- **Fixed** (kos, sewa, arisan, cicilan, kredit, kontrak, asuransi, bpjs, langganan): prorated = 100% budget
-- **Variable** (semua lainnya): prorated = `(dayOfMonth / totalDays) × budget`
+Pengguna dapat membuat transaksi via modal/form manual.
 
-**vs Budget Tab**:
-- Kolom: Kategori | Budget | Prorated | Realisasi | Sisa
-- Color: hijau (0–79%) → kuning (80–99%) → merah (≥100%)
-- Mini progress bar per row
-- **Unbudgeted section**: Tampilkan spending pada kategori tanpa budget
-- Footer: total pengeluaran vs total sisa
+**Jenis transaksi**:
 
-### 8.3 Transaction Management
+- Expense
+- Income
+- Transfer
 
-**CRUD**:
-- Create via NLP prompt
-- Read by period (hari ini, minggu ini, bulan ini, bulan lalu, custom date range)
-- Update inline di table (date, amount, category, note)
-- Delete dengan konfirmasi
+**Field utama**:
 
-**Pagination**: 10 / 20 / 50 rows per page, "X–Y dari Z" indicator
+- Tanggal
+- Waktu
+- Nominal
+- Kategori
+- Akun sumber/tujuan
+- Catatan
+- Fee transfer jika transfer
 
-**Max records returned**: 200 per period fetch
+### 10.3 Transaction Management
 
-### 8.4 Cashflow Tab
+Pengguna dapat:
 
-- Periode selector: today, week, month, custom
-- Metric cards: +Pemasukan, -Pengeluaran, =Net
-- Per-kategori breakdown dengan collapsible transaction list
+- Melihat transaksi berdasarkan periode.
+- Mengedit transaksi.
+- Menghapus transaksi.
+- Melihat maksimal 200 transaksi per fetch periode.
+- Melihat transaksi dengan pagination 10/20/50.
+- Melihat transaksi per akun.
+- Melihat transaksi dalam kalender.
 
-### 8.5 AI Report (laporan intent)
+### 10.4 Account & Wallet Management
 
-Process:
-1. Fetch transaksi period
-2. Aggregate by category
-3. Compare vs budgets
-4. Second Groq call → generate 3–5 kalimat Indonesia:
-   - Kategori terbesar
-   - Status budget (over/under)
-   - 1 saran actionable
+Pengguna dapat mengelola akun/dompet seperti cash, bank, e-wallet, tabungan, dan kartu kredit.
 
-Output di `ReportView` component:
-- Total amount (large, bold)
-- Per-kategori: dot color (hijau/kuning/merah) + nominal vs budget
-- AI summary dalam box (italic, muted)
+**Kemampuan utama**:
 
-### 8.6 Auth Flows
+- Tambah/edit akun.
+- Set tipe akun.
+- Set klasifikasi `asset` atau `liability`.
+- Nonaktifkan akun tanpa menghapus histori.
+- Koreksi saldo akun.
+- Lihat net worth.
+- Lihat riwayat saldo/net worth.
+- Kartu kredit memiliki tanggal settlement dan tanggal jatuh tempo.
 
-**Google OAuth**:
-1. Consent screen → Google returns access_token (drive + sheets scopes)
-2. Upsert user by googleId
-3. First login: buat Google Sheet "Catatuang - {name}", seed 16 default categories
-4. Session: userId, sheetsId, accessToken, isAdmin
+### 10.5 Account Types
 
-**Email/Password**:
-1. Register → hash bcrypt (salt=12) → send verification email (Resend, expiry 24h)
-2. Show "Cek email kamu!" screen + resend button (rate limit 5 menit)
-3. Click link → verify token → emailVerified = now → redirect `/auth?verified=true`
-4. Login: cek emailVerified, jika null → block + show resend screen
+Pengguna dapat mengelola tipe akun.
 
-**Password Change** (email users only): current password + new password + confirm → PATCH `/api/user/password`
+**Requirement**:
 
-### 8.7 Admin Panel
+- Tipe akun memiliki nama, icon, warna, sort order, status aktif.
+- Tipe akun memiliki classification: `asset` atau `liability`.
+- Tipe inactive tidak ditawarkan untuk akun baru, tetapi tetap bisa dipertahankan saat edit akun lama.
+- Perubahan tipe akun harus menjaga validasi kartu kredit.
 
-**Access**: isAdmin check server-side (email list di `/lib/is-admin.ts`)
+### 10.6 Budget Tracking
 
-**Stats cards** (6):
-1. Total Users
-2. Via Google
-3. Via Email
-4. New This Month + "X minggu ini"
-5. Total Transactions (DB only)
-6. Budget Aktif
+Budget ditetapkan per kategori dan bulan.
 
-**User Table**:
-- Columns: Nama, Email, Type (Google/Email badge), Verified status, Budget count, Signup date
-- Actions: Resend Verification (email+unverified), Reset Password (email only), Delete (not self)
-- Confirm dialog before destructive actions
-- Toast feedback
+**Kemampuan utama**:
+
+- Set/update budget via prompt atau halaman budget.
+- Lihat realisasi spending per kategori.
+- Lihat sisa budget.
+- Lihat kategori unbudgeted.
+- Rollover budget untuk kategori tertentu.
+- Budget memakai format bulan `YYYY-MM`.
+- Transfer principal dikecualikan dari expense budget.
+
+### 10.7 Cashflow
+
+Cashflow membantu pengguna memahami pemasukan, pengeluaran, dan net flow.
+
+**Requirement**:
+
+- Mendukung periode umum dan custom range.
+- Menampilkan income, expense, dan net.
+- Breakdown per kategori.
+- Menggunakan helper klasifikasi transaksi agar transfer tidak dihitung sebagai expense.
+
+### 10.8 Savings Goals
+
+Pengguna dapat membuat target tabungan.
+
+**Kemampuan utama**:
+
+- Buat goal dengan target amount dan optional deadline.
+- Progress goal dihitung dari `SavingsContribution`.
+- Prompt tabungan otomatis dialokasikan jika hanya ada satu goal.
+- Jika ada banyak goal dan prompt ambigu, UI menampilkan pilihan goal.
+- Transaksi `Tabungan` tanpa kontribusi eksplisit tidak otomatis menambah progress goal tertentu.
+
+### 10.9 Recurring Bills
+
+Pengguna dapat mengelola tagihan rutin.
+
+**Kemampuan utama**:
+
+- Buat tagihan dengan nama, nominal, due day, kategori, akun, reminder days, dan note.
+- Lihat daftar tagihan aktif.
+- Tandai tagihan sebagai paid.
+- Skip tagihan.
+- Summary tagihan.
+- Auto-record didukung pada model dan endpoint.
+- Cron endpoint tersedia untuk proses tagihan terjadwal.
+
+### 10.10 AI Analyst & Prediction
+
+BudgetIn menyediakan analisis AI yang tetap dikontrol angka server-side.
+
+**AI Analyst**:
+
+- Menghitung health score secara deterministik.
+- Menghitung over-budget dan kategori terbesar server-side.
+- AI hanya membuat narasi, anomali, dan rekomendasi berbasis data yang sudah disediakan.
+
+**Prediction**:
+
+- Memberikan prediksi/forecast spending berdasarkan data transaksi.
+- Harus mengecualikan transfer principal dari expense.
+
+### 10.11 Backup & Restore
+
+Pengguna dapat memindahkan data antar storage melalui backup JSON.
+
+**Kemampuan utama**:
+
+- Export backup JSON.
+- Preview backup sebelum restore.
+- Restore ke target storage yang sesuai.
+- Backup tidak menyimpan secrets.
+- Data yang dinormalisasi mencakup kategori, account types, akun, transaksi, budget, savings, kontribusi, tagihan, dan pembayaran tagihan.
+
+### 10.12 Google Setup & Migration Recovery
+
+Google OAuth user membutuhkan izin Google Sheets dan Drive File.
+
+**Requirement**:
+
+- Jika permission tidak lengkap, login diarahkan ke recovery/error flow.
+- Jika Sheet gagal dibuat atau belum lengkap, dashboard menampilkan recovery UI.
+- Jika ada data fallback DB dan target Sheets sudah sesuai, user dapat menandai migration complete.
+- Data fallback tidak boleh hilang otomatis.
+
+### 10.13 Account Data Controls
+
+Pengguna dapat mengelola data akunnya sendiri.
+
+**Aksi**:
+
+- Reset Data: hapus data finansial dan reseed default.
+- Reset Akun: reset koneksi/setup akun.
+- Delete Account: hapus akun user.
+
+**Safety**:
+
+- Aksi destruktif memakai confirmation phrase.
+- Akun demo publik dibatasi dari aksi destruktif.
+
+### 10.14 Admin Command Center
+
+Admin dapat memantau dan mengelola user.
+
+**KPI**:
+
+- Total user.
+- Verified/unverified email users.
+- Google/DB/google setup required split.
+- Active users 7/30 hari.
+- Jumlah akun, savings goals, recurring bills.
+
+**User management**:
+
+- Search user.
+- Filter provider, verified status, data mode.
+- Sort dan pagination.
+- Resend verification.
+- Reset password.
+- Delete user.
 
 ---
 
-## 9. Data Models
+## 11. API Surface
 
-### PostgreSQL (Prisma)
+### 11.1 Auth
 
-**users**
-```
-id, google_id, email, name, image, password (bcrypt),
-access_token, refresh_token, token_expiry, sheets_id,
-email_verified, verification_token, verification_token_expiry,
-created_at
-```
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET/POST | `/api/auth/[...nextauth]` | NextAuth handler |
+| POST | `/api/auth/register` | Register email/password |
+| POST | `/api/auth/resend-verification` | Kirim ulang verifikasi |
+| GET | `/api/auth/verify` | Verifikasi auth terkait |
+| GET | `/api/verify-email` | Verifikasi email token |
 
-**categories**
-```
-id, user_id (FK), name
-Unique: (user_id, name)
-```
+### 11.2 Transactions
 
-**budgets**
-```
-id, user_id (FK), category_id (FK), amount, month (YYYY-MM)
-Unique: (user_id, category_id, month)
-```
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | `/api/record` | Ambil transaksi by period/custom range |
+| POST | `/api/record` | Prompt NLP |
+| PATCH/DELETE | `/api/record/[recordId]` | Edit/hapus transaksi |
+| POST | `/api/transactions/manual` | Input manual |
+| GET | `/api/transactions/calendar` | Data kalender |
 
-**transactions** (email users only)
-```
-id, user_id (FK), date (YYYY-MM-DD), amount, category, note, type (expense|income), created_at
-```
+### 11.3 Accounts
 
-### Google Sheets (OAuth users)
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET/POST | `/api/accounts` | List/create akun |
+| PATCH/DELETE | `/api/accounts/[accountId]` | Update/nonaktif akun |
+| POST | `/api/accounts/[accountId]/adjust` | Koreksi saldo |
+| GET | `/api/accounts/[accountId]/transactions` | Riwayat akun |
+| GET | `/api/accounts/networth-history` | Riwayat net worth |
 
-**Sheet: Transaksi**
-```
-A: id (UUID)
-B: date (YYYY-MM-DD)
-C: amount (Number)
-D: category (String)
-E: note (String)
-F: created_at (ISO 8601)
-G: type (expense|income)
-```
+### 11.4 Account Types
 
-**Sheet: Budget**
-```
-A: category
-B: amount
-C: month (YYYY-MM)
-```
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET/POST | `/api/account-types` | List/create tipe akun |
+| PATCH/DELETE | `/api/account-types/[typeId]` | Update/nonaktif tipe akun |
+
+### 11.5 Budget & Categories
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET/POST | `/api/budget` | Ambil/set budget |
+| PATCH/DELETE | `/api/budget/[id]` | Update/delete budget |
+| POST | `/api/budget/rollover` | Rollover budget |
+| GET/POST | `/api/categories` | List/create kategori |
+| PATCH/DELETE | `/api/categories/[categoryId]` | Update/delete kategori |
+
+### 11.6 Savings
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET/POST | `/api/savings` | List/create savings goal |
+| PATCH/DELETE | `/api/savings/[goalId]` | Update/delete savings goal |
+
+### 11.7 Bills
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET/POST | `/api/bills` | List/create recurring bills |
+| PATCH/DELETE | `/api/bills/[id]` | Update/delete bill |
+| POST | `/api/bills/[id]/pay` | Tandai paid |
+| POST | `/api/bills/[id]/skip` | Skip periode |
+| GET | `/api/bills/summary` | Ringkasan tagihan |
+| GET/POST | `/api/cron/bills` | Proses terjadwal tagihan |
+
+### 11.8 Insights
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | `/api/cashflow` | Data cashflow |
+| GET | `/api/analyst` | AI analyst |
+| GET | `/api/prediction` | Forecast/prediction |
+
+### 11.9 Backup, User, Admin
+
+| Method | Endpoint | Fungsi |
+|---|---|---|
+| GET | `/api/backup/export` | Export backup JSON |
+| POST | `/api/backup/preview` | Preview restore |
+| POST | `/api/backup/restore` | Restore backup |
+| GET/PUT | `/api/user` | Profile user |
+| PATCH | `/api/user/password` | Ganti password |
+| POST | `/api/user/reset-data` | Reset data finansial |
+| POST | `/api/user/reset-account` | Reset akun/setup |
+| DELETE | `/api/user/account` | Delete account |
+| GET | `/api/google-setup-migration` | Preview migration Google setup |
+| POST | `/api/google-setup-migration` | Execute/mark complete migration |
+| GET | `/api/admin/stats` | KPI admin |
+| GET | `/api/admin/users` | List/search/filter users |
+| DELETE/POST | `/api/admin/users/[userId]` | User actions |
 
 ---
 
-## 10. Default Categories
+## 12. Data Model
 
-**Expense** (8): Makan, Transport, Tagihan, Kesehatan, Hiburan, Belanja, Pendidikan, Lain-Lain  
-**Income** (8): Gaji, Freelance, Bonus, Investasi, Bisnis, THR, Dividen, Lainnya
+### 12.1 PostgreSQL Models
 
-Auto-seeded saat user baru (email register atau first Google login).
+| Model | Fungsi |
+|---|---|
+| `User` | Identitas auth, token Google, `sheetsId`, email verification, migration marker |
+| `Category` | Kategori expense/income, savings flag, rollover flag |
+| `Budget` | Budget per kategori per bulan |
+| `Transaction` | Ledger transaksi DB, termasuk time, account, transferId, initial balance |
+| `AccountType` | Tipe akun per user dengan klasifikasi asset/liability |
+| `Account` | Akun/dompet user dan metadata kartu kredit |
+| `SavingsGoal` | Target tabungan |
+| `SavingsContribution` | Kontribusi goal yang terhubung transaksi |
+| `RecurringBill` | Definisi tagihan rutin |
+| `BillPayment` | Pembayaran tagihan per bulan |
+
+### 12.2 Google Sheets Schema
+
+Google Sheets digunakan untuk storage pengguna OAuth. Sheet utama mencakup:
+
+- `Transaksi`
+- `Budget`
+- `Akun`
+
+Schema transaksi Google Sheets bersifat append-only compatible. Kolom waktu ditambahkan tanpa mengubah posisi kolom lama.
 
 ---
 
-## 11. Email Templates (via Resend)
+## 13. Default Data
 
-| Email | Subject | Content |
-|-------|---------|---------|
-| Verification | "Verifikasi Email BudgetIn" | Link + 24h expiry |
-| Password Reset | "Password BudgetIn Kamu Direset" | Temp password (12-char random) + login link |
+### 13.1 Default Categories
 
-Sender: `noreply@amuharr.com`
+Kategori default di-seed saat onboarding atau reset data.
+
+**Expense examples**:
+
+- Makan
+- Transport
+- Tagihan
+- Kesehatan
+- Hiburan
+- Belanja
+- Pendidikan
+- Lain-Lain
+- Biaya Admin
+- Tabungan
+
+**Income examples**:
+
+- Gaji
+- Freelance
+- Bonus
+- Investasi
+- Bisnis
+- THR
+- Dividen
+- Lainnya
+
+### 13.2 Default Account Types
+
+Default account types mendukung klasifikasi asset/liability, seperti kas, bank, e-wallet, tabungan, dan kartu kredit.
 
 ---
 
-## 12. Environment Variables
+## 14. Integrasi Eksternal
+
+| Service | Fungsi |
+|---|---|
+| Groq | Intent classification, laporan, analyst, prediction |
+| Google OAuth | Login dan akses scopes |
+| Google Sheets API | Storage transaksi/akun/budget untuk Google users |
+| PostgreSQL | Storage relational utama |
+| Resend | Verification dan reset password email |
+| Cloudflare Turnstile | CAPTCHA credentials flow |
+| Vercel | Hosting, analytics, speed insights |
+
+---
+
+## 15. Security, Privacy, and Reliability
+
+### 15.1 Security Requirements
+
+- Password disimpan sebagai bcrypt hash.
+- Email/password login wajib email verified.
+- Credentials login dilindungi Turnstile, kecuali demo account.
+- Google login wajib scopes `spreadsheets` dan `drive.file`.
+- Admin guard dilakukan server-side.
+- Backup JSON tidak boleh menyimpan secrets/token.
+- Aksi destruktif user memakai konfirmasi eksplisit.
+
+### 15.2 Privacy Requirements
+
+- Data finansial user hanya boleh diakses oleh session user terkait.
+- Google Sheets milik user digunakan hanya sesuai scope yang diberikan.
+- Admin tooling harus minim akses data sensitif dan fokus operasional.
+
+### 15.3 Reliability Requirements
+
+- Google token expired/revoked harus menghasilkan pesan re-auth yang jelas.
+- Dual storage path harus menjaga perilaku transaksi konsisten.
+- AI tidak boleh menjadi sumber kebenaran angka finansial.
+- Aggregation wajib memakai helper klasifikasi transaksi untuk menghindari salah hitung transfer.
+
+---
+
+## 16. Environment Variables
 
 ```env
-# Database
-DATABASE_URL=postgresql://...pgbouncer   # runtime (pooled)
-DIRECT_URL=postgresql://...direct        # migrations
+DATABASE_URL=
+DIRECT_URL=
 
-# NextAuth
-NEXTAUTH_URL=https://budget.amuharr.com
+NEXTAUTH_URL=
 NEXTAUTH_SECRET=
+NEXT_PUBLIC_APP_URL=
 
-# Google OAuth
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# Groq (AI)
 GROQ_API_KEY_1=
-GROQ_API_KEY_2=   # optional, rotation fallback
-GROQ_API_KEY=     # legacy fallback
+GROQ_API_KEY_2=
+GROQ_API_KEY=
 
-# Email
 RESEND_API_KEY=
 
-# App
-NEXTAUTH_URL=https://budget.amuharr.com
-NEXT_PUBLIC_APP_URL=https://budget.amuharr.com
+TURNSTILE_SECRET_KEY=
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 ```
 
 ---
 
-## 13. File Structure
+## 17. Feature Status
 
-```
-/app
-  /api
-    /auth/[...nextauth]   NextAuth handler
-    /auth/register        Email registration
-    /verify-email         Token verification
-    /record               Transactions CRUD + NLP
-    /budget               Budget CRUD
-    /categories           Category list
-    /user                 Profile + password
-    /admin                Stats + user management
-  /dashboard              Main protected page
-  /auth                   Login/register page
-  /admin                  Admin panel
-  /privacy, /terms        Legal pages
-  layout.tsx              Root layout + fonts + Providers
-  page.tsx                Landing page
-
-/components
-  /ui                     shadcn base components
-  Navbar.tsx              Header + user menu dropdown
-  DashboardTabs.tsx       Arus Kas + vs Budget tabs
-  TransactionCard.tsx     Inline-editable row
-  ReportView.tsx          AI report display
-  ChangePasswordModal.tsx Password change modal
-  BudgetStatus.tsx        Budget summary card
-  Providers.tsx           SessionProvider wrapper
-  ThemeToggle.tsx         Dark/light toggle
-
-/lib
-  auth.ts                 NextAuth config (providers, callbacks)
-  prisma.ts               Prisma client singleton
-  is-admin.ts             Admin email check
-  email.ts                sendVerificationEmail, sendPasswordResetEmail
-  utils.ts                cn(), general helpers
-
-/utils
-  groq.ts                 Intent classification + key rotation
-  sheets.ts               Google Sheets CRUD
-  db-transactions.ts      PostgreSQL CRUD
-  seed-categories.ts      Default category seeding
-  token.ts                Google token refresh
-
-/prisma
-  schema.prisma           Data model
-
-/types
-  next-auth.d.ts          Session/JWT type augmentation
-```
+| Feature | Status |
+|---|---|
+| Landing/public pages | Done |
+| SEO metadata, robots, sitemap, OG/Twitter images | Done |
+| Google OAuth + Sheets onboarding | Done |
+| Email/password auth + verification | Done |
+| Cloudflare Turnstile credentials flow | Done |
+| NLP transaction input | Done |
+| Bulk transaction prompt | Done |
+| Manual transaction form | Done |
+| Transaction time support | Done |
+| Negative expense/income corrections | Done |
+| Transfer antar akun | Done |
+| Transfer fee | Done |
+| Account/dompet management | Done |
+| Account type management | Done |
+| Kartu kredit billing metadata | Done |
+| Budget tracking | Done |
+| Budget rollover | Done |
+| Cashflow page | Done |
+| Calendar transaction view | Done |
+| Savings goals + contribution allocation | Done |
+| Recurring bills | Done |
+| AI analyst | Done |
+| Prediction/forecast | Done |
+| Backup/restore JSON | Done |
+| Google setup migration/recovery | Done |
+| Account reset/delete controls | Done |
+| Admin command center | Done |
+| Production changelog page | Done |
+| Native mobile app | Not planned |
+| Bank auto-sync | Not planned |
+| Multi-user shared wallet | Not planned |
+| User-configurable timezone | Backlog |
+| Multi-language UI | Backlog |
 
 ---
 
-## 14. Feature Status
+## 18. Known Constraints & Risks
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Google OAuth + Sheets | ✓ | Auto-create sheet on first login |
-| Email/Password Auth | ✓ | Full verification flow |
-| Email verification | ✓ | Resend + rate limit |
-| NLP transaction input | ✓ | Groq LLaMA 3.1 8B |
-| Budget tracking | ✓ | Fixed/variable prorated logic |
-| Income tracking | ✓ | Separate intent |
-| Cashflow dashboard | ✓ | By period + category drilldown |
-| vs Budget tab | ✓ | Prorated + color coding + unbudgeted section |
-| AI report generation | ✓ | Indonesian, actionable |
-| Transaction CRUD | ✓ | Inline edit + pagination (10/20/50) |
-| Category management | ✓ | Auto-seed 16 defaults |
-| Admin panel | ✓ | Stats + user management |
-| Dark mode | ✓ | TailwindCSS |
-| Responsive design | ✓ | Mobile-first |
-| Password change | ✓ | Email users only |
-| Admin reset password | ✓ | Via email |
-| Success notification auto-dismiss | ✓ | 4 detik |
-| Unbudgeted expenses section | ✓ | Budget tab, below main table |
-| User-configurable timezone | ✗ | Jakarta hardcoded |
-| Transaction export | ✗ | Google Sheets serves as export |
-| Recurring transactions | ✗ | Manual only |
-| Multi-language | ✗ | Indonesian only |
-| Mobile app | ✗ | Web only (responsive) |
-| DB migration from Sheets | ✗ | Not planned |
+- **Timezone**: aplikasi menggunakan Asia/Jakarta.
+- **Dual storage**: DB dan Sheets path harus dijaga konsisten.
+- **Transfer representation**: DB dan Sheets memodelkan transfer secara berbeda.
+- **Google dependency**: user Sheets bergantung pada token, permission, dan API Google.
+- **AI dependency**: prompt/analyst/prediction bergantung pada Groq.
+- **No bank sync**: semua data transaksi berasal dari input user, Google Sheets, atau restore backup.
+- **Admin allowlist**: akses admin berbasis daftar email di kode.
+- **Lint caveat**: script `npm run lint` saat ini bermasalah dengan Next CLI; validasi utama memakai `npx tsc --noEmit` dan focused Jest.
 
 ---
 
-## 15. Known Constraints
+## 19. Validation Strategy
 
-1. **Timezone hardcoded** Asia/Jakarta — multi-timezone user tidak support
-2. **Dual storage**: Email user tidak bisa aktifkan Sheets; Google user tidak bisa migrasi ke DB-only
-3. **AI dependency**: Groq API required — tidak ada offline/fallback NLP
-4. **Google Sheets limit**: Max 200 records per fetch (sheets API performance)
-5. **Admin**: Hardcoded email list, tidak ada UI admin management
-6. **Prorated fixed keywords**: Hardcoded list — tidak configurable per user
-7. **Rate limit**: Hanya email resend (5 min) — tidak ada rate limit di `/api/record`
+### 19.1 Automated Validation
+
+- Typecheck: `npx tsc --noEmit`
+- Unit/focused tests: `npx jest <test files> --runInBand`
+- Property tests untuk accounting/amount/savings bila menyentuh logic terkait.
+
+### 19.2 High-Risk Regression Areas
+
+- Transfer exclusion dari expense.
+- Signed amount pada refund/koreksi.
+- Savings contribution allocation.
+- Account balance/net worth.
+- Google Sheets compatibility.
+- Transaction date/time sorting.
+- Account type active/inactive edge cases.
+- Google setup migration flow.
+
+---
+
+## 20. Roadmap Kandidat
+
+### Near-Term
+
+- Tambah test coverage untuk bills dan backup/restore.
+- Perbaiki script lint agar kompatibel dengan Next.js saat ini.
+- Tambahkan rate limiting untuk endpoint AI/prompt.
+- Perjelas UX recovery Google token expired.
+
+### Mid-Term
+
+- User-configurable timezone.
+- Export PDF/CSV dari dashboard/analyst.
+- Budget templates.
+- Custom recurring transaction automation yang lebih fleksibel.
+- Alert budget mendekati limit.
+
+### Long-Term
+
+- Multi-language support.
+- Shared household budget.
+- Bank/e-wallet statement import.
+- Native mobile atau PWA offline-first.
+
+---
+
+## 21. Referensi Dokumen Internal
+
+- `SYSTEM_MAP.md` — peta modul, data flow, dan risiko teknis.
+- `lib/changelog.ts` — daftar production release.
+- `prisma/schema.prisma` — model data aktual.
+- `Budgetinv2.md` — catatan/ide produk versi sebelumnya jika masih relevan.

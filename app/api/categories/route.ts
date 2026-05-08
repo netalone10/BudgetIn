@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { seedDefaultCategories, ALL_DEFAULT_CATEGORIES } from "@/utils/seed-categories";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { resolveBudgetType } from "@/utils/budget-type";
 
 // GET /api/categories — semua kategori milik user + default jika belum ada
 export async function GET() {
@@ -14,7 +15,7 @@ export async function GET() {
 
   let categories = await prisma.category.findMany({
     where: { userId: session.userId },
-    select: { id: true, name: true, type: true, isSavings: true },
+    select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
     orderBy: { name: "asc" },
   });
 
@@ -26,12 +27,17 @@ export async function GET() {
     // Refetch setelah seed
     categories = await prisma.category.findMany({
       where: { userId: session.userId },
-      select: { id: true, name: true, type: true, isSavings: true },
+      select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
       orderBy: { name: "asc" },
     });
   }
 
-  return NextResponse.json({ categories });
+  return NextResponse.json({
+    categories: categories.map((category) => ({
+      ...category,
+      budgetType: resolveBudgetType(category.name, category.budgetType),
+    })),
+  });
 }
 
 // POST /api/categories — create new category
@@ -69,6 +75,7 @@ export async function POST(req: Request) {
         userId: session.userId,
         name: name.trim(),
         type,
+        budgetType: type === "expense" ? resolveBudgetType(name.trim()) : "variable",
       },
     });
 

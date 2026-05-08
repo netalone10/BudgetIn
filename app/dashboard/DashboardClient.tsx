@@ -112,22 +112,32 @@ function SectionCard({
   title,
   description,
   action,
+  className,
+  dense = false,
   children,
 }: {
   eyebrow: string;
   title: string;
   description?: string;
   action?: ReactNode;
+  className?: string;
+  dense?: boolean;
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm sm:rounded-[30px] md:p-6">
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <section
+      className={cn(
+        "rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm sm:rounded-[30px]",
+        dense ? "md:p-4" : "md:p-6",
+        className
+      )}
+    >
+      <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", dense ? "mb-3" : "mb-5")}>
         <div className="min-w-0 space-y-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             {eyebrow}
           </p>
-          <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
+          <h3 className={cn("font-semibold tracking-tight text-foreground", dense ? "text-base sm:text-lg" : "text-lg sm:text-xl")}>
             {title}
           </h3>
           {description && (
@@ -187,6 +197,18 @@ const PROMPT_EXAMPLES = [
   "obat dan vitamin 125rb dari BCA",
   "belanja hadiah 220rb pakai kartu kredit",
   "minta insight pengeluaran makan saya",
+  "sarapan 18rb, kopi 22rb, parkir 5rb cash",
+  "refund tiket 175rb masuk ke BCA",
+  "bayar kos 1.8jt dari Mandiri",
+  "top up e-wallet 300rb dari BNI",
+  "tarik tunai 500rb dari BCA ke cash",
+  "bayar pajak motor 425rb dari BCA",
+  "beli pulsa 50rb pakai GoPay",
+  "donasi 100rb dari Jago",
+  "dividen 240rb masuk ke Mandiri Sekuritas",
+  "berapa uang keluar hari ini",
+  "buat ringkasan tabungan bulan ini",
+  "cek budget transport minggu ini",
 ];
 
 interface DashboardClientProps {
@@ -218,7 +240,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [accountVersion, setAccountVersion] = useState(0);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
-  const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 6));
+  const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
 
   const visibleTransactions = useMemo(
     () => transactions.slice((page - 1) * pageSize, page * pageSize),
@@ -493,16 +515,18 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   function randomizePromptExamples() {
     const shuffled = [...PROMPT_EXAMPLES]
       .sort(() => Math.random() - 0.5)
-      .slice(0, 6);
+      .slice(0, 8);
     setPromptExamples(shuffled);
   }
 
   return (
-    <div className="space-y-5 md:space-y-6">
+    <div className="flex flex-col gap-5 md:gap-6">
       <SectionCard
         eyebrow="Overview"
         title="Kontrol harian"
-        description="Lihat ritme pengeluaran hari ini, status data terakhir, dan lompat langsung ke aksi yang kamu butuhkan."
+        description="Ringkasan singkat setelah area input, supaya fokus utama tetap ke pencatatan transaksi."
+        className="order-2"
+        dense
         action={
           <Button
             type="button"
@@ -510,36 +534,36 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             size="sm"
             onClick={handleManualRefresh}
             disabled={dataLoading}
-            className="w-full rounded-full sm:w-auto"
+            className="w-full rounded-lg sm:w-auto"
           >
             <RefreshCw className={cn("h-4 w-4", dataLoading && "animate-spin")} />
             Refresh data
           </Button>
         }
       >
-        <div className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr] lg:items-stretch">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="min-w-0 rounded-[22px] border border-border/70 bg-background p-4 sm:rounded-[26px] sm:p-5">
-              <div className="mb-2 flex items-center gap-2">
+        <div className="grid gap-3 lg:grid-cols-[0.72fr_1.28fr] lg:items-stretch">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="min-w-0 rounded-[18px] border border-border/70 bg-background p-3">
+              <div className="mb-1.5 flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-destructive" />
                 <span className="text-[13px] font-medium text-muted-foreground">
                   Keluar hari ini
                 </span>
               </div>
-              <p className="break-words text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              <p className="break-words text-lg font-semibold tracking-tight text-foreground sm:text-xl">
                 {todayStats.expense !== 0 ? (
                   formatSignedIDR(todayStats.expense)
                 ) : (
-                  <span className="text-lg text-muted-foreground">Belum ada</span>
+                  <span className="text-base text-muted-foreground">Belum ada</span>
                 )}
               </p>
-              <p className="mt-2 text-[12px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 {todayStats.count > 0 ? `${todayStats.count} transaksi tercatat` : "Masih sepi untuk hari ini"}
               </p>
             </div>
 
-            <div className="min-w-0 rounded-[22px] border border-border/70 bg-background p-4 sm:rounded-[26px] sm:p-5">
-              <div className="mb-2 flex items-center gap-2">
+            <div className="min-w-0 rounded-[18px] border border-border/70 bg-background p-3">
+              <div className="mb-1.5 flex items-center gap-2">
                 <TrendingUp
                   className={cn(
                     "h-4 w-4",
@@ -552,7 +576,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </div>
               <p
                 className={cn(
-                  "break-words text-xl font-semibold tracking-tight sm:text-2xl",
+                  "break-words text-lg font-semibold tracking-tight sm:text-xl",
                   todayStats.income >= 0
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-destructive"
@@ -561,10 +585,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 {todayStats.income !== 0 ? (
                   formatSignedIDR(todayStats.income, "+")
                 ) : (
-                  <span className="text-lg text-muted-foreground">Belum ada</span>
+                  <span className="text-base text-muted-foreground">Belum ada</span>
                 )}
               </p>
-              <p className="mt-2 text-[12px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 {todayStats.incomeCount > 0
                   ? `${todayStats.incomeCount} transaksi pemasukan tercatat`
                   : "Belum ada pemasukan hari ini"}
@@ -572,7 +596,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
           </div>
 
-          <NetWorthSummaryCard refreshTrigger={accountVersion} />
+          <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
         </div>
       </SectionCard>
 
@@ -580,10 +604,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         eyebrow="Input"
         title="Tulis seperti ngobrol"
         description="Area ini didesain untuk jadi pintu masuk tercepat: satu kotak untuk transaksi, budget, transfer, dan laporan."
+        className="order-1"
       >
-        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
           <div className="space-y-4">
-            <div className="rounded-[28px] border border-border/70 bg-background p-4">
+            <div className="rounded-[22px] border border-border/70 bg-background p-4">
               <div className="mb-3 flex items-center gap-2">
                 <MicVocal className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">
@@ -599,15 +624,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    rows={4}
-                    className="resize-none rounded-[24px] border-border/70 bg-card pr-12 pt-4 shadow-none focus-visible:ring-primary"
+                    rows={5}
+                    className="min-h-[132px] resize-y rounded-[18px] border-border/70 bg-card pr-14 pt-4 shadow-none focus-visible:ring-primary"
                     disabled={loading}
                   />
                   <Button
                     type="submit"
                     size="icon"
                     disabled={!prompt.trim() || loading}
-                    className="absolute bottom-3 right-3 h-10 w-10 rounded-full shadow-md transition-transform hover:-translate-y-px"
+                    className="absolute bottom-3 right-3 h-11 w-11 rounded-lg shadow-md transition-transform hover:-translate-y-px"
                   >
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -623,7 +648,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     <button
                       type="button"
                       onClick={randomizePromptExamples}
-                      className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       title="Acak saran prompt"
                     >
                       <Dices className="h-3 w-3" />
@@ -642,7 +667,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                         setPrompt(example);
                         textareaRef.current?.focus();
                       }}
-                      className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {example}
                     </button>
@@ -829,6 +854,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         eyebrow="Analytics"
         title="Cashflow dan budget"
         description="Area baca utama untuk melihat distribusi transaksi, progres budget, dan pola pengeluaran."
+        className="order-3"
       >
         <DashboardTabs
           transactions={transactions}
@@ -846,6 +872,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         eyebrow="Ledger"
         title="Riwayat transaksi"
         description="Riwayat lengkap dengan table yang lebih bersih dan kontrol paging yang lebih mudah dipindai."
+        className="order-4"
       >
         {txLoading ? (
           <div className="rounded-[28px] border border-border/70 bg-background overflow-hidden">
@@ -868,25 +895,25 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         ) : (
           <div className="overflow-hidden rounded-[24px] border border-border/70 bg-background sm:rounded-[28px]">
             <div className="sm:overflow-x-auto sm:[scrollbar-width:thin]">
-              <table className="w-full sm:min-w-[560px]">
+              <table className="w-full sm:min-w-[760px] sm:table-fixed">
                 <thead className="hidden sm:table-header-group">
                   <tr className="border-b border-border bg-muted/35">
-                    <th className="label-mono w-16 px-5 py-3 text-left text-muted-foreground">
+                    <th className="label-mono w-[88px] px-5 py-3 text-left text-muted-foreground">
                       Tgl
                     </th>
-                    <th className="label-mono py-3 pr-4 text-left text-muted-foreground">
+                    <th className="label-mono w-[28%] py-3 pr-4 text-left text-muted-foreground">
                       Deskripsi
                     </th>
-                    <th className="label-mono py-3 pr-4 text-left text-muted-foreground">
+                    <th className="label-mono w-[18%] py-3 pr-4 text-left text-muted-foreground">
                       Kategori
                     </th>
-                    <th className="label-mono hidden py-3 pr-4 text-left text-muted-foreground sm:table-cell">
+                    <th className="label-mono hidden w-[18%] py-3 pr-4 text-left text-muted-foreground sm:table-cell">
                       Akun
                     </th>
-                    <th className="label-mono py-3 pr-4 text-right text-muted-foreground">
+                    <th className="label-mono w-[156px] py-3 pr-4 text-right text-muted-foreground">
                       Jumlah
                     </th>
-                    <th className="w-16 py-3 pr-4" />
+                    <th className="w-[72px] py-3 pr-4" />
                   </tr>
                 </thead>
                 <tbody>

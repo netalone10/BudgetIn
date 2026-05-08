@@ -4,14 +4,15 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import {
   LayoutGrid,
   Menu,
   X,
   LogOut,
-  PanelLeftClose,
-  PanelLeft,
   ListPlus,
+  Pin,
+  PinOff,
   ShieldCheck,
   KeyRound,
   Sparkles,
@@ -46,6 +47,21 @@ type NavItem = {
   badge?: string;
 };
 
+const sidebarVariants = {
+  expanded: { width: "15rem" },
+  collapsed: { width: "3.6rem" },
+};
+
+const labelVariants = {
+  expanded: { opacity: 1, x: 0, transition: { duration: 0.18 } },
+  collapsed: { opacity: 0, x: -8, transition: { duration: 0.12 } },
+};
+
+const navListVariants = {
+  expanded: { transition: { staggerChildren: 0.025, delayChildren: 0.03 } },
+  collapsed: { transition: { staggerChildren: 0 } },
+};
+
 function NavSection({
   title,
   items,
@@ -62,11 +78,14 @@ function NavSection({
   return (
     <div className="space-y-2">
       {!isCollapsed && (
-        <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/80">
+        <motion.p
+          variants={labelVariants}
+          className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55"
+        >
           {title}
-        </p>
+        </motion.p>
       )}
-      <div className="space-y-1">
+      <motion.div variants={navListVariants} className="space-y-1">
         {items.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -74,46 +93,49 @@ function NavSection({
           const Icon = item.icon;
 
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                "group relative flex items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 transition-all duration-200",
-                isActive
-                  ? "bg-foreground text-background shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
-                  : "text-muted-foreground hover:bg-card hover:text-foreground",
-                isCollapsed && "justify-center px-0"
-              )}
-              title={isCollapsed ? item.name : undefined}
-            >
-              {isActive && (
-                <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-primary" />
-              )}
-              <Icon className="h-5 w-5 shrink-0" />
-              {!isCollapsed && (
-                <>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
+            <motion.div key={item.name} variants={labelVariants}>
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                className={cn(
+                  "group relative flex h-9 items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isActive &&
+                    "bg-sidebar-primary text-sidebar-primary-foreground shadow-[var(--shadow-offset-x)_var(--shadow-offset-y)_var(--shadow-blur)_var(--shadow-spread)_var(--shadow-color)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
+                  isCollapsed && "justify-center px-0"
+                )}
+                title={isCollapsed ? item.name : undefined}
+                aria-label={isCollapsed ? item.name : undefined}
+              >
+                {isActive && (
+                  <span className="absolute inset-y-1 left-0 w-0.5 rounded-r-full bg-sidebar-ring" />
+                )}
+                <Icon className="h-4 w-4 shrink-0" />
+                {!isCollapsed && (
+                  <motion.span
+                    variants={labelVariants}
+                    className="min-w-0 flex-1 truncate text-sm font-medium"
+                  >
                     {item.name}
-                  </span>
-                  {item.badge && (
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                        isActive
-                          ? "bg-background/14 text-background"
-                          : "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </>
-              )}
-            </Link>
+                  </motion.span>
+                )}
+                {!isCollapsed && item.badge && (
+                  <motion.span
+                    variants={labelVariants}
+                    className={cn(
+                      "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                      isActive
+                        ? "bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground"
+                        : "bg-sidebar-accent text-sidebar-accent-foreground"
+                    )}
+                  >
+                    {item.badge}
+                  </motion.span>
+                )}
+              </Link>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -122,7 +144,8 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isPinned, setIsPinned] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const [showManageCategories, setShowManageCategories] = useState(false);
@@ -186,54 +209,62 @@ export default function Sidebar() {
   }
 
   const DesktopSidebar = () => (
-    <div
-      className={cn(
-        "hidden md:flex md:h-screen md:sticky md:top-0 transition-all duration-300 ease-in-out border-r border-border/70 bg-muted/30 backdrop-blur-xl",
-        isCollapsed ? "w-[92px]" : "w-[320px]"
-      )}
+    <motion.aside
+      className="hidden md:sticky md:top-0 md:z-40 md:flex md:h-screen shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
+      initial={isCollapsed ? "collapsed" : "expanded"}
+      animate={isCollapsed ? "collapsed" : "expanded"}
+      variants={sidebarVariants}
+      transition={{ type: "tween", ease: "easeOut", duration: 0.2 }}
+      onMouseEnter={() => {
+        if (!isPinned) setIsCollapsed(false);
+      }}
+      onMouseLeave={() => {
+        if (!isPinned) setIsCollapsed(true);
+      }}
+      onFocusCapture={() => setIsCollapsed(false)}
     >
-      <div className="flex w-full flex-col p-4">
-        <div className="mb-4 rounded-[28px] border border-border/70 bg-card/90 p-3 shadow-sm">
-          <div className={cn("flex items-start gap-3", isCollapsed && "justify-center")}>
-            {!isCollapsed && (
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                <Layers3 className="h-5 w-5" />
-              </div>
+      <motion.div className="flex h-full w-full flex-col p-2" variants={navListVariants}>
+        <div className="mb-3 flex h-[54px] shrink-0 items-center border-b border-sidebar-border pb-2">
+          <div
+            className={cn(
+              "flex w-full items-center gap-2 rounded-md px-2 py-1.5",
+              isCollapsed && "justify-center px-0"
             )}
-            <div className={cn("min-w-0 flex-1", isCollapsed && "hidden")}>
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Workspace
-                  </p>
-                  <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">
-                    BudgetIn
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsCollapsed(!isCollapsed)}
-                  className="rounded-xl border border-border bg-background p-2 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </button>
-              </div>
+          >
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <Layers3 className="h-4 w-4" />
             </div>
-
-            {isCollapsed && (
-              <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="rounded-2xl border border-border bg-background p-2 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label="Expand sidebar"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
+            {!isCollapsed && (
+              <motion.div variants={labelVariants} className="min-w-0">
+                <p className="truncate text-sm font-semibold leading-tight">BudgetIn</p>
+                <p className="truncate text-[11px] text-sidebar-foreground/55">
+                  {isPinned ? "Pinned" : "Workspace"}
+                </p>
+              </motion.div>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                setIsPinned((current) => {
+                  const next = !current;
+                  setIsCollapsed(!next);
+                  return next;
+                });
+              }}
+              className={cn(
+                "ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isPinned && "bg-sidebar-accent text-sidebar-accent-foreground",
+                isCollapsed && "hidden"
+              )}
+              aria-label={isPinned ? "Lepas pin sidebar" : "Pin sidebar tetap terbuka"}
+              title={isPinned ? "Lepas pin sidebar" : "Pin sidebar tetap terbuka"}
+            >
+              {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+            </button>
           </div>
-
         </div>
 
-        <div className="flex-1 space-y-5 overflow-y-auto px-1 pb-3">
+        <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-3 [scrollbar-width:thin]">
           <NavSection
             title="Utama"
             items={primaryItems}
@@ -249,148 +280,144 @@ export default function Sidebar() {
 
           <div className="space-y-2">
             {!isCollapsed && (
-              <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/80">
+              <motion.p
+                variants={labelVariants}
+                className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55"
+              >
                 Tools
-              </p>
+              </motion.p>
             )}
 
-            <button
+            <motion.button
+              variants={labelVariants}
               onClick={() => setShowManageCategories(true)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-muted-foreground transition-colors hover:bg-card hover:text-foreground",
+                "flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 isCollapsed && "justify-center px-0"
               )}
               title={isCollapsed ? "Kelola Kategori" : undefined}
+              aria-label={isCollapsed ? "Kelola Kategori" : undefined}
             >
-              <ListPlus className="h-5 w-5 shrink-0" />
+              <ListPlus className="h-4 w-4 shrink-0" />
               {!isCollapsed && (
-                <span className="text-sm font-medium">Kelola Kategori</span>
+                <motion.span variants={labelVariants} className="truncate text-sm font-medium">
+                  Kelola Kategori
+                </motion.span>
               )}
-            </button>
+            </motion.button>
 
             <NavSection
-              title="hidden"
+              title="Pengaturan"
               items={utilityItems}
               pathname={pathname}
               isCollapsed={isCollapsed}
             />
 
             {isEmailUser && (
-              <button
+              <motion.button
+                variants={labelVariants}
                 onClick={() => setShowChangePassword(true)}
                 className={cn(
-                  "flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-muted-foreground transition-colors hover:bg-card hover:text-foreground",
+                  "flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   isCollapsed && "justify-center px-0"
                 )}
                 title={isCollapsed ? "Ganti Password" : undefined}
+                aria-label={isCollapsed ? "Ganti Password" : undefined}
               >
-                <KeyRound className="h-5 w-5 shrink-0" />
+                <KeyRound className="h-4 w-4 shrink-0" />
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">Ganti Password</span>
+                  <motion.span variants={labelVariants} className="truncate text-sm font-medium">
+                    Ganti Password
+                  </motion.span>
                 )}
-              </button>
+              </motion.button>
             )}
           </div>
         </div>
 
-        <div className="space-y-3 pt-3">
+        <div className="space-y-2 border-t border-sidebar-border pt-2">
           <div
             className={cn(
-              "rounded-[24px] border border-border/70 bg-card/90 p-3 shadow-sm",
-              isCollapsed && "px-2"
+              "flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/35 p-1",
+              isCollapsed ? "justify-center" : "justify-between"
             )}
           >
-            <div
-              className={cn(
-                "flex items-center gap-2",
-                isCollapsed ? "justify-center" : "justify-between"
-              )}
-            >
-              <ThemeToggle compact={isCollapsed} />
+            <ThemeToggle compact={isCollapsed} />
+            {!isCollapsed && (
               <Button
                 variant="ghost"
-                size={isCollapsed ? "icon-xs" : "icon-sm"}
+                size="icon-sm"
                 onClick={() => setShowCalculator(true)}
                 aria-label="Buka calculator"
                 title="Calculator"
-                className="rounded-xl"
+                className="rounded-md shadow-none"
               >
-                <Calculator className={isCollapsed ? "h-3 w-3" : "h-4 w-4"} />
+                <Calculator className="h-4 w-4" />
               </Button>
-            </div>
-
-            {!isCollapsed && (
-              <div className="mt-3 rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">
-                Quick utility untuk hitung cepat tanpa pindah halaman.
-              </div>
             )}
           </div>
 
           {session?.user && (
             <div
               className={cn(
-                "rounded-[24px] border border-border/70 bg-card/90 p-3 shadow-sm",
-                isCollapsed ? "flex justify-center" : ""
+                "rounded-md border border-sidebar-border bg-sidebar-accent/35 p-2",
+                isCollapsed && "flex justify-center p-1"
               )}
             >
-              <div
-                className={cn(
-                  "flex items-center",
-                  isCollapsed ? "justify-center" : "gap-3"
-                )}
-              >
-                <Avatar className="h-10 w-10 shrink-0 border border-border">
+              <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2")}>
+                <Avatar className="h-8 w-8 shrink-0 border border-sidebar-border">
                   <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} />
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
 
                 {!isCollapsed && (
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">
+                  <motion.div variants={labelVariants} className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-sidebar-foreground">
                       {session.user.name}
                     </p>
-                    <p className="truncate text-[12px] text-muted-foreground">
+                    <p className="truncate text-[11px] text-sidebar-foreground/60">
                       {session.user.email}
                     </p>
-                  </div>
+                  </motion.div>
                 )}
 
                 {!isCollapsed && (
-                  <button
+                  <motion.button
+                    variants={labelVariants}
                     onClick={() => signOut({ callbackUrl: "/" })}
-                    className="rounded-xl border border-border bg-background p-2 text-muted-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive"
+                    className="rounded-md border border-sidebar-border bg-sidebar p-1.5 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                     title="Logout"
                   >
                     <LogOut className="h-4 w-4" />
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.aside>
   );
 
   const MobileTopbarAndNav = () => (
     <div className="md:hidden">
-      <div className="fixed left-0 right-0 top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-xl">
+      <div className="fixed left-0 right-0 top-0 z-40 border-b border-sidebar-border bg-sidebar/90 text-sidebar-foreground backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
               <Layers3 className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55">
                 Dashboard
               </p>
-              <p className="text-[15px] font-semibold text-foreground">BudgetIn</p>
+              <p className="text-[15px] font-semibold text-sidebar-foreground">BudgetIn</p>
             </div>
           </div>
 
           <button
             onClick={() => setIsMobileOpen(true)}
-            className="rounded-xl border border-border bg-card p-2 text-foreground transition-colors hover:bg-muted"
+            className="rounded-lg border border-sidebar-border bg-sidebar-accent/50 p-2 text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             aria-label="Buka menu"
           >
             <Menu className="h-5 w-5" />
@@ -412,29 +439,31 @@ export default function Sidebar() {
           onClick={() => setIsMobileOpen(false)}
         />
 
-        <div
+        <motion.div
           className={cn(
-            "relative h-full w-[86vw] max-w-[360px] border-r border-border bg-background p-4 transition-transform duration-200 ease-in-out",
-            isMobileOpen ? "translate-x-0" : "-translate-x-full"
+            "relative h-full w-[86vw] max-w-[360px] border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground"
           )}
+          initial={false}
+          animate={{ x: isMobileOpen ? 0 : "-100%" }}
+          transition={{ type: "tween", ease: "easeOut", duration: 0.2 }}
         >
           <div className="flex h-full flex-col">
-            <div className="rounded-[28px] border border-border/70 bg-card p-4 shadow-sm">
+            <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/55">
                     Workspace
                   </p>
-                  <p className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+                  <p className="mt-1 text-xl font-semibold tracking-tight text-sidebar-foreground">
                     BudgetIn
                   </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
+                  <p className="mt-2 text-sm text-sidebar-foreground/65">
                     Semua alur keuanganmu dalam satu navigasi yang lebih rapi.
                   </p>
                 </div>
                 <button
                   onClick={() => setIsMobileOpen(false)}
-                  className="rounded-xl border border-border bg-background p-2 text-muted-foreground transition-colors hover:text-foreground"
+                  className="rounded-lg border border-sidebar-border bg-sidebar p-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   aria-label="Tutup menu"
                 >
                   <X className="h-5 w-5" />
@@ -459,7 +488,7 @@ export default function Sidebar() {
               />
 
               <div className="space-y-2">
-                <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/80">
+                <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55">
                   Tools
                 </p>
                 <button
@@ -467,9 +496,9 @@ export default function Sidebar() {
                     setIsMobileOpen(false);
                     setShowManageCategories(true);
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                  className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
-                  <ListPlus className="h-5 w-5 shrink-0" />
+                  <ListPlus className="h-4 w-4 shrink-0" />
                   <span className="text-sm font-medium">Kelola Kategori</span>
                 </button>
 
@@ -485,16 +514,16 @@ export default function Sidebar() {
                       href={item.href}
                       onClick={() => setIsMobileOpen(false)}
                       className={cn(
-                        "flex items-center gap-3 rounded-2xl px-3 py-3 transition-colors",
+                        "flex h-9 items-center gap-2 rounded-md px-2 transition-colors",
                         isActive
-                          ? "bg-foreground text-background"
-                          : "text-muted-foreground hover:bg-card hover:text-foreground"
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                     >
-                      <Icon className="h-5 w-5 shrink-0" />
+                      <Icon className="h-4 w-4 shrink-0" />
                       <span className="flex-1 text-sm font-medium">{item.name}</span>
                       {item.badge && (
-                        <span className="rounded-full bg-background/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                        <span className="rounded-md bg-sidebar-primary-foreground/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
                           {item.badge}
                         </span>
                       )}
@@ -508,17 +537,17 @@ export default function Sidebar() {
                       setIsMobileOpen(false);
                       setShowChangePassword(true);
                     }}
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                    className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   >
-                    <KeyRound className="h-5 w-5 shrink-0" />
+                    <KeyRound className="h-4 w-4 shrink-0" />
                     <span className="text-sm font-medium">Ganti Password</span>
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="space-y-3 border-t border-border/70 pt-4">
-              <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-3 py-2">
+            <div className="space-y-3 border-t border-sidebar-border pt-4">
+              <div className="flex items-center justify-between rounded-md border border-sidebar-border bg-sidebar-accent/35 px-3 py-2">
                 <ThemeToggle />
                 <Button
                   variant="ghost"
@@ -529,36 +558,36 @@ export default function Sidebar() {
                   }}
                   aria-label="Buka calculator"
                   title="Calculator"
-                  className="rounded-xl"
+                  className="rounded-md shadow-none"
                 >
                   <Calculator className="h-4 w-4" />
                 </Button>
               </div>
 
               {session?.user && (
-                <div className="rounded-[24px] border border-border bg-card p-3 shadow-sm">
+                <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-3">
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 shrink-0 border border-border">
+                    <Avatar className="h-10 w-10 shrink-0 border border-sidebar-border">
                       <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} />
                       <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">
+                      <p className="truncate text-sm font-semibold text-sidebar-foreground">
                         {session.user.name}
                       </p>
-                      <p className="truncate text-[12px] text-muted-foreground">
+                      <p className="truncate text-[12px] text-sidebar-foreground/60">
                         {session.user.email}
                       </p>
                     </div>
                     <button
                       onClick={() => signOut({ callbackUrl: "/" })}
-                      className="rounded-xl border border-border bg-background p-2 text-muted-foreground transition-colors hover:border-destructive/30 hover:bg-destructive/5 hover:text-destructive"
+                      className="rounded-md border border-sidebar-border bg-sidebar p-2 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                       title="Logout"
                     >
                       <LogOut className="h-4 w-4" />
                     </button>
                   </div>
-                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="mt-3 flex items-center gap-2 text-xs text-sidebar-foreground/60">
                     <ArrowUpRight className="h-3.5 w-3.5" />
                     <span>Siap lanjut mengelola cashflow hari ini.</span>
                   </div>
@@ -566,7 +595,7 @@ export default function Sidebar() {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

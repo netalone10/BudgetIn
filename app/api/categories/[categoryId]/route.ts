@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { type BudgetType } from "@/utils/budget-type";
 
 type Params = { params: Promise<{ categoryId: string }> };
 
@@ -20,11 +21,15 @@ export async function PATCH(
 
     const { categoryId } = await params;
     const body = await req.json();
-    const { name, isSavings, rolloverEnabled } = body;
+    const { name, isSavings, rolloverEnabled, budgetType } = body;
 
     // Validate: at least one field must be provided
-    if (name === undefined && isSavings === undefined && rolloverEnabled === undefined) {
+    if (name === undefined && isSavings === undefined && rolloverEnabled === undefined && budgetType === undefined) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+    }
+
+    if (budgetType !== undefined && budgetType !== "fixed" && budgetType !== "variable") {
+      return NextResponse.json({ error: "budgetType tidak valid" }, { status: 400 });
     }
 
     // Name validation only if name is provided
@@ -52,10 +57,11 @@ export async function PATCH(
     }
 
     // Build update data
-    const updateData: { name?: string; isSavings?: boolean; rolloverEnabled?: boolean } = {};
+    const updateData: { name?: string; isSavings?: boolean; rolloverEnabled?: boolean; budgetType?: BudgetType } = {};
     if (name !== undefined) updateData.name = name.trim();
     if (isSavings !== undefined) updateData.isSavings = isSavings;
     if (rolloverEnabled !== undefined) updateData.rolloverEnabled = rolloverEnabled;
+    if (budgetType !== undefined) updateData.budgetType = budgetType;
 
     const category = await prisma.category.update({
       where: { 

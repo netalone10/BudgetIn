@@ -7,6 +7,7 @@ import { getTransactionsDB } from "@/utils/db-transactions";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 const TIMEZONE = "Asia/Jakarta";
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -28,6 +29,7 @@ export interface BudgetItem {
   spent: number;
   rollover: number;
   rolloverEnabled: boolean;
+  budgetType: BudgetType;
 }
 
 export interface UnbudgetedItem {
@@ -40,6 +42,7 @@ export interface BudgetCategoryOption {
   name: string;
   type: string;
   isSavings: boolean;
+  budgetType: BudgetType;
 }
 
 type RawTxn = {
@@ -53,8 +56,8 @@ type RawTxn = {
 type BudgetWithCategory = {
   id: string;
   categoryId: string;
-  amount: { toNumber(): number };
-  category: { name: string; rolloverEnabled: boolean };
+  amount: number | { toNumber(): number };
+  category: { name: string; rolloverEnabled: boolean; budgetType?: string | null };
 };
 
 export function getCurrentMonth() {
@@ -105,11 +108,15 @@ export async function fetchBudgetMonthData(
 
 export async function fetchBudgetCategories(userId: string): Promise<BudgetCategoryOption[]> {
   try {
-    return await prisma.category.findMany({
+    const categories = await prisma.category.findMany({
       where: { userId, type: "expense" },
-      select: { id: true, name: true, type: true, isSavings: true },
+      select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
       orderBy: { name: "asc" },
     });
+    return categories.map((category) => ({
+      ...category,
+      budgetType: resolveBudgetType(category.name, category.budgetType),
+    }));
   } catch (error) {
     console.error("Failed to fetch budget categories:", error);
     return [];
@@ -218,6 +225,7 @@ function computeBudgetData(
         spent: spentByCategory[b.category.name] ?? 0,
         rollover,
         rolloverEnabled,
+        budgetType: resolveBudgetType(b.category.name, b.category.budgetType),
       };
     }),
     unbudgeted,

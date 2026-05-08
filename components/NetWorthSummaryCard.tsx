@@ -25,9 +25,10 @@ function formatIDR(value: string | number): string {
 
 interface Props {
   refreshTrigger?: number;
+  compact?: boolean;
 }
 
-export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
+export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = false }: Props) {
   const [data, setData] = useState<NetWorthData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,22 +55,31 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
 
   if (loading) {
     return (
-      <div className="rounded-[26px] border border-border/70 bg-background p-6 animate-pulse" style={{ minHeight: 192 }}>
+      <div
+        className={cn(
+          "animate-pulse rounded-[26px] border border-border/70 bg-background",
+          compact ? "p-4" : "p-6"
+        )}
+        style={{ minHeight: compact ? 128 : 192 }}
+      >
         <div className="mb-2 h-3.5 w-32 rounded bg-muted" />
-        <div className="mb-4 h-10 w-64 rounded bg-muted" />
-        <div className="h-20 rounded-[20px] bg-muted" />
+        <div className={cn("mb-4 rounded bg-muted", compact ? "h-7 w-44" : "h-10 w-64")} />
+        <div className={cn("rounded-[20px] bg-muted", compact ? "h-12" : "h-20")} />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="rounded-[26px] border border-border/70 bg-background p-6" style={{ minHeight: 192 }}>
+      <div
+        className={cn("rounded-[26px] border border-border/70 bg-background", compact ? "p-4" : "p-6")}
+        style={{ minHeight: compact ? 128 : 192 }}
+      >
         <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
           <Wallet className="h-3.5 w-3.5" />
           <span>Kekayaan Bersih</span>
         </div>
-        <div className="text-4xl font-bold tracking-tight text-muted-foreground">-</div>
+        <div className={cn("font-bold tracking-tight text-muted-foreground", compact ? "text-2xl" : "text-4xl")}>-</div>
         <div className="mt-3 text-xs text-muted-foreground">Data belum tersedia</div>
       </div>
     );
@@ -84,8 +94,13 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
 
   return (
     <Link href="/dashboard/accounts" className="block group">
-      <div className="flex h-full flex-col rounded-[26px] border border-border/70 bg-background p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35">
-        <div className="mb-3 flex items-center justify-between">
+      <div
+        className={cn(
+          "flex h-full flex-col rounded-[26px] border border-border/70 bg-background transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35",
+          compact ? "p-4" : "p-6"
+        )}
+      >
+        <div className={cn("flex items-center justify-between", compact ? "mb-2" : "mb-3")}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Wallet className="h-3.5 w-3.5" />
             <span>Kekayaan Bersih</span>
@@ -95,16 +110,18 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
           </span>
         </div>
 
-        <div className="mb-5 flex items-center gap-2">
+        <div className={cn("flex items-center gap-2", compact ? "mb-3" : "mb-5")}>
           <TrendIcon
             className={cn(
-              "h-6 w-6 shrink-0",
+              "shrink-0",
+              compact ? "h-4 w-4" : "h-6 w-6",
               isPositive ? "text-emerald-500" : "text-red-500"
             )}
           />
           <span
             className={cn(
-              "text-[40px] font-bold leading-none tracking-tight md:text-[46px]",
+              "break-words font-bold leading-none tracking-tight",
+              compact ? "text-2xl md:text-[28px]" : "text-[40px] md:text-[46px]",
               isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
             )}
           >
@@ -112,18 +129,18 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0 }: Props) {
           </span>
         </div>
 
-        <div className="mt-auto grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
-          <div className="rounded-2xl bg-muted/50 px-4 py-3">
+        <div className={cn("mt-auto grid text-xs text-muted-foreground sm:grid-cols-3", compact ? "gap-2" : "gap-3")}>
+          <div className={cn("rounded-2xl bg-muted/50", compact ? "px-3 py-2" : "px-4 py-3")}>
             <span className="font-medium text-emerald-600 dark:text-emerald-400">Aset</span>
-            <p className="mt-1 text-base font-semibold text-foreground">{formatIDR(assets)}</p>
+            <p className={cn("mt-1 font-semibold text-foreground", compact ? "text-sm" : "text-base")}>{formatIDR(assets)}</p>
           </div>
-          <div className="rounded-2xl bg-muted/50 px-4 py-3">
+          <div className={cn("rounded-2xl bg-muted/50", compact ? "px-3 py-2" : "px-4 py-3")}>
             <span className="font-medium text-red-500">Liabilitas</span>
-            <p className="mt-1 text-base font-semibold text-foreground">{formatIDR(liabilities)}</p>
+            <p className={cn("mt-1 font-semibold text-foreground", compact ? "text-sm" : "text-base")}>{formatIDR(liabilities)}</p>
           </div>
-          <div className="rounded-2xl bg-primary/10 px-4 py-3">
+          <div className={cn("rounded-2xl bg-primary/10", compact ? "px-3 py-2" : "px-4 py-3")}>
             <span className="font-medium text-foreground">Net asset</span>
-            <p className="mt-1 text-base font-semibold text-foreground">{formatIDR(netWorth)}</p>
+            <p className={cn("mt-1 font-semibold text-foreground", compact ? "text-sm" : "text-base")}>{formatIDR(netWorth)}</p>
           </div>
         </div>
       </div>

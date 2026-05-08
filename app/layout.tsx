@@ -1,20 +1,28 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Fira_Code, Lora, Poppins } from "next/font/google";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const inter = Inter({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const firaCode = Fira_Code({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-fira-code",
+  display: "swap",
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -76,7 +84,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={cn(inter.variable, geistMono.variable)}
+      className={cn(poppins.variable, firaCode.variable, lora.variable)}
     >
       <body className="antialiased">
         <Providers>

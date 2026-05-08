@@ -45,6 +45,7 @@ model Category {
   type      String  @default("expense") // "expense" | "income"
   isSavings       Boolean @default(false) @map("is_savings")
   rolloverEnabled Boolean @default(false) @map("rollover_enabled")
+  budgetType      String  @default("variable") @map("budget_type")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   budgets Budget[]

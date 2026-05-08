@@ -24,6 +24,14 @@ interface ManualTransactionFormProps {
 type TabType = "expense" | "income" | "transfer";
 type CategoryOption = string | { name: string; type?: string | null };
 
+const FORM_CONTROL_CLS = "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus:ring-3 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50";
+const FORM_SELECT_CLS = `${FORM_CONTROL_CLS} min-w-0 truncate`;
+const FORM_LABEL_CLS = "mb-1.5 block text-[12px] font-semibold text-muted-foreground";
+const FORM_FIELD_CLS = "min-w-0";
+const FORM_MESSAGE_CLS = "rounded-lg border px-3 py-2 text-xs leading-relaxed";
+const FORM_ERROR_CLS = "border-destructive/30 bg-destructive/10 text-destructive";
+const FORM_SUCCESS_CLS = "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-400";
+
 function currentLocalTime() {
   return new Date().toTimeString().slice(0, 5);
 }
@@ -140,9 +148,9 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data.error || "Gagal menyimpan transaksi.");
+        setError(data?.error || "Gagal menyimpan transaksi.");
         return;
       }
       setSuccess(tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.");
@@ -163,9 +171,9 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
 
   if (activeAccounts.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border bg-muted/30 p-5 text-center">
-        <p className="text-sm text-muted-foreground mb-3">Belum ada akun. Buat akun dulu untuk mulai input manual.</p>
-        <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/accounts")}>
+      <div className="rounded-[18px] border border-dashed border-border/70 bg-background/80 px-4 py-6 text-center">
+        <p className="mb-3 text-sm text-muted-foreground">Belum ada akun. Buat akun dulu untuk mulai input manual.</p>
+        <Button variant="outline" size="sm" className="rounded-lg" onClick={() => router.push("/dashboard/accounts")}>
           Buat Akun Pertama →
         </Button>
       </div>
@@ -179,30 +187,43 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   ];
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="overflow-hidden rounded-[22px] border border-border/70 bg-background">
       {/* Tab bar */}
-      <div className="flex border-b border-border">
+      <div className="border-b border-border/70 bg-muted/25 p-2">
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-background p-1">
         {tabs.map(({ key, label, icon: Icon, color }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors",
+              "flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all",
               tab === key
-                ? "bg-muted/60 border-b-2 border-primary text-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <Icon className={cn("h-4 w-4", tab === key ? color : "")} />
+            <Icon className={cn("h-4 w-4 shrink-0", tab === key ? "text-primary-foreground" : color)} />
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-5">
+        <div aria-live="polite" className="space-y-2">
+          {error && (
+            <p className={cn(FORM_MESSAGE_CLS, FORM_ERROR_CLS)}>{error}</p>
+          )}
+          {success && (
+            <p className={cn(FORM_MESSAGE_CLS, FORM_SUCCESS_CLS)}>
+              ✓ {success}
+            </p>
+          )}
+        </div>
+
         {/* Amount */}
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Nominal (Rp)</label>
+        <div className={FORM_FIELD_CLS}>
+          <label className={FORM_LABEL_CLS}>Nominal (Rp)</label>
           <input
             type="number"
             min={tab === "transfer" ? "1" : "-1000000000"}
@@ -212,21 +233,21 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0"
             required
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className={cn(FORM_CONTROL_CLS, "text-base font-semibold tabular-nums")}
           />
         </div>
 
         {/* Account(s) */}
         {tab === "transfer" ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Dari Akun</label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className={FORM_FIELD_CLS}>
+              <label className={FORM_LABEL_CLS}>Dari Akun</label>
               <select
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 required
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className={FORM_SELECT_CLS}
               >
                 <option value="">Pilih akun</option>
                 {Object.entries(accountsByType).map(([typeName, accs]) => (
@@ -240,15 +261,15 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <div className={FORM_FIELD_CLS}>
+              <label className={FORM_LABEL_CLS}>
                 {isLiabilityTarget ? "Bayar ke" : "Ke Akun"}
               </label>
               <select
                 value={toAccountId}
                 onChange={(e) => setToAccountId(e.target.value)}
                 required
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className={FORM_SELECT_CLS}
               >
                 <option value="">Pilih akun</option>
                 {Object.entries(accountsByType).map(([typeName, accs]) => (
@@ -263,8 +284,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
               </select>
             </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Fee (opsional)</label>
+            <div className={FORM_FIELD_CLS}>
+              <label className={FORM_LABEL_CLS}>Fee (opsional)</label>
               <input
                 type="number"
                 min="0"
@@ -273,21 +294,21 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
                 value={fee}
                 onChange={(e) => setFee(e.target.value)}
                 placeholder="0"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                className={cn(FORM_CONTROL_CLS, "tabular-nums")}
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">Jika diisi, fee dicatat sebagai pengeluaran kategori Biaya Admin dari akun asal.</p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Jika diisi, fee dicatat sebagai pengeluaran kategori Biaya Admin dari akun asal.</p>
             </div>
           </div>
         ) : (
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <div className={FORM_FIELD_CLS}>
+            <label className={FORM_LABEL_CLS}>
               {tab === "income" ? "Masuk ke Akun" : "Dari Akun"}
             </label>
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className={FORM_SELECT_CLS}
             >
               <option value="">Pilih akun</option>
               {Object.entries(accountsByType).map(([typeName, accs]) => (
@@ -305,13 +326,13 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
 
         {/* Category (not for transfer) */}
         {tab !== "transfer" && (
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Kategori</label>
+          <div className={FORM_FIELD_CLS}>
+            <label className={FORM_LABEL_CLS}>Kategori</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className={FORM_SELECT_CLS}
             >
               <option value="">Pilih kategori</option>
               {currentCategories.map((c) => (
@@ -323,18 +344,18 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
 
         {/* Date + Note */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Tanggal</label>
+          <div className={FORM_FIELD_CLS}>
+            <label className={FORM_LABEL_CLS}>Tanggal</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className={FORM_CONTROL_CLS}
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Jam</label>
+          <div className={FORM_FIELD_CLS}>
+            <label className={FORM_LABEL_CLS}>Jam</label>
             <input
               type="time"
               value={time}
@@ -343,45 +364,36 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
                 setTimeManuallyEdited(true);
               }}
               required
-              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className={FORM_CONTROL_CLS}
             />
           </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
+        <div className={FORM_FIELD_CLS}>
+          <label className={FORM_LABEL_CLS}>Catatan (opsional)</label>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Tulis catatan..."
-            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            className={FORM_CONTROL_CLS}
           />
         </div>
 
         {/* Warnings */}
         {currencyMismatch && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg px-3 py-2">
+          <p className={cn(FORM_MESSAGE_CLS, "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-400")}>
             ⚠️ Transfer beda mata uang ({fromAcc?.currency} → {toAcc?.currency}) belum didukung. Catat sebagai pengeluaran dan pemasukan terpisah.
           </p>
         )}
         {isLiabilityTarget && !currencyMismatch && (
-          <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 rounded-lg px-3 py-2">
+          <p className={cn(FORM_MESSAGE_CLS, "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-400")}>
             💡 Pembayaran cicilan/hutang: uang keluar dari akun asal, saldo hutang berkurang. Net worth tidak berubah.
           </p>
         )}
-        {error && (
-          <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">{error}</p>
-        )}
-        {success && (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg px-3 py-2">
-            ✓ {success}
-          </p>
-        )}
-
         <Button
           type="submit"
           disabled={loading || !!currencyMismatch}
-          className="w-full"
+          className="h-10 w-full rounded-lg"
           size="sm"
         >
           {loading ? (
