@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
+const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true } as const;
 
 export interface DashboardInitialData {
   transactions: Transaction[];
@@ -141,12 +142,12 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
     fetchCategories(userId),
     prisma.budget.findMany({
       where: { userId, month: currentMonth },
-      include: { category: true },
+      include: { category: { select: BUDGET_CATEGORY_SELECT } },
       orderBy: { category: { name: "asc" } },
     }).catch(() => []),
     prisma.budget.findMany({
       where: { userId, month: lastMonth },
-      include: { category: true },
+      include: { category: { select: BUDGET_CATEGORY_SELECT } },
     }).catch(() => []),
   ]);
 

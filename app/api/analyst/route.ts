@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         : getTransactionsDB(session.userId, period),
       prisma.budget.findMany({
         where: { userId: session.userId, month: currentMonth },
-        include: { category: true },
+        include: { category: { select: { name: true } } },
       }),
     ]);
 

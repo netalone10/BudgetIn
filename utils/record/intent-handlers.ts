@@ -504,7 +504,7 @@ export async function handleLaporan(parsed: ParsedIntent, ctx: RecordContext): P
 
     const budgets = await prisma.budget.findMany({
       where: { userId, month: currentMonth },
-      include: { category: true },
+      include: { category: { select: { name: true } } },
     });
 
     const spentByCategory: Record<string, number> = {};

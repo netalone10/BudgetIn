@@ -11,6 +11,7 @@ import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 const TIMEZONE = "Asia/Jakarta";
 const MONTH_RE = /^\d{4}-\d{2}$/;
+const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true } as const;
 
 export interface BudgetMonthData {
   month: string;
@@ -60,6 +61,14 @@ type BudgetWithCategory = {
   category: { name: string; rolloverEnabled: boolean; budgetType?: string | null };
 };
 
+type CategoryOptionRow = {
+  id: string;
+  name: string;
+  type: string;
+  isSavings: boolean;
+  budgetType?: string | null;
+};
+
 export function getCurrentMonth() {
   return format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
 }
@@ -90,12 +99,12 @@ export async function fetchBudgetMonthData(
       fetchRawTransactions(userId, user?.sheetsId ?? null, previousMonth),
       prisma.budget.findMany({
         where: { userId, month },
-        include: { category: true },
+        include: { category: { select: BUDGET_CATEGORY_SELECT } },
         orderBy: { category: { name: "asc" } },
       }),
       prisma.budget.findMany({
         where: { userId, month: previousMonth },
-        include: { category: true },
+        include: { category: { select: BUDGET_CATEGORY_SELECT } },
       }),
     ]);
 
@@ -108,11 +117,27 @@ export async function fetchBudgetMonthData(
 
 export async function fetchBudgetCategories(userId: string): Promise<BudgetCategoryOption[]> {
   try {
-    const categories = await prisma.category.findMany({
-      where: { userId, type: "expense" },
-      select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
-      orderBy: { name: "asc" },
-    });
+    let categories: CategoryOptionRow[];
+    try {
+      categories = await prisma.category.findMany({
+        where: { userId, type: "expense" },
+        select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
+        orderBy: { name: "asc" },
+      });
+    } catch (error) {
+      const maybeError = error as { code?: string; message?: string; meta?: { column?: string } };
+      if (
+        maybeError.code !== "P2022" ||
+        (maybeError.meta?.column !== "budget_type" && !maybeError.message?.includes("budget_type"))
+      ) {
+        throw error;
+      }
+      categories = await prisma.category.findMany({
+        where: { userId, type: "expense" },
+        select: { id: true, name: true, type: true, isSavings: true },
+        orderBy: { name: "asc" },
+      });
+    }
     return categories.map((category) => ({
       ...category,
       budgetType: resolveBudgetType(category.name, category.budgetType),

@@ -332,7 +332,7 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
     prisma.accountType.findMany({ where: { userId } }),
     prisma.account.findMany({ where: { userId }, include: { accountType: true } }),
     prisma.transaction.findMany({ where: { userId }, orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
-    prisma.budget.findMany({ where: { userId }, include: { category: true } }),
+    prisma.budget.findMany({ where: { userId }, include: { category: { select: { name: true } } } }),
   ]);
 
   const names = new Map(accounts.map((account) => [account.id, account.name]));
