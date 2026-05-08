@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.8.1",
+    date: "2026-05-08",
+    title: "Kontrol tipe budget kategori",
+    description: "Rilis patch untuk menambahkan kontrol Fixed/Variable pada kategori budget dan memakai setting tersebut di semua tampilan budget.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.8.1`,
+    changes: [
+      "Menambahkan field budget type per kategori agar Fixed atau Variable bisa diatur dari Tools Kelola Kategori.",
+      "Mengganti penentuan Fixed/Variable dari keyword hardcoded menjadi setting kategori yang tersimpan di database, dengan fallback untuk data lama.",
+      "Memakai tipe budget kategori pada halaman Budget, dashboard Vs Budget, dan Status Budget untuk kalkulasi prorata dan progress bar.",
+      "Menyertakan tipe budget kategori dalam API, data dashboard, backup/restore, dan sinkronisasi schema Prisma.",
+    ],
+  },
+  {
     version: "v1.8.0",
     date: "2026-05-08",
     title: "Pembaruan visual dashboard dan progress budget",

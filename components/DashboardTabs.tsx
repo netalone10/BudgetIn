@@ -29,27 +29,9 @@ import { isSavingsTransaction } from "@/lib/savings-utils";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { toZonedTime } from "date-fns-tz";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 const TIMEZONE = "Asia/Jakarta";
-
-const FIXED_KEYWORDS = [
-  "kos",
-  "sewa",
-  "arisan",
-  "cicilan",
-  "kredit",
-  "kontrak",
-  "asuransi",
-  "bpjs",
-  "langganan",
-  "mortgage",
-  "rent",
-];
-
-function isFixed(category: string): boolean {
-  const lower = category.toLowerCase();
-  return FIXED_KEYWORDS.some((kw) => lower.includes(kw));
-}
 
 function fmt(n: number) {
   return new Intl.NumberFormat("id-ID").format(Math.abs(n));
@@ -104,6 +86,7 @@ interface BudgetItem {
   spent: number;
   rollover: number;
   rolloverEnabled: boolean;
+  budgetType: BudgetType;
 }
 
 export interface BudgetData {
@@ -113,6 +96,10 @@ export interface BudgetData {
   netCashflow: number;
   budgets: BudgetItem[];
   unbudgeted?: { category: string; spent: number }[];
+}
+
+function isFixed(item: BudgetItem): boolean {
+  return resolveBudgetType(item.category, item.budgetType) === "fixed";
 }
 
 type Period = "today" | "week" | "month" | "custom";
@@ -478,7 +465,7 @@ export default function DashboardTabs({
             <>
               <div className="space-y-3 sm:hidden">
                 {budgetData.budgets.map((item) => {
-                  const fixed = isFixed(item.category);
+                  const fixed = isFixed(item);
                   const effectiveBudget = item.budget + (item.rollover ?? 0);
                   const prorated = fixed
                     ? effectiveBudget
@@ -660,7 +647,7 @@ export default function DashboardTabs({
                     </thead>
                     <tbody>
                       {budgetData.budgets.map((item) => {
-                        const fixed = isFixed(item.category);
+                        const fixed = isFixed(item);
                         const effectiveBudget = item.budget + (item.rollover ?? 0);
                         const prorated = fixed
                           ? effectiveBudget
@@ -846,7 +833,7 @@ export default function DashboardTabs({
                       {(() => {
                         const totalBudget = budgetData.budgets.reduce((s, b) => s + b.budget + (b.rollover ?? 0), 0);
                         const totalProrated = budgetData.budgets.reduce((s, b) => {
-                          const fixed = isFixed(b.category);
+                          const fixed = isFixed(b);
                           const eff = b.budget + (b.rollover ?? 0);
                           return s + (fixed ? eff : Math.round((eff * dayOfMonth) / totalDays));
                         }, 0);

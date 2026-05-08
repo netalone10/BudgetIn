@@ -14,6 +14,7 @@ import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { compareTransactionDateTimeDesc, normalizeTransactionTime } from "@/lib/transaction-time";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
@@ -65,6 +66,7 @@ interface BudgetItem {
   spent: number;
   rollover: number;
   rolloverEnabled: boolean;
+  budgetType: BudgetType;
 }
 
 interface UnbudgetedItem {
@@ -263,7 +265,7 @@ type BudgetWithCategory = {
   id: string;
   categoryId: string;
   amount: number;
-  category: { name: string; rolloverEnabled: boolean };
+  category: { name: string; rolloverEnabled: boolean; budgetType?: string | null };
 };
 
 function computeBudgetData(
@@ -324,6 +326,7 @@ function computeBudgetData(
           spent: spentByCategory[b.category.name] ?? 0,
           rollover,
           rolloverEnabled,
+          budgetType: resolveBudgetType(b.category.name, b.category.budgetType),
         };
       }),
       unbudgeted,

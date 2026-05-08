@@ -29,6 +29,8 @@ const FORM_SELECT_CLS = `${FORM_CONTROL_CLS} min-w-0 truncate`;
 const FORM_LABEL_CLS = "mb-1.5 block text-[12px] font-semibold text-muted-foreground";
 const FORM_FIELD_CLS = "min-w-0";
 const FORM_MESSAGE_CLS = "rounded-lg border px-3 py-2 text-xs leading-relaxed";
+const FORM_ERROR_CLS = "border-destructive/30 bg-destructive/10 text-destructive";
+const FORM_SUCCESS_CLS = "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-400";
 
 function currentLocalTime() {
   return new Date().toTimeString().slice(0, 5);
@@ -146,9 +148,9 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data.error || "Gagal menyimpan transaksi.");
+        setError(data?.error || "Gagal menyimpan transaksi.");
         return;
       }
       setSuccess(tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.");
@@ -208,6 +210,17 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-5">
+        <div aria-live="polite" className="space-y-2">
+          {error && (
+            <p className={cn(FORM_MESSAGE_CLS, FORM_ERROR_CLS)}>{error}</p>
+          )}
+          {success && (
+            <p className={cn(FORM_MESSAGE_CLS, FORM_SUCCESS_CLS)}>
+              ✓ {success}
+            </p>
+          )}
+        </div>
+
         {/* Amount */}
         <div className={FORM_FIELD_CLS}>
           <label className={FORM_LABEL_CLS}>Nominal (Rp)</label>
@@ -377,15 +390,6 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             💡 Pembayaran cicilan/hutang: uang keluar dari akun asal, saldo hutang berkurang. Net worth tidak berubah.
           </p>
         )}
-        {error && (
-          <p className={cn(FORM_MESSAGE_CLS, "border-destructive/30 bg-destructive/10 text-destructive")}>{error}</p>
-        )}
-        {success && (
-          <p className={cn(FORM_MESSAGE_CLS, "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-400")}>
-            ✓ {success}
-          </p>
-        )}
-
         <Button
           type="submit"
           disabled={loading || !!currencyMismatch}

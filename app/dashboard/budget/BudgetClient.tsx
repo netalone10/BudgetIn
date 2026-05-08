@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 import { cn } from "@/lib/utils";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 interface BudgetItem {
   id: string;
@@ -16,6 +17,7 @@ interface BudgetItem {
   spent: number;
   rollover: number;
   rolloverEnabled: boolean;
+  budgetType: BudgetType;
 }
 
 interface BudgetData {
@@ -32,6 +34,7 @@ interface BudgetCategoryOption {
   name: string;
   type: string;
   isSavings: boolean;
+  budgetType: BudgetType;
 }
 
 interface Props {
@@ -39,15 +42,10 @@ interface Props {
   categories: BudgetCategoryOption[];
 }
 
-const FIXED_KEYWORDS = [
-  "kos", "sewa", "arisan", "cicilan", "kredit", "kontrak",
-  "asuransi", "bpjs", "langganan", "mortgage", "rent",
-];
 const MONTH_RE = /^\d{4}-\d{2}$/;
 
-function isFixed(category: string): boolean {
-  const lower = category.toLowerCase();
-  return FIXED_KEYWORDS.some((kw) => lower.includes(kw));
+function isFixed(item: BudgetItem): boolean {
+  return resolveBudgetType(item.category, item.budgetType) === "fixed";
 }
 
 function fmt(n: number) {
@@ -275,7 +273,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
   const totals = useMemo(() => {
     return data.budgets.reduce(
       (acc, item) => {
-        const fixed = isFixed(item.category);
+        const fixed = isFixed(item);
         const effectiveBudget = item.budget + (item.rollover ?? 0);
         const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
         acc.budget += effectiveBudget;
@@ -395,7 +393,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
           <>
           <div className="divide-y md:hidden">
             {data.budgets.map((item) => {
-              const fixed = isFixed(item.category);
+              const fixed = isFixed(item);
               const effectiveBudget = item.budget + (item.rollover ?? 0);
               const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
               const remaining = prorated - item.spent;
@@ -570,7 +568,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
               </thead>
               <tbody>
                 {data.budgets.map((item) => {
-                  const fixed = isFixed(item.category);
+                  const fixed = isFixed(item);
                   const effectiveBudget = item.budget + (item.rollover ?? 0);
                   const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
                   const remaining = prorated - item.spent;

@@ -14,6 +14,7 @@ import {
 } from "@/utils/sheets";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { normalizeTransactionTime } from "@/lib/transaction-time";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 export const BACKUP_SCHEMA_VERSION = 1;
 export const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
@@ -27,6 +28,7 @@ type CanonicalCategory = {
   type: string;
   isSavings: boolean;
   rolloverEnabled: boolean;
+  budgetType?: BudgetType;
 };
 
 type CanonicalAccountType = {
@@ -255,6 +257,7 @@ export async function createBudgetInBackup(userId: string, options?: { forceData
     type: category.type,
     isSavings: category.isSavings,
     rolloverEnabled: category.rolloverEnabled,
+    budgetType: resolveBudgetType(category.name, category.budgetType),
   }));
 
   const data = user.sheetsId && !options?.forceDatabaseSource
@@ -769,6 +772,7 @@ async function restoreCategories(userId: string, backup: BudgetInBackup) {
         type: category.type === "income" ? "income" : "expense",
         isSavings: category.isSavings,
         rolloverEnabled: category.rolloverEnabled,
+        budgetType: resolveBudgetType(category.name, category.budgetType),
       },
       create: {
         userId,
@@ -776,6 +780,7 @@ async function restoreCategories(userId: string, backup: BudgetInBackup) {
         type: category.type === "income" ? "income" : "expense",
         isSavings: category.isSavings,
         rolloverEnabled: category.rolloverEnabled,
+        budgetType: resolveBudgetType(category.name, category.budgetType),
       },
     });
     categoryId.set(category.id, restored.id);
@@ -802,6 +807,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
           type: category.type === "income" ? "income" : "expense",
           isSavings: category.isSavings,
           rolloverEnabled: category.rolloverEnabled,
+          budgetType: resolveBudgetType(category.name, category.budgetType),
         },
         create: {
           userId,
@@ -809,6 +815,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
           type: category.type === "income" ? "income" : "expense",
           isSavings: category.isSavings,
           rolloverEnabled: category.rolloverEnabled,
+          budgetType: resolveBudgetType(category.name, category.budgetType),
         },
       });
       maps.categoryId.set(category.id, restored.id);

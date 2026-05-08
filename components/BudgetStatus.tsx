@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useDataEvent } from "@/lib/data-events";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 interface BudgetItem {
   id: string;
@@ -15,6 +16,7 @@ interface BudgetItem {
   spent: number;
   rollover?: number;
   rolloverEnabled?: boolean;
+  budgetType?: BudgetType;
 }
 
 interface BudgetData {
@@ -35,14 +37,8 @@ function formatRupiahFull(amount: number) {
   return new Intl.NumberFormat("id-ID").format(amount);
 }
 
-const FIXED_KEYWORDS = [
-  "kos", "sewa", "arisan", "cicilan", "kredit", "kontrak",
-  "asuransi", "bpjs", "langganan", "mortgage", "rent",
-];
-
-function isFixed(category: string): boolean {
-  const lower = category.toLowerCase();
-  return FIXED_KEYWORDS.some((kw) => lower.includes(kw));
+function isFixed(item: BudgetItem): boolean {
+  return resolveBudgetType(item.category, item.budgetType) === "fixed";
 }
 
 function displayPct(pct: number) {
@@ -177,7 +173,7 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {budgets.map((item) => {
-            const fixed = isFixed(item.category);
+            const fixed = isFixed(item);
             const effectiveBudget = item.budget + (item.rollover ?? 0);
             const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
             const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);

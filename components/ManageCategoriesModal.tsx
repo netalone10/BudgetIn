@@ -5,12 +5,14 @@ import { X, Loader2, Pencil, Trash2, Check, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 interface Category {
   id: string;
   name: string;
   type?: string;
   isSavings: boolean;
+  budgetType?: BudgetType;
 }
 
 interface Props {
@@ -134,11 +136,37 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
         setCategories((prev) =>
           prev.map((c) => (c.id === id ? { ...c, isSavings: !currentValue } : c))
         );
+        onSaved?.();
       } else {
         alert(data.error || "Gagal mengubah status tabungan");
       }
     } catch {
       alert("Terjadi kesalahan");
+    }
+  }
+
+  async function handleToggleBudgetType(id: string, currentValue: BudgetType) {
+    const nextValue = currentValue === "fixed" ? "variable" : "fixed";
+    setSavingId(id);
+    try {
+      const res = await fetch(`/api/categories/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ budgetType: nextValue }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCategories((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, budgetType: nextValue } : c))
+        );
+        onSaved?.();
+      } else {
+        alert(data.error || "Gagal mengubah tipe budget");
+      }
+    } catch {
+      alert("Terjadi kesalahan");
+    } finally {
+      setSavingId(null);
     }
   }
 
@@ -211,7 +239,7 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
           ) : (
             <div className="space-y-1">
               {displayedCategories.map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-2 px-3 hover:bg-muted/30 rounded-lg group text-sm">
+                <div key={c.id} className="flex items-center justify-between gap-3 py-2 px-3 hover:bg-muted/30 rounded-lg group text-sm">
                   {editingId === c.id ? (
                     <div className="flex flex-1 items-center gap-2">
                       <Input
@@ -233,19 +261,34 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
                       <span className="font-medium truncate pr-4">{c.name}</span>
                       <div className="flex items-center gap-1">
                         {activeTab === "expense" && (
-                          <button
-                            onClick={() => handleToggleSavings(c.id, c.isSavings)}
-                            disabled={savingId === c.id}
-                            title={c.isSavings ? "Tandai bukan tabungan" : "Tandai sebagai tabungan"}
-                            className={cn(
-                              "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
-                              c.isSavings
-                                ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-400"
-                                : "bg-muted text-muted-foreground hover:bg-muted/80 opacity-0 group-hover:opacity-100"
-                            )}
-                          >
-                            💰 {c.isSavings ? "Tabungan" : "Tabungan?"}
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleToggleBudgetType(c.id, resolveBudgetType(c.name, c.budgetType))}
+                              disabled={savingId === c.id}
+                              title="Ubah Fixed/Variable budget"
+                              className={cn(
+                                "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
+                                resolveBudgetType(c.name, c.budgetType) === "fixed"
+                                  ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-400"
+                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                              )}
+                            >
+                              {resolveBudgetType(c.name, c.budgetType) === "fixed" ? "Fixed" : "Variable"}
+                            </button>
+                            <button
+                              onClick={() => handleToggleSavings(c.id, c.isSavings)}
+                              disabled={savingId === c.id}
+                              title={c.isSavings ? "Tandai bukan tabungan" : "Tandai sebagai tabungan"}
+                              className={cn(
+                                "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
+                                c.isSavings
+                                  ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-400"
+                                  : "bg-muted text-muted-foreground hover:bg-muted/80 opacity-0 group-hover:opacity-100"
+                              )}
+                            >
+                              💰 {c.isSavings ? "Tabungan" : "Tabungan?"}
+                            </button>
+                          </>
                         )}
                         <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(c)} disabled={savingId === c.id}>
