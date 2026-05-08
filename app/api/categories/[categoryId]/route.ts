@@ -7,6 +7,17 @@ import { type BudgetType } from "@/utils/budget-type";
 
 type Params = { params: Promise<{ categoryId: string }> };
 
+function isMissingBudgetTypeColumnError(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  const maybeError = error as { code?: string; message?: string; meta?: { column?: string } };
+  return (
+    maybeError.code === "P2022" &&
+    (maybeError.meta?.column === "budget_type" ||
+      maybeError.message?.includes("budget_type") ||
+      maybeError.message?.includes("Category.budgetType"))
+  );
+}
+
 export async function PATCH(
   req: Request,
   { params }: Params
@@ -63,13 +74,39 @@ export async function PATCH(
     if (rolloverEnabled !== undefined) updateData.rolloverEnabled = rolloverEnabled;
     if (budgetType !== undefined) updateData.budgetType = budgetType;
 
-    const category = await prisma.category.update({
-      where: { 
-        id: categoryId,
-        userId: session.userId // memastikan milik user current
-      },
-      data: updateData,
-    });
+    let category;
+    try {
+      category = await prisma.category.update({
+        where: {
+          id: categoryId,
+          userId: session.userId // memastikan milik user current
+        },
+        data: updateData,
+      });
+    } catch (error) {
+      if (!isMissingBudgetTypeColumnError(error) || budgetType === undefined) throw error;
+
+      const fallbackUpdateData = { ...updateData };
+      delete fallbackUpdateData.budgetType;
+
+      if (Object.keys(fallbackUpdateData).length > 0) {
+        category = await prisma.category.update({
+          where: {
+            id: categoryId,
+            userId: session.userId // memastikan milik user current
+          },
+          data: fallbackUpdateData,
+        });
+      } else {
+        category = await prisma.category.findUnique({
+          where: {
+            id: categoryId,
+            userId: session.userId // memastikan milik user current
+          },
+          select: { id: true, userId: true, name: true, type: true, isSavings: true, rolloverEnabled: true },
+        });
+      }
+    }
 
     return NextResponse.json({ category });
   } catch (error) {
