@@ -61,18 +61,23 @@ async function DashboardData() {
 }
 
 async function getGoogleSetupState(userId: string): Promise<"ready" | "reconnect" | "migrate"> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { googleId: true, sheetsId: true, googleSetupMigratedAt: true },
-  });
-  if (!user?.googleId) return "ready";
-  if (!user.sheetsId) return "reconnect";
-  if (user.googleSetupMigratedAt) return "ready";
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { googleId: true, sheetsId: true, googleSetupMigratedAt: true },
+    });
+    if (!user?.googleId) return "ready";
+    if (!user.sheetsId) return "reconnect";
+    if (user.googleSetupMigratedAt) return "ready";
 
-  const [accounts, transactions, budgets] = await Promise.all([
-    prisma.account.count({ where: { userId } }),
-    prisma.transaction.count({ where: { userId } }),
-    prisma.budget.count({ where: { userId } }),
-  ]);
-  return accounts + transactions + budgets > 0 ? "migrate" : "ready";
+    const [accounts, transactions, budgets] = await Promise.all([
+      prisma.account.count({ where: { userId } }),
+      prisma.transaction.count({ where: { userId } }),
+      prisma.budget.count({ where: { userId } }),
+    ]);
+    return accounts + transactions + budgets > 0 ? "migrate" : "ready";
+  } catch (error) {
+    console.error("Failed to get Google setup state:", error);
+    return "ready";
+  }
 }
