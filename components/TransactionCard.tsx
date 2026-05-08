@@ -36,8 +36,9 @@ interface Props {
   onUpdate: (id: string, data: Partial<Transaction>) => void;
 }
 
-const INPUT_CLS = "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
-const LABEL_CLS = "block text-xs font-medium text-muted-foreground mb-1";
+const INPUT_CLS = "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus:ring-3 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50";
+const SELECT_CLS = `${INPUT_CLS} min-w-0 truncate`;
+const LABEL_CLS = "mb-1.5 block text-[12px] font-semibold text-muted-foreground";
 
 const idFormat = new Intl.NumberFormat("id-ID");
 function formatRupiah(amount: number) {
@@ -119,20 +120,23 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h2 className="text-base font-semibold">Edit Transaksi</h2>
+      <div className="w-full max-w-md overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[var(--shadow-offset-x)_var(--shadow-offset-y)_var(--shadow-blur)_var(--shadow-spread)_color-mix(in_srgb,var(--shadow-color)_70%,transparent)]">
+        <div className="flex items-center justify-between border-b border-border/70 bg-muted/25 px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Transaksi</p>
+            <h2 className="text-base font-semibold text-foreground">Edit transaksi</h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground text-xl leading-none"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-lg leading-none text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
             ×
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={LABEL_CLS}>Tanggal</label>
@@ -164,7 +168,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
               value={editAmount}
               onChange={(e) => setEditAmount(e.target.value)}
               required
-              className={INPUT_CLS}
+              className={cn(INPUT_CLS, "font-semibold tabular-nums")}
             />
           </div>
 
@@ -184,7 +188,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
             <select
               value={editCategory}
               onChange={(e) => setEditCategory(e.target.value)}
-              className={INPUT_CLS}
+              className={SELECT_CLS}
             >
               {categoryOptions.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
@@ -201,7 +205,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
               <select
                 value={editAccountId}
                 onChange={(e) => setEditAccountId(e.target.value)}
-                className={INPUT_CLS}
+                className={SELECT_CLS}
               >
                 <option value="">— Tanpa Akun —</option>
                 {accounts.map((acc) => (
@@ -212,16 +216,16 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
           )}
 
           {error && (
-            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 rounded-lg px-3 py-2">
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive">
               {error}
             </p>
           )}
 
-          <div className="flex gap-3 pt-1">
-            <Button type="button" variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={onClose} disabled={loading}>
               Batal
             </Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
+            <Button type="submit" className="h-10 rounded-lg" disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Simpan"}
             </Button>
           </div>
@@ -269,19 +273,21 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
 
   return (
     <>
-      <tr className={cn(
-        "group block border-b p-3 transition-colors last:border-0 hover:bg-muted/30 sm:table-row sm:p-0",
-        justSaved && "bg-green-50/70 dark:bg-green-950/20"
-      )}>
+      <tr
+        className={cn(
+          "group block border-b border-border/70 bg-background p-3 transition-colors last:border-0 hover:bg-muted/25 sm:table-row sm:bg-transparent sm:p-0",
+          justSaved && "bg-emerald-50/70 dark:bg-emerald-950/20"
+        )}
+      >
         {/* Tanggal */}
-        <td className="flex w-full items-center justify-between pb-2 text-xs text-muted-foreground sm:table-cell sm:w-20 sm:whitespace-nowrap sm:py-2.5 sm:pl-4 sm:pr-3">
+        <td className="flex w-full items-center justify-between pb-2 text-xs text-muted-foreground sm:table-cell sm:w-[88px] sm:whitespace-nowrap sm:py-2.5 sm:pl-4 sm:pr-3">
           <span className="block">{formatDate(transaction.date)}</span>
           <span className="block text-[11px]">{formatTime(transaction.time)}</span>
         </td>
 
         {/* Deskripsi */}
         <td className="block min-w-0 pb-2 sm:table-cell sm:py-2.5 sm:pr-3">
-          <span className="block text-sm font-medium sm:font-normal">
+          <span className="block break-words text-sm font-medium text-foreground sm:truncate sm:font-normal">
             {transaction.note || <span className="text-muted-foreground">—</span>}
           </span>
           {displayAccount && (
@@ -292,37 +298,37 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
         </td>
 
         {/* Kategori */}
-        <td className="block pb-2 sm:table-cell sm:whitespace-nowrap sm:py-2.5 sm:pr-3">
-          <span className="inline-block max-w-full truncate rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">
+        <td className="block min-w-0 pb-2 sm:table-cell sm:whitespace-nowrap sm:py-2.5 sm:pr-3">
+          <span className="inline-block max-w-full truncate rounded-lg bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
             {transaction.category}
           </span>
         </td>
 
         {/* Akun */}
-        <td className="py-2.5 pr-3 whitespace-nowrap hidden sm:table-cell">
+        <td className="hidden min-w-0 whitespace-nowrap py-2.5 pr-3 sm:table-cell">
           {displayAccount ? (
-            <span className="text-xs text-muted-foreground">{displayAccount}</span>
+            <span className="block truncate text-xs text-muted-foreground">{displayAccount}</span>
           ) : null}
         </td>
 
         {/* Jumlah */}
-        <td className="flex items-center justify-between pb-2 sm:table-cell sm:whitespace-nowrap sm:py-2.5 sm:pr-2 sm:text-right">
+        <td className="flex min-w-0 items-center justify-between pb-2 sm:table-cell sm:w-[156px] sm:whitespace-nowrap sm:py-2.5 sm:pr-4 sm:text-right">
           <span className="text-xs font-medium text-muted-foreground sm:hidden">Jumlah</span>
           <span className={cn(
-            "text-sm font-semibold tabular-nums",
-            isPositiveEffect ? "text-green-600 dark:text-green-400" : ""
+            "ml-3 shrink-0 whitespace-nowrap text-right text-sm font-semibold tabular-nums",
+            isPositiveEffect ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
           )}>
             {isPositiveEffect ? "+" : "-"}{formatRupiah(Math.abs(transaction.amount))}
           </span>
         </td>
 
         {/* Actions */}
-        <td className="block w-full sm:table-cell sm:w-16 sm:py-2.5 sm:pr-3">
+        <td className="block w-full sm:table-cell sm:w-[72px] sm:py-2.5 sm:pr-3">
           <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6"
+              className="h-7 w-7 rounded-lg shadow-none"
               onClick={() => setShowModal(true)}
               disabled={deleting}
             >
@@ -331,7 +337,7 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
             <Button
               size="icon"
               variant="ghost"
-              className="h-6 w-6 hover:text-destructive"
+              className="h-7 w-7 rounded-lg shadow-none hover:text-destructive"
               onClick={handleDelete}
               disabled={deleting}
             >

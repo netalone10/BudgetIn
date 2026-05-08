@@ -1,5 +1,6 @@
 import ThemeToggle from "@/components/ThemeToggle";
 import PublicFooter from "@/components/PublicFooter";
+import { ButtonColorful } from "@/components/ButtonColorful";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -128,15 +129,7 @@ export default function LandingPage() {
 
             <div className="mt-8 flex flex-col items-center gap-4 lg:items-start">
               <div className="flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-                <Link
-                  href="/auth"
-                  className={cn(
-                    buttonVariants({ size: "lg" }),
-                    "min-w-44 font-medium shadow-lg shadow-primary/20"
-                  )}
-                >
-                  Mulai Gratis
-                </Link>
+                <ButtonColorful href="/auth" label="Mulai Gratis" />
                 <a
                   href="#cara-kerja"
                   className="inline-flex min-w-44 items-center justify-center rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
@@ -360,15 +353,7 @@ export default function LandingPage() {
             <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
               Dari pengeluaran harian, transfer antar akun, biaya admin, sampai target tabungan, semua dicatat dalam alur yang mudah dipahami dan siap dianalisis kapan saja.
             </p>
-            <Link
-              href="/auth"
-              className={cn(
-                buttonVariants({ size: "lg" }),
-                "mt-8 font-medium shadow-md transition-transform hover:-translate-y-0.5"
-              )}
-            >
-              Mulai Sekarang Gratis
-            </Link>
+            <ButtonColorful href="/auth" label="Mulai Sekarang Gratis" className="mt-8" />
             <Link
               href="/auth?demo=1"
               className={cn(

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 import { cn } from "@/lib/utils";
 
 interface BudgetItem {
@@ -58,6 +59,24 @@ function fmtCompact(n: number) {
   if (abs >= 1_000_000) return `${(abs / 1_000_000).toFixed(1).replace(".0", "")}jt`;
   if (abs >= 1_000) return `${(abs / 1_000).toFixed(0)}rb`;
   return abs.toString();
+}
+
+function displayPct(pct: number) {
+  return Math.min(Math.round(pct), 999);
+}
+
+function getBudgetProgress(spent: number, total: number, prorated: number) {
+  const totalPct = total > 0 ? (spent / total) * 100 : 0;
+  const prorataPctOfTotal = total > 0 ? (prorated / total) * 100 : 0;
+  const allowancePct = prorated > 0 ? (spent / prorated) * 100 : 0;
+
+  return {
+    totalPct,
+    prorataPctOfTotal,
+    allowancePct,
+    totalDisplayPct: displayPct(totalPct),
+    prorataDisplayPct: displayPct(prorataPctOfTotal),
+  };
 }
 
 function parseAmount(value: string) {
@@ -269,6 +288,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
   }, [data.budgets, dayOfMonth, totalDays]);
 
   const totalRemaining = totals.prorated - totals.spent;
+  const totalProgress = getBudgetProgress(totals.spent, totals.budget, totals.prorated);
 
   return (
     <div className="space-y-5">
@@ -306,7 +326,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric label="Bulan" value={formatMonthLabel(month)} />
           <Metric label="Budget" value={`Rp ${fmt(totals.budget)}`} />
-          <Metric label="Realisasi" value={`Rp ${fmt(totals.spent)}`} valueClass="text-destructive" />
+          <Metric label="Realisasi" value={`Rp ${fmt(totals.spent)} · ${totalProgress.totalDisplayPct}%`} valueClass="text-destructive" />
           <Metric
             label="Sisa Prorated"
             value={`${totalRemaining >= 0 ? "+" : "-"}Rp ${fmt(totalRemaining)}`}
@@ -379,9 +399,9 @@ export default function BudgetClient({ initialData, categories }: Props) {
               const effectiveBudget = item.budget + (item.rollover ?? 0);
               const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
               const remaining = prorated - item.spent;
-              const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
-              const isOver = pct >= 100;
-              const isNear = pct >= 80 && !isOver;
+              const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
+              const isOver = progress.allowancePct >= 100;
+              const isNear = progress.allowancePct >= 80 && !isOver;
               const isEditing = editingId === item.id;
               const isConfirmDelete = deletingId === item.id;
               const hasRollover = (item.rollover ?? 0) > 0;
@@ -415,12 +435,12 @@ export default function BudgetClient({ initialData, categories }: Props) {
                     </div>
                   </div>
 
-                  <div className="h-1.5 w-full rounded-full bg-muted">
-                    <div
-                      className={cn("h-full rounded-full transition-all", isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary")}
-                      style={{ width: `${Math.min(pct, 100)}%` }}
-                    />
-                  </div>
+                  <BudgetProgressBar
+                    fillPct={progress.totalPct}
+                    markerPct={fixed ? undefined : progress.prorataPctOfTotal}
+                    isOver={isOver}
+                    isNear={isNear}
+                  />
 
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="min-w-0">
@@ -454,11 +474,12 @@ export default function BudgetClient({ initialData, categories }: Props) {
                       <p className="text-muted-foreground">Prorated</p>
                       <p className={cn("break-words tabular-nums", fixed ? "text-muted-foreground" : "font-medium text-foreground")}>
                         {fmtCompact(prorated)}
+                        {!fixed && <span className="block text-[10px] text-muted-foreground">{progress.prorataDisplayPct}% total</span>}
                       </p>
                     </div>
                     <div className="min-w-0 text-right">
                       <p className="text-muted-foreground">Progress</p>
-                      <p className="break-words font-medium tabular-nums">{Math.round(pct)}%</p>
+                      <p className="break-words font-medium tabular-nums">{progress.totalDisplayPct}% total</p>
                     </div>
                   </div>
 
@@ -525,7 +546,9 @@ export default function BudgetClient({ initialData, categories }: Props) {
               <span className="text-muted-foreground">Total Budget</span>
               <span className="text-right tabular-nums text-muted-foreground">{fmt(totals.budget)}</span>
               <span className="text-muted-foreground">Total Terpakai</span>
-              <span className="text-right tabular-nums text-destructive">{fmt(totals.spent)}</span>
+              <span className="text-right tabular-nums text-destructive">{fmt(totals.spent)} · {totalProgress.totalDisplayPct}%</span>
+              <span className="text-muted-foreground">Total Prorata</span>
+              <span className="text-right tabular-nums text-muted-foreground">{fmtCompact(totals.prorated)} · {totalProgress.prorataDisplayPct}%</span>
               <span className="text-muted-foreground">Total Sisa</span>
               <span className={cn("text-right tabular-nums", totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive")}>
                 {totalRemaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(totalRemaining))}
@@ -551,9 +574,9 @@ export default function BudgetClient({ initialData, categories }: Props) {
                   const effectiveBudget = item.budget + (item.rollover ?? 0);
                   const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
                   const remaining = prorated - item.spent;
-                  const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
-                  const isOver = pct >= 100;
-                  const isNear = pct >= 80 && !isOver;
+                  const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
+                  const isOver = progress.allowancePct >= 100;
+                  const isNear = progress.allowancePct >= 80 && !isOver;
                   const isEditing = editingId === item.id;
                   const isConfirmDelete = deletingId === item.id;
                   const hasRollover = (item.rollover ?? 0) > 0;
@@ -580,12 +603,13 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             +{fmtCompact(item.rollover)} sisa bulan lalu
                           </span>
                         )}
-                        <div className="mt-1.5 h-1 w-full max-w-[160px] rounded-full bg-muted">
-                          <div
-                            className={cn("h-full rounded-full transition-all", isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary")}
-                            style={{ width: `${Math.min(pct, 100)}%` }}
-                          />
-                        </div>
+                        <BudgetProgressBar
+                          fillPct={progress.totalPct}
+                          markerPct={fixed ? undefined : progress.prorataPctOfTotal}
+                          isOver={isOver}
+                          isNear={isNear}
+                          className="mt-1.5 h-1 max-w-[160px]"
+                        />
                       </td>
                       <td className="py-3 pr-3 text-right tabular-nums">
                         {isEditing ? (
@@ -609,10 +633,11 @@ export default function BudgetClient({ initialData, categories }: Props) {
                       </td>
                       <td className="py-3 pr-3 text-right tabular-nums">
                         <span className={cn("text-xs", fixed ? "text-muted-foreground" : "font-medium text-foreground")}>{fmtCompact(prorated)}</span>
-                        {!fixed && <span className="block text-[10px] text-muted-foreground">{prorationPct}%</span>}
+                        {!fixed && <span className="block text-[10px] text-muted-foreground">{progress.prorataDisplayPct}% total</span>}
                       </td>
                       <td className={cn("py-3 pr-3 text-right text-sm font-medium tabular-nums", isOver ? "text-destructive" : isNear ? "text-yellow-600 dark:text-yellow-400" : "")}>
                         {fmt(item.spent)}
+                        <span className="block text-[10px] font-medium text-muted-foreground">{progress.totalDisplayPct}% total</span>
                       </td>
                       <td className={cn("py-3 pr-3 text-right text-sm font-semibold tabular-nums", remaining < 0 ? "text-destructive" : "text-green-600 dark:text-green-400")}>
                         {remaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(remaining))}
@@ -681,8 +706,14 @@ export default function BudgetClient({ initialData, categories }: Props) {
                 <tr className="border-t bg-muted/20">
                   <td className="py-2.5 pl-4 text-xs font-semibold text-muted-foreground">Total</td>
                   <td className="py-2.5 pr-3 text-right text-xs font-semibold text-muted-foreground tabular-nums">{fmt(totals.budget)}</td>
-                  <td className="py-2.5 pr-3 text-right text-xs font-semibold text-muted-foreground tabular-nums">{fmtCompact(totals.prorated)}</td>
-                  <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums text-destructive">{fmt(totals.spent)}</td>
+                  <td className="py-2.5 pr-3 text-right text-xs font-semibold text-muted-foreground tabular-nums">
+                    {fmtCompact(totals.prorated)}
+                    <span className="block text-[10px]">{totalProgress.prorataDisplayPct}% total</span>
+                  </td>
+                  <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums text-destructive">
+                    {fmt(totals.spent)}
+                    <span className="block text-[10px] font-semibold text-muted-foreground">{totalProgress.totalDisplayPct}% total</span>
+                  </td>
                   <td className="py-2.5 pr-3 text-right text-sm font-bold tabular-nums">
                     <span className={totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive"}>
                       {totalRemaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(totalRemaining))}

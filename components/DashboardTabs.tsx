@@ -28,6 +28,7 @@ import { format } from "date-fns/format";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { toZonedTime } from "date-fns-tz";
+import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -69,6 +70,24 @@ function fmtCompact(n: number) {
   if (abs >= 1_000_000) return `${(abs / 1_000_000).toFixed(1).replace(".0", "")}jt`;
   if (abs >= 1_000) return `${(abs / 1_000).toFixed(0)}rb`;
   return abs.toString();
+}
+
+function displayPct(pct: number) {
+  return Math.min(Math.round(pct), 999);
+}
+
+function getBudgetProgress(spent: number, total: number, prorated: number) {
+  const totalPct = total > 0 ? (spent / total) * 100 : 0;
+  const prorataPctOfTotal = total > 0 ? (prorated / total) * 100 : 0;
+  const allowancePct = prorated > 0 ? (spent / prorated) * 100 : 0;
+
+  return {
+    totalPct,
+    prorataPctOfTotal,
+    allowancePct,
+    totalDisplayPct: displayPct(totalPct),
+    prorataDisplayPct: displayPct(prorataPctOfTotal),
+  };
 }
 
 function formatDate(dateStr: string) {
@@ -273,17 +292,17 @@ export default function DashboardTabs({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 rounded-[22px] border border-border/70 bg-background p-3 sm:rounded-[26px] sm:p-4 md:flex-row md:items-center md:justify-between">
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div className="flex flex-col gap-4 rounded-[18px] border border-border/70 bg-background/80 p-3 md:flex-row md:items-center md:justify-between">
+        <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted/50 p-1 sm:flex sm:flex-wrap">
           {(["cashflow", "budget"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition-all",
+                "rounded-lg px-4 py-2 text-sm font-medium transition-all",
                 activeTab === tab
-                  ? "bg-foreground text-background shadow-sm"
-                  : "bg-muted text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-background hover:text-foreground"
               )}
             >
               {tab === "cashflow" ? "Arus Kas" : "Vs Budget"}
@@ -297,10 +316,10 @@ export default function DashboardTabs({
               key={p}
               onClick={() => handlePeriodChange(p)}
               className={cn(
-                "flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                 period === p
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted/70 text-muted-foreground hover:text-foreground"
+                  : "bg-muted/70 text-muted-foreground hover:bg-background hover:text-foreground"
               )}
             >
               {p === "custom" && <Calendar className="h-3 w-3" />}
@@ -311,27 +330,27 @@ export default function DashboardTabs({
       </div>
 
       {period === "custom" && (
-        <div className="grid gap-2 rounded-[22px] border border-border/70 bg-background p-3 sm:flex sm:flex-wrap sm:items-center">
+        <div className="grid gap-2 rounded-[18px] border border-border/70 bg-background/80 p-3 sm:flex sm:flex-wrap sm:items-center">
           <input
             type="date"
             value={customFrom}
             onChange={(e) => setCustomFrom(e.target.value)}
-            className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-auto"
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 sm:w-auto"
           />
           <span className="hidden text-sm text-muted-foreground sm:inline">s/d</span>
           <input
             type="date"
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
-            className="h-10 w-full rounded-xl border border-border bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring sm:w-auto"
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/40 sm:w-auto"
           />
           <button
             onClick={handleCustomSubmit}
             disabled={!customFrom || !customTo}
             className={cn(
-              "h-10 rounded-xl px-4 text-sm font-medium transition-colors",
+              "h-10 rounded-lg px-4 text-sm font-medium transition-colors",
               customFrom && customTo
-                ? "bg-foreground text-background hover:opacity-90"
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
                 : "cursor-not-allowed bg-muted text-muted-foreground"
             )}
           >
@@ -465,9 +484,9 @@ export default function DashboardTabs({
                     ? effectiveBudget
                     : Math.round((effectiveBudget * dayOfMonth) / totalDays);
                   const remaining = prorated - item.spent;
-                  const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
-                  const isNear = pct >= 80 && pct < 100;
-                  const isOver = pct >= 100;
+                  const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
+                  const isNear = progress.allowancePct >= 80 && progress.allowancePct < 100;
+                  const isOver = progress.allowancePct >= 100;
                   const isEditing = editingId === item.id;
                   const isConfirmDelete = deletingId === item.id;
                   const hasRollover = (item.rollover ?? 0) > 0;
@@ -507,15 +526,13 @@ export default function DashboardTabs({
                           {remaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(remaining))}
                         </span>
                       </div>
-                      <div className="mt-3 h-1.5 w-full rounded-full bg-muted">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all",
-                            isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary"
-                          )}
-                          style={{ width: `${Math.min(pct, 100)}%` }}
-                        />
-                      </div>
+                      <BudgetProgressBar
+                        fillPct={progress.totalPct}
+                        markerPct={fixed ? undefined : progress.prorataPctOfTotal}
+                        isOver={isOver}
+                        isNear={isNear}
+                        className="mt-3"
+                      />
                       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                         <div>
                           <p className="text-muted-foreground">Budget</p>
@@ -539,11 +556,15 @@ export default function DashboardTabs({
                           <p className="text-muted-foreground">Realisasi</p>
                           <p className={cn("font-medium", isOver ? "text-destructive" : isNear ? "text-yellow-600 dark:text-yellow-400" : "text-foreground")}>
                             {fmt(item.spent)}
+                            <span className="block text-[10px] text-muted-foreground">{progress.totalDisplayPct}% total</span>
                           </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Prorata</p>
-                          <p className="font-medium text-foreground">{fmtCompact(prorated)}</p>
+                          <p className="font-medium text-foreground">
+                            {fmtCompact(prorated)}
+                            {!fixed && <span className="block text-[10px] text-muted-foreground">{progress.prorataDisplayPct}% total</span>}
+                          </p>
                         </div>
                       </div>
                       <div className="mt-3 flex items-center justify-end gap-1">
@@ -645,9 +666,9 @@ export default function DashboardTabs({
                           ? effectiveBudget
                           : Math.round((effectiveBudget * dayOfMonth) / totalDays);
                         const remaining = prorated - item.spent;
-                        const pct = prorated > 0 ? (item.spent / prorated) * 100 : 0;
-                        const isNear = pct >= 80 && pct < 100;
-                        const isOver = pct >= 100;
+                        const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
+                        const isNear = progress.allowancePct >= 80 && progress.allowancePct < 100;
+                        const isOver = progress.allowancePct >= 100;
                         const isEditing = editingId === item.id;
                         const isConfirmDelete = deletingId === item.id;
                         const hasRollover = (item.rollover ?? 0) > 0;
@@ -679,15 +700,13 @@ export default function DashboardTabs({
                                     +{fmtCompact(item.rollover)} sisa dari bulan lalu
                                   </p>
                                 )}
-                                <div className="mt-2 h-1.5 w-full max-w-[140px] rounded-full bg-muted">
-                                  <div
-                                    className={cn(
-                                      "h-full rounded-full transition-all",
-                                      isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary"
-                                    )}
-                                    style={{ width: `${Math.min(pct, 100)}%` }}
-                                  />
-                                </div>
+                                <BudgetProgressBar
+                                  fillPct={progress.totalPct}
+                                  markerPct={fixed ? undefined : progress.prorataPctOfTotal}
+                                  isOver={isOver}
+                                  isNear={isNear}
+                                  className="mt-2 max-w-[140px]"
+                                />
                               </div>
                             </td>
 
@@ -719,7 +738,7 @@ export default function DashboardTabs({
                                 {fmtCompact(prorated)}
                               </span>
                               {!fixed && (
-                                <span className="block text-[11px] text-muted-foreground">{prorationPct}%</span>
+                                <span className="block text-[11px] text-muted-foreground">{progress.prorataDisplayPct}% total</span>
                               )}
                             </td>
 
@@ -734,6 +753,7 @@ export default function DashboardTabs({
                               )}
                             >
                               {fmt(item.spent)}
+                              <span className="block text-[11px] font-medium text-muted-foreground">{progress.totalDisplayPct}% total</span>
                             </td>
 
                             <td
@@ -832,6 +852,7 @@ export default function DashboardTabs({
                         }, 0);
                         const totalSpentBudgeted = budgetData.budgets.reduce((s, b) => s + b.spent, 0);
                         const totalRemaining = totalProrated - totalSpentBudgeted;
+                        const totalProgress = getBudgetProgress(totalSpentBudgeted, totalBudget, totalProrated);
                         return (
                           <tr className="bg-muted/30">
                             <td className="px-4 py-3 text-xs font-semibold text-muted-foreground">Total</td>
@@ -840,9 +861,11 @@ export default function DashboardTabs({
                             </td>
                             <td className="py-3 pr-3 text-right text-xs font-semibold text-muted-foreground tabular-nums">
                               {fmtCompact(totalProrated)}
+                              <span className="block text-[11px]">{totalProgress.prorataDisplayPct}% total</span>
                             </td>
                             <td className="py-3 pr-3 text-right text-sm font-bold tabular-nums text-destructive">
                               {fmt(totalSpentBudgeted)}
+                              <span className="block text-[11px] font-semibold text-muted-foreground">{totalProgress.totalDisplayPct}% total</span>
                             </td>
                             <td className="py-3 pr-3 text-right text-sm font-bold tabular-nums">
                               <span className={totalRemaining >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
@@ -919,7 +942,7 @@ function MetricCard({
   valueClass: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-border/70 bg-background p-4">
+    <div className="rounded-[18px] border border-border/70 bg-background p-4 shadow-[var(--shadow-offset-x)_var(--shadow-offset-y)_var(--shadow-blur)_var(--shadow-spread)_color-mix(in_srgb,var(--shadow-color)_42%,transparent)]">
       <div className="mb-2 flex items-center gap-2">
         {icon}
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
@@ -933,7 +956,7 @@ function MetricCard({
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-[24px] border border-border/70 bg-background px-4 py-10 text-center text-sm text-muted-foreground">
+    <div className="rounded-[18px] border border-dashed border-border/70 bg-background/80 px-4 py-10 text-center text-sm text-muted-foreground">
       {text}
     </div>
   );
@@ -963,7 +986,7 @@ function CategorySection({
   const valueClass = sectionEffect >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive";
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background">
+    <div className="overflow-hidden rounded-[20px] border border-border/70 bg-background">
       <div className="flex items-center justify-between border-b border-border bg-muted/35 px-4 py-3">
         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           {title}
@@ -982,10 +1005,10 @@ function CategorySection({
         const amountClass = amountEffect >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive";
 
         return (
-          <div key={cat} className="border-b border-border last:border-0">
+          <div key={cat} className="border-b border-border/70 last:border-0">
             <button
               onClick={() => onToggle(key)}
-              className="w-full px-4 py-3 text-left transition-colors hover:bg-muted/20"
+              className="w-full px-4 py-3 text-left transition-colors hover:bg-muted/30"
             >
               <div className="flex items-center gap-3">
                 {isOpen ? (
@@ -1013,23 +1036,23 @@ function CategorySection({
             </button>
 
             {isOpen && (
-              <div className="border-t border-border bg-muted/15">
+              <div className="border-t border-border/70 bg-muted/15">
                 {catTxs.length === 0 ? (
                   <p className="px-12 py-3 text-xs text-muted-foreground">Tidak ada transaksi.</p>
                 ) : (
-                  <div className="min-w-[360px]">
+                  <div className="w-full min-w-0">
                     {catTxs.map((t) => {
                       const txEffect = type === "income" ? t.amount : -t.amount;
                       return (
                         <div
                           key={t.id}
-                          className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5 text-xs last:border-0 hover:bg-muted/20"
+                          className="flex min-w-0 items-center justify-between gap-2 border-b border-border/70 px-4 py-2.5 text-xs last:border-0 hover:bg-muted/25 sm:gap-3"
                         >
-                          <span className="w-12 shrink-0 text-muted-foreground">{formatDate(t.date)}</span>
-                          <span className="flex-1 whitespace-nowrap">{t.note || "-"}</span>
+                          <span className="w-10 shrink-0 text-muted-foreground sm:w-12">{formatDate(t.date)}</span>
+                          <span className="min-w-0 flex-1 break-words">{t.note || "-"}</span>
                           <span
                             className={cn(
-                              "shrink-0 font-semibold tabular-nums",
+                              "ml-auto shrink-0 text-right font-semibold tabular-nums",
                               txEffect >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
                             )}
                           >

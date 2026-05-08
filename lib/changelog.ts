@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.8.0",
+    date: "2026-05-08",
+    title: "Pembaruan visual dashboard dan progress budget",
+    description: "Rilis minor untuk memperbarui tema visual dashboard, merapikan komponen UI utama, dan memperjelas progress budget terhadap total serta prorata.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.8.0`,
+    changes: [
+      "Mengubah dark theme ke gaya command center dengan surface gelap berlapis dan aksen Neon Lime yang lebih fokus.",
+      "Merapikan sidebar, dashboard, form transaksi, kartu ringkasan, tab analytics, dan komponen UI agar lebih konsisten dengan token desain baru.",
+      "Menambahkan progress bar budget berbasis total budget dengan marker prorata untuk kategori variable di halaman Budget, dashboard Vs Budget, dan Status Budget.",
+      "Menambahkan dokumentasi produk, roadmap, dan TDD sebagai referensi pengembangan lanjutan.",
+    ],
+  },
+  {
     version: "v1.7.2",
     date: "2026-05-07",
     title: "Perbaikan prompt real-time dan audit mobile",

@@ -5,12 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useDataEvent } from "@/lib/data-events";
+import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 
 interface BudgetItem {
   id: string;
+  categoryId?: string;
   category: string;
   budget: number;
   spent: number;
+  rollover?: number;
+  rolloverEnabled?: boolean;
 }
 
 interface BudgetData {
@@ -29,6 +33,50 @@ function formatRupiah(amount: number) {
 
 function formatRupiahFull(amount: number) {
   return new Intl.NumberFormat("id-ID").format(amount);
+}
+
+const FIXED_KEYWORDS = [
+  "kos", "sewa", "arisan", "cicilan", "kredit", "kontrak",
+  "asuransi", "bpjs", "langganan", "mortgage", "rent",
+];
+
+function isFixed(category: string): boolean {
+  const lower = category.toLowerCase();
+  return FIXED_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
+function displayPct(pct: number) {
+  return Math.min(Math.round(pct), 999);
+}
+
+function getBudgetProgress(spent: number, total: number, prorated: number) {
+  const totalPct = total > 0 ? (spent / total) * 100 : 0;
+  const prorataPctOfTotal = total > 0 ? (prorated / total) * 100 : 0;
+  const allowancePct = prorated > 0 ? (spent / prorated) * 100 : 0;
+
+  return {
+    totalPct,
+    prorataPctOfTotal,
+    allowancePct,
+    totalDisplayPct: displayPct(totalPct),
+    prorataDisplayPct: displayPct(prorataPctOfTotal),
+  };
+}
+
+function getCurrentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getDaysInSelectedMonth(month: string) {
+  const [year, monthNum] = month.split("-").map(Number);
+  return new Date(year, monthNum, 0).getDate();
+}
+
+function getBudgetDay(month: string) {
+  const totalDays = getDaysInSelectedMonth(month);
+  if (month !== getCurrentMonth()) return totalDays;
+  return Math.min(new Date().getDate(), totalDays);
 }
 
 export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }) {
@@ -53,6 +101,9 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
   useDataEvent(["transactions", "budget"], () => load(true));
 
   const budgets = data?.budgets ?? [];
+  const month = data?.month ?? getCurrentMonth();
+  const totalDays = getDaysInSelectedMonth(month);
+  const dayOfMonth = getBudgetDay(month);
 
   if (loading) {
     return (
@@ -126,10 +177,12 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {budgets.map((item) => {
-            const pct = item.budget > 0 ? (item.spent / item.budget) * 100 : 0;
-            const isOver = pct >= 100;
-            const isNear = pct >= 80 && !isOver;
-            const displayPct = Math.min(Math.round(pct), 999);
+            const fixed = isFixed(item.category);
+            const effectiveBudget = item.budget + (item.rollover ?? 0);
+            const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
+            const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
+            const isOver = progress.allowancePct >= 100;
+            const isNear = progress.allowancePct >= 80 && !isOver;
 
             return (
               <div
@@ -147,7 +200,7 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
                     "text-xs font-bold tabular-nums shrink-0",
                     isOver ? "text-destructive" : isNear ? "text-yellow-600 dark:text-yellow-400" : "text-foreground"
                   )}>
-                    {displayPct}%
+                    {progress.totalDisplayPct}%
                   </span>
                 </div>
 
@@ -160,19 +213,17 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
                 </p>
 
                 {/* Progress bar */}
-                <div className="h-1.5 w-full rounded-full bg-muted">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      isOver ? "bg-destructive" : isNear ? "bg-yellow-500" : "bg-primary"
-                    )}
-                    style={{ width: `${Math.min(pct, 100)}%` }}
-                  />
-                </div>
+                <BudgetProgressBar
+                  fillPct={progress.totalPct}
+                  markerPct={fixed ? undefined : progress.prorataPctOfTotal}
+                  isOver={isOver}
+                  isNear={isNear}
+                />
 
                 {/* Budget label */}
                 <p className="text-[10px] text-muted-foreground tabular-nums">
-                  dari {formatRupiah(item.budget)}
+                  dari {formatRupiah(effectiveBudget)}
+                  {!fixed && <span className="block">prorata {formatRupiah(prorated)} · {progress.prorataDisplayPct}% total</span>}
                   {isOver && <span className="text-destructive font-semibold"> · Lewat!</span>}
                   {isNear && <span className="text-yellow-600 dark:text-yellow-400 font-semibold"> · Hampir</span>}
                 </p>
