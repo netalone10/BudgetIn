@@ -171,6 +171,7 @@ export const authOptions: NextAuthOptions = {
           token.userId = dbUser?.id;
           token.sheetsId = dbUser?.sheetsId ?? undefined;
           token.isAdmin = isAdmin(dbUser?.email);
+          token.isDemo = (dbUser?.email as string) === DEMO_ACCOUNT.email;
         } else if (account?.provider === "google") {
           const dbUser = await prisma.user.findUnique({
             where: { googleId: user.id! },
@@ -179,6 +180,7 @@ export const authOptions: NextAuthOptions = {
           token.userId = dbUser?.id;
           token.sheetsId = dbUser?.sheetsId;
           token.isAdmin = isAdmin(dbUser?.email);
+          token.isDemo = (dbUser?.email as string) === DEMO_ACCOUNT.email;
         }
       }
       return token;
@@ -190,6 +192,7 @@ export const authOptions: NextAuthOptions = {
       session.sheetsId = token.sheetsId as string | null;
       // Expose isAdmin ke client — dihitung server-side, tidak bocorkan list email
       session.isAdmin = token.isAdmin as boolean ?? false;
+      session.isDemo = token.isDemo as boolean ?? false;
       return session;
     },
   },

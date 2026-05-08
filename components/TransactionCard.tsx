@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emitDataChanged } from "@/lib/data-events";
@@ -235,6 +236,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
 // ── Transaction Row ───────────────────────────────────────────────────────────
 
 function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
+  const isDemo = useIsDemo();
   const [showModal, setShowModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -318,6 +320,7 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
 
         {/* Actions */}
         <td className="block w-full sm:table-cell sm:w-16 sm:py-2.5 sm:pr-3">
+          {!isDemo && (
           <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
             <Button
               size="icon"
@@ -338,6 +341,7 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
+          )}
         </td>
       </tr>
 

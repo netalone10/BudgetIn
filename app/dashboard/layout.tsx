@@ -1,5 +1,7 @@
 import Sidebar from "@/components/Sidebar";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import DemoModeBanner from "@/components/DemoModeBanner";
+import DemoSessionTimer from "@/components/DemoSessionTimer";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,6 +10,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="relative flex-1 min-w-0 overflow-x-clip pt-14 md:pt-0">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[linear-gradient(180deg,rgba(24,226,153,0.08),rgba(24,226,153,0))]" />
         <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-border/60" />
+        <div className="flex items-center justify-end px-4 pt-3">
+          <DemoSessionTimer />
+        </div>
+        <DemoModeBanner />
         <ErrorBoundary>
           {children}
         </ErrorBoundary>

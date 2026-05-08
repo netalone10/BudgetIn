@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, Database, Eraser, Loader2, RefreshCw, ShieldAlert, Trash2, UserCog, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 
 const CONFIRMATIONS = {
   "reset-data": "RESET DATA",
@@ -144,6 +145,7 @@ export default function AccountSettingsPage() {
     required: true,
     onUnauthenticated() { redirect("/"); },
   });
+  const isDemo = useIsDemo();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [dialog, setDialog] = useState<ActionType | null>(null);
@@ -303,11 +305,13 @@ export default function AccountSettingsPage() {
         </div>
       </section>
 
+      {!isDemo && (
       <div className="space-y-4">
         {actions.map((action) => (
           <ActionCard key={action.type} action={action} onOpen={openDialog} />
         ))}
       </div>
+      )}
 
       {activeAction && (
         <ConfirmationModal

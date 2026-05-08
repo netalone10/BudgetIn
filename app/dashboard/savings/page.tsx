@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { PiggyBank, Loader2, AlertCircle } from "lucide-react";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SavingsGoalCard from "@/components/SavingsGoalCard";
@@ -24,6 +25,7 @@ interface SavingsGoalWithProgress {
 }
 
 export default function SavingsPage() {
+  const isDemo = useIsDemo();
   const [goals, setGoals] = useState<SavingsGoalWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +139,7 @@ export default function SavingsPage() {
         </div>
 
         {/* Create Goal Form */}
+        {!isDemo && (
         <div className="rounded-2xl border border-border bg-card px-5 py-5 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground mb-4">Buat Goal Baru</h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -191,6 +194,7 @@ export default function SavingsPage() {
             </Button>
           </form>
         </div>
+        )}
 
         {/* Goals List */}
         {loading ? (

@@ -14,6 +14,39 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.9.0",
+    date: "2026-05-08",
+    title: "Akun Demo, Audit Keamanan, dan Perbaikan Data Integrity",
+    description: "Rilis mayor yang mengamankan akun demo dengan pembacaan-only, menjalankan audit lengkap terhadap seluruh codebase, dan memperbaiki beberapa issue kritis terkait presisi data dan race condition.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.9.0`,
+    changes: [
+      "Membatasi akun demo ke mode pembacaan-only — semua tombol aksi (tambah, edit, hapus, reset) tersembunyi, semua write API routes dikembalikan 403 Forbidden.",
+      "Menambahkan banner Demo Mode dan countdown timer 15 menit yang otomatis logout jika tidak ada aktivitas.",
+      "Memblokir password panjang (>128 karakter) untuk mencegah bcrypt DoS.",
+      "Memperbaiki urutan validasi password — cek sama dengan password lama sebelum menjalankan bcrypt.compare yang mahal.",
+      "Menambahkan pengecekan null CRON_SECRET agar endpoint cron tidak bisa di-bypass dengan string 'Bearer undefined'.",
+      "Mengonversi Budget.amount dan SavingsGoal.targetAmount dari Float ke Decimal(19,4) untuk presisi data keuangan.",
+      "Memperbaiki race condition di cron auto-record — transaction.create sekarang berada di dalam blok prisma.$transaction sehingga semua operasi bersifat atomic.",
+      "Menambahkan foreign key constraint pada SavingsContribution.transactionId dengan onDelete: Cascade, mencegah data orphan saat transaksi dihapus.",
+      "Mengoptimasi query transaksi akun — Prisma sekarang menggunakan take:limit dan database-level aggregation daripada memuat semua baris ke memori.",
+    ],
+  },
+  {
+    version: "v1.7.3",
+    date: "2026-05-08",
+    title: "Perbaikan error server dan layout mobile",
+    description: "Rilis patch untuk mencegah crash server component akibat timeout query Google Setup dan memperbaiki konten terpotong di mobile.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.7.3`,
+    changes: [
+      "Mencegah crash server component di halaman dashboard saat query Prisma ke Google Setup state timeout atau gagal.",
+      "Error Google Setup sekarang di-graceful fallback ke state normal alih-alih menampilkan error boundary.",
+      "Memperbaiki konten dashboard terpotong di mobile dengan mengganti overflow-x-hidden menjadi overflow-x-clip.",
+      "Menambahkan min-w-0 di flex child layout dashboard agar konten tidak melebihi lebar parent.",
+    ],
+  },
+  {
     version: "v1.7.2",
     date: "2026-05-07",
     title: "Perbaikan prompt real-time dan audit mobile",

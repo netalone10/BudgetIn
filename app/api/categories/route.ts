@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { seedDefaultCategories, ALL_DEFAULT_CATEGORIES } from "@/utils/seed-categories";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 // GET /api/categories — semua kategori milik user + default jika belum ada
 export async function GET() {
@@ -37,6 +38,8 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
+    const demoBlock = await blockDemoResponse(session);
+    if (demoBlock) return demoBlock;
     if (!session?.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

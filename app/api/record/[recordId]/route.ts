@@ -6,6 +6,7 @@ import { getValidToken } from "@/utils/token";
 import { updateTransaction, deleteTransaction, getAccounts, getTransactionRow } from "@/utils/sheets";
 import { updateTransactionDB, deleteTransactionDB } from "@/utils/db-transactions";
 import { isValidTransactionTime } from "@/lib/transaction-time";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 type Params = { params: Promise<{ recordId: string }> };
 
@@ -20,6 +21,8 @@ function isValidTransferAmount(amount: number): boolean {
 // PATCH /api/record/[recordId] — edit transaksi
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { recordId } = await params;
@@ -154,6 +157,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // DELETE /api/record/[recordId] — hapus transaksi
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { recordId } = await params;

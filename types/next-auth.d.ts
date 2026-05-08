@@ -6,6 +6,7 @@ declare module "next-auth" {
     userId: string;
     sheetsId: string | null;
     isAdmin: boolean;
+    isDemo: boolean;
   }
 }
 
@@ -14,5 +15,6 @@ declare module "next-auth/jwt" {
     userId?: string;
     sheetsId?: string | null;
     isAdmin?: boolean;
+    isDemo?: boolean;
   }
 }

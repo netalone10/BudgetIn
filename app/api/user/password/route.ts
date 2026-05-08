@@ -3,10 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 // PATCH /api/user/password — ganti password (email users only)
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -19,6 +22,15 @@ export async function PATCH(req: NextRequest) {
 
   if (newPassword.length < 8) {
     return NextResponse.json({ error: "Password baru minimal 8 karakter." }, { status: 400 });
+  }
+
+  if (newPassword.length > 128) {
+    return NextResponse.json({ error: "Password terlalu panjang." }, { status: 400 });
+  }
+
+  // Cek dulu apakah password baru sama dengan yang lama sebelum query DB
+  if (currentPassword === newPassword) {
+    return NextResponse.json({ error: "Password baru tidak boleh sama dengan yang lama." }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({
@@ -37,10 +49,6 @@ export async function PATCH(req: NextRequest) {
   const valid = await bcrypt.compare(currentPassword, user.password);
   if (!valid) {
     return NextResponse.json({ error: "Password lama tidak sesuai." }, { status: 400 });
-  }
-
-  if (currentPassword === newPassword) {
-    return NextResponse.json({ error: "Password baru tidak boleh sama dengan yang lama." }, { status: 400 });
   }
 
   const hashed = await bcrypt.hash(newPassword, 12);

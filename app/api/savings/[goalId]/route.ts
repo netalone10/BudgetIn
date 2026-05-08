@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 export function checkOwnership(goalUserId: string, requestUserId: string): boolean {
   return goalUserId === requestUserId;
@@ -13,6 +14,8 @@ export async function DELETE(
   { params }: { params: Promise<{ goalId: string }> }
 ) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

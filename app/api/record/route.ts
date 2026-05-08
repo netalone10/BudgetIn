@@ -13,6 +13,7 @@ import { NON_MONETARY_UNITS, MONETARY_INDICATOR, REPORT_KEYWORDS } from "@/utils
 import { handleTransaksi, handleTransaksiBulk, handlePemasukan, handleTransfer, handleBudgetSetting, handleLaporan } from "@/utils/record/intent-handlers";
 import type { RuntimeAccount } from "@/utils/record/account-resolver";
 import { compareTransactionDateTimeDesc, currentJakartaTime } from "@/lib/transaction-time";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -70,6 +71,9 @@ export async function POST(req: NextRequest) {
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
+
   const userId = session.userId;
 
   const { prompt, pendingAction, selectedGoalId } = await req.json();

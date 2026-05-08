@@ -6,6 +6,7 @@ import { AlertCircle, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, R
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 
 interface BudgetItem {
   id: string;
@@ -94,6 +95,7 @@ function formatMonthLabel(month: string) {
 }
 
 export default function BudgetClient({ initialData, categories }: Props) {
+  const isDemo = useIsDemo();
   const router = useRouter();
   const [data, setData] = useState(initialData);
   const [month, setMonth] = useState(initialData.month);
@@ -328,6 +330,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
         </div>
       )}
 
+      {!isDemo && (
       <form onSubmit={handleAdd} className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
           <Plus className="h-4 w-4 text-primary" />
@@ -361,6 +364,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
           </Button>
         </div>
       </form>
+      )}
 
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
         {loading ? (
@@ -489,32 +493,36 @@ export default function BudgetClient({ initialData, categories }: Props) {
                         >
                           <RotateCcw className="h-3 w-3" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => {
-                            setEditingId(item.id);
-                            setEditAmount(item.budget.toString());
-                            setDeletingId(null);
-                          }}
-                          disabled={saving}
-                          title="Edit budget"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => {
-                            setDeletingId(item.id);
-                            setEditingId(null);
-                          }}
-                          disabled={saving}
-                          className="text-muted-foreground hover:text-destructive"
-                          title="Hapus budget"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {!isDemo && (
+                          <>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => {
+                              setEditingId(item.id);
+                              setEditAmount(item.budget.toString());
+                              setDeletingId(null);
+                            }}
+                            disabled={saving}
+                            title="Edit budget"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => {
+                              setDeletingId(item.id);
+                              setEditingId(null);
+                            }}
+                            disabled={saving}
+                            className="text-muted-foreground hover:text-destructive"
+                            title="Hapus budget"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
@@ -644,6 +652,8 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             >
                               <RotateCcw className="h-3 w-3" />
                             </Button>
+                            {!isDemo && (
+                            <>
                             <Button
                               variant="ghost"
                               size="icon-xs"
@@ -670,6 +680,8 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
+                            </>
+                            )}
                           </div>
                         )}
                       </td>

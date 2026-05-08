@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { resetUserAccountSetup } from "@/lib/account-reset";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 const CONFIRMATION = "RESET AKUN";
 
@@ -16,6 +17,8 @@ async function readConfirmation(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const confirmation = await readConfirmation(req);

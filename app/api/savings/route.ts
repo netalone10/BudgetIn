@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 // ── Exported for testability ──────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ export async function GET(_req: NextRequest) {
       id: goal.id,
       userId: goal.userId,
       name: goal.name,
-      targetAmount: goal.targetAmount,
+      targetAmount: Number(goal.targetAmount),
       deadline: goal.deadline ? goal.deadline.toISOString() : null,
       createdAt: goal.createdAt.toISOString(),
       totalContributed,
@@ -69,6 +70,8 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -100,7 +103,7 @@ export async function POST(req: NextRequest) {
         id: goal.id,
         userId: goal.userId,
         name: goal.name,
-        targetAmount: goal.targetAmount,
+        targetAmount: Number(goal.targetAmount),
         deadline: goal.deadline ? goal.deadline.toISOString() : null,
         createdAt: goal.createdAt.toISOString(),
       },

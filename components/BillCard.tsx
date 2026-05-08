@@ -3,6 +3,7 @@
 import { format, startOfDay, differenceInCalendarDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { CheckCircle2, Clock, AlertTriangle, CalendarClock, MoreHorizontal, CreditCard, Pencil, Trash2, SkipForward } from "lucide-react";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { cn } from "@/lib/utils";
 
 export type BillStatus = "paid" | "due-today" | "overdue" | "due-soon" | "upcoming";
@@ -45,6 +46,7 @@ interface BillCardProps {
 }
 
 export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: BillCardProps) {
+  const isDemo = useIsDemo();
   const status = getBillStatus(bill);
   const amount = parseFloat(bill.amount);
   const dueDate = new Date(bill.nextDueDate);
@@ -135,6 +137,8 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
                 </button>
               </>
             )}
+            {!isDemo && (
+            <>
             <button
               onClick={onEdit}
               className="p-1 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -149,6 +153,8 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
+            </>
+            )}
           </div>
         </div>
       </div>

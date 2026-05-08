@@ -6,6 +6,7 @@ import {
   markGoogleSetupMigrationComplete,
   migrateGoogleSetupFallbackToSheets,
 } from "@/lib/backup";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -24,6 +25,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

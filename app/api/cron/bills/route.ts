@@ -8,7 +8,7 @@ import { calcNextDueDate } from "@/utils/bill-utils";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -86,9 +86,13 @@ export async function GET(request: NextRequest) {
           account: bill.account?.name ?? "Cash",
           fromAccountId: bill.accountId ?? undefined,
         });
-      } else {
-        if (bill.accountId) {
-          const tx = await prisma.transaction.create({
+      }
+
+      const nextDueDate = calcNextDueDate(bill.dueDay, today);
+
+      await prisma.$transaction(async (tx) => {
+        if (!bill.user.sheetsId && bill.accountId) {
+          const createdTx = await tx.transaction.create({
             data: {
               userId: bill.userId,
               accountId: bill.accountId,
@@ -99,14 +103,10 @@ export async function GET(request: NextRequest) {
               note: `Pembayaran ${bill.name} (auto)`,
             },
           });
-          transactionId = tx.id;
+          transactionId = createdTx.id;
         }
-      }
 
-      const nextDueDate = calcNextDueDate(bill.dueDay, today);
-
-      await prisma.$transaction([
-        prisma.billPayment.create({
+        await tx.billPayment.create({
           data: {
             billId: bill.id,
             transactionId,
@@ -115,12 +115,13 @@ export async function GET(request: NextRequest) {
             paymentMonth,
             note: "Auto-recorded",
           },
-        }),
-        prisma.recurringBill.update({
+        });
+
+        await tx.recurringBill.update({
           where: { id: bill.id },
           data: { lastPaidAt: today, nextDueDate },
-        }),
-      ]);
+        });
+      });
 
       results.autoRecorded++;
     } catch (err) {

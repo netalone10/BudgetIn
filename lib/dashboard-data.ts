@@ -262,7 +262,7 @@ function mapTxnsForDisplay(raw: RawTxn[]): Transaction[] {
 type BudgetWithCategory = {
   id: string;
   categoryId: string;
-  amount: number;
+  amount: number | { toNumber(): number };
   category: { name: string; rolloverEnabled: boolean };
 };
 
@@ -294,7 +294,7 @@ function computeBudgetData(
     }
 
     const lastMonthBudgetByCategoryId = Object.fromEntries(
-      lastMonthBudgets.map((b) => [b.categoryId, b.amount])
+      lastMonthBudgets.map((b) => [b.categoryId, Number(b.amount)])
     );
 
     const budgetedCategories = new Set(budgets.map((b) => b.category.name));
@@ -320,7 +320,7 @@ function computeBudgetData(
           id: b.id,
           categoryId: b.categoryId,
           category: b.category.name,
-          budget: b.amount,
+          budget: Number(b.amount),
           spent: spentByCategory[b.category.name] ?? 0,
           rollover,
           rolloverEnabled,

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { Plus, Loader2, Tags, Edit2, Trash2, AlertCircle, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 
 interface AccountType {
   id: string;
@@ -171,11 +172,13 @@ function TypeCard({
   onEdit,
   onDelete,
   onArchive,
+  isDemo,
 }: {
   type: AccountType;
   onEdit: (t: AccountType) => void;
   onDelete: (t: AccountType) => void;
   onArchive: (t: AccountType) => void;
+  isDemo?: boolean;
 }) {
   return (
     <div className={cn(
@@ -203,6 +206,7 @@ function TypeCard({
         </div>
       </div>
 
+      {!isDemo && (
       <div className="flex items-center justify-end gap-1">
         <button
           onClick={() => onEdit(type)}
@@ -226,6 +230,7 @@ function TypeCard({
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
+      )}
     </div>
   );
 }
@@ -233,10 +238,11 @@ function TypeCard({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function AccountTypesPage() {
-  const { status } = useSession({
+  const { status, data: session } = useSession({
     required: true,
     onUnauthenticated() { redirect("/"); },
   });
+  const isDemo = session?.isDemo === true;
 
   const [types, setTypes] = useState<AccountType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -304,9 +310,11 @@ export default function AccountTypesPage() {
             <p className="text-xs text-muted-foreground">Kelola kategori akun kamu</p>
           </div>
         </div>
+        {!isDemo && (
         <Button onClick={() => setShowAddModal(true)} size="sm" className="w-full gap-1.5 sm:w-auto">
           <Plus className="h-4 w-4" /> Tambah Tipe
         </Button>
+        )}
       </div>
 
       {/* Info banner */}
@@ -334,6 +342,7 @@ export default function AccountTypesPage() {
               onEdit={setEditType}
               onArchive={handleArchive}
               onDelete={handleDelete}
+              isDemo={isDemo}
             />
           ))}
         </div>
@@ -352,6 +361,7 @@ export default function AccountTypesPage() {
               onEdit={setEditType}
               onArchive={handleArchive}
               onDelete={handleDelete}
+              isDemo={isDemo}
             />
           ))}
         </div>

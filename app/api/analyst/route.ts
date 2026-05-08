@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
 
     const budgetContext = budgets.map((b) => ({
       category: b.category.name,
-      budget: b.amount,
+      budget: Number(b.amount),
       spent: spentByCategory[b.category.name] ?? 0,
     }));
 

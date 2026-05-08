@@ -267,7 +267,7 @@ export async function createBudgetInBackup(userId: string, options?: { forceData
     savingsGoals: savingsGoals.map((goal) => ({
       id: goal.id,
       name: goal.name,
-      targetAmount: goal.targetAmount,
+      targetAmount: goal.targetAmount.toNumber(),
       deadline: goal.deadline?.toISOString() ?? null,
       createdAt: goal.createdAt.toISOString(),
     })),
@@ -435,7 +435,7 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
       id: budget.id,
       categoryId: budget.categoryId,
       categoryName: budget.category.name,
-      amount: budget.amount,
+      amount: budget.amount.toNumber(),
       month: normalizeMonth(budget.month),
     })),
   } satisfies Pick<BudgetInBackup["data"], "accountTypes" | "accounts" | "transactions" | "budgets">;

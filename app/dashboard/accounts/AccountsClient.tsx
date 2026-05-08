@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import AccountsSkeleton from "./AccountsSkeleton";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -487,6 +488,7 @@ const AccountCard = memo(function AccountCard({
   onAdjust: (a: AccountData) => void;
   onDelete: (a: AccountData) => void;
 }) {
+  const isDemo = useIsDemo();
   const router = useRouter();
   const isLiability = account.accountType.classification === "liability";
   const balance = parseFloat(account.currentBalance);
@@ -535,6 +537,8 @@ const AccountCard = memo(function AccountCard({
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
+            {!isDemo && (
+            <>
             <button
               onClick={() => onEdit(account)}
               title="Edit"
@@ -554,6 +558,8 @@ const AccountCard = memo(function AccountCard({
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
+            </>
+            )}
           </div>
         </div>
       </div>
@@ -599,6 +605,7 @@ export default function AccountsPage() {
     required: true,
     onUnauthenticated() { redirect("/"); },
   });
+  const isDemo = session?.isDemo === true;
 
   const [accounts, setAccounts] = useState<AccountData[]>([]);
   const [accountTypes, setAccountTypes] = useState<AccountType[]>([]);
@@ -744,11 +751,13 @@ export default function AccountsPage() {
   return (
     <>
       {/* Action bar (Tambah Akun) — heading dirender di server shell */}
+      {!isDemo && (
       <div className="flex items-center justify-end">
         <Button onClick={() => setShowAddModal(true)} size="sm" className="gap-1.5">
           <Plus className="h-4 w-4" /> Tambah Akun
         </Button>
       </div>
+      )}
 
       {/* Sheets banner */}
       {isSheets && (
@@ -805,9 +814,11 @@ export default function AccountsPage() {
         <div className="text-center py-12 border border-dashed border-border rounded-2xl">
           <Wallet className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-4">Belum ada akun. Tambahkan akun pertamamu!</p>
+          {!isDemo && (
           <Button onClick={() => setShowAddModal(true)} size="sm" className="gap-1.5">
             <Plus className="h-4 w-4" /> Tambah Akun
           </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-8">

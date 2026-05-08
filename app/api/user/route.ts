@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 // GET /api/user — ambil profile user
 export async function GET() {
@@ -32,6 +33,8 @@ export async function GET() {
 // PUT /api/user — update name (sheetsId tidak bisa diubah manual)
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

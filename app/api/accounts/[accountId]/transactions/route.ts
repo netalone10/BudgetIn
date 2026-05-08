@@ -128,31 +128,39 @@ async function handleDbUser(
   // Build date filter
   const dateFilter = buildDateFilter(period);
 
-  const rows = await prisma.transaction.findMany({
-    where: {
-      userId,
-      accountId,
-      ...(dateFilter && { date: dateFilter }),
-    },
-    orderBy: [{ date: "desc" }, { time: "desc" }],
-  });
+  const where = {
+    userId,
+    accountId,
+    ...(dateFilter && { date: dateFilter }),
+  };
 
-  // Compute summary
-  let totalIn = 0;
-  let totalOut = 0;
-  for (const r of rows) {
-    const amt = r.amount.toNumber();
-    if (r.type === "income" || r.type === "transfer_in") {
-      totalIn += amt;
-    } else {
-      totalOut += amt;
-    }
-  }
+  // Aggregate summary at database level so we don't need to fetch all rows into memory
+  const [totalCount, inAggregate, outAggregate] = await Promise.all([
+    prisma.transaction.count({ where }),
+    prisma.transaction.aggregate({
+      where: { ...where, type: { in: ["income", "transfer_in"] } },
+      _sum: { amount: true },
+    }),
+    prisma.transaction.aggregate({
+      where: { ...where, type: { in: ["expense", "transfer_out"] } },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const totalIn = inAggregate._sum.amount?.toNumber() ?? 0;
+  const totalOut = outAggregate._sum.amount?.toNumber() ?? 0;
 
   // Get current balance (skip if client already has it to avoid extra groupBy)
   const currentBalance = skipBalance ? new Decimal(0) : await getSingleAccountBalance(userId, accountId);
 
-  const transactions = rows.slice(0, limit).map((r) => ({
+  // Fetch only the rows needed for display
+  const rows = await prisma.transaction.findMany({
+    where,
+    orderBy: [{ date: "desc" }, { time: "desc" }],
+    take: limit,
+  });
+
+  const transactions = rows.map((r) => ({
     id: r.id,
     date: r.date,
     time: normalizeTransactionTime(r.time),
@@ -186,7 +194,7 @@ async function handleDbUser(
       totalIn,
       totalOut,
       net: totalIn - totalOut,
-      count: rows.length,
+      count: totalCount,
     },
   });
 }

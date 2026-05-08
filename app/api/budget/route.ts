@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchBudgetMonthData, getCurrentMonth, isValidMonth } from "@/lib/budget-data";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 // GET /api/budget — ambil semua budget bulan ini + spent + rollover per kategori
 export async function GET(req: NextRequest) {
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
 // POST /api/budget — set/update budget kategori
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

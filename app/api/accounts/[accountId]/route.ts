@@ -10,11 +10,14 @@ import {
   getAccounts,
   ensureAccountHeader,
 } from "@/utils/sheets";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 type Params = { params: Promise<{ accountId: string }> };
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { accountId } = await params;
@@ -155,6 +158,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { accountId } = await params;

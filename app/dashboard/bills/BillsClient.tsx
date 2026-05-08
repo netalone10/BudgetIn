@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Plus, RefreshCw, BellRing, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import BillCard, { BillWithMeta, getBillStatus } from "@/components/BillCard";
 import AddBillModal from "@/components/AddBillModal";
 import PayBillModal from "@/components/PayBillModal";
@@ -19,6 +20,7 @@ interface Summary {
 }
 
 export default function BillsClient() {
+  const isDemo = useIsDemo();
   const [bills, setBills] = useState<BillWithMeta[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -86,6 +88,7 @@ export default function BillsClient() {
           >
             <RefreshCw className="h-4 w-4" />
           </button>
+          {!isDemo && (
           <button
             onClick={() => { setEditBill(null); setShowAdd(true); }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
@@ -93,6 +96,7 @@ export default function BillsClient() {
             <Plus className="h-4 w-4" />
             Tambah
           </button>
+          )}
         </div>
       </div>
 

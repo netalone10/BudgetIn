@@ -7,6 +7,7 @@ import { randomUUID } from "crypto";
 import { getValidToken } from "@/utils/token";
 import { appendTransaction, getAccounts } from "@/utils/sheets";
 import { currentJakartaTime, isValidTransactionTime } from "@/lib/transaction-time";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 function isValidTransactionAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount !== 0 && Math.abs(amount) <= 1_000_000_000;
@@ -26,6 +27,8 @@ const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();

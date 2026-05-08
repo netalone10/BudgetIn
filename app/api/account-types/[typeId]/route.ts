@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 type Params = { params: Promise<{ typeId: string }> };
 
@@ -65,6 +66,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 export async function DELETE(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
 
   const { typeId } = await params;
   const { searchParams } = new URL(req.url);

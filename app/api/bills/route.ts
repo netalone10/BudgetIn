@@ -7,6 +7,7 @@ import { calcNextDueDate } from "@/utils/bill-utils";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { getAccounts } from "@/utils/sheets";
 import { getValidToken } from "@/utils/token";
+import { blockDemoResponse } from "@/lib/demo-account";
 
 async function resolveAccountId(userId: string, accountId: unknown): Promise<string | null | undefined> {
   if (!accountId || typeof accountId !== "string") return null;
@@ -79,6 +80,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -131,6 +134,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
@@ -190,6 +195,8 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);

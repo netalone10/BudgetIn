@@ -78,11 +78,11 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   const time = resolveTransactionTime(parsed, ctx);
   const note = parsed.note ?? "";
   const goals = isSavingsPrompt(prompt, parsed.category)
-    ? await prisma.savingsGoal.findMany({
+    ? (await prisma.savingsGoal.findMany({
         where: { userId },
         select: { id: true, name: true, targetAmount: true },
         orderBy: { createdAt: "asc" },
-      })
+      })).map((g) => ({ ...g, targetAmount: Number(g.targetAmount) }))
     : [];
   const savingsResolution = resolveSavingsGoalForPrompt({
     prompt,

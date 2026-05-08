@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -59,6 +60,7 @@ function getDeadlineInfo(
 }
 
 export default function SavingsGoalCard({ goal, onDelete }: Props) {
+  const isDemo = useIsDemo();
   const [expanded, setExpanded] = useState(false);
 
   const achieved = goal.totalContributed >= goal.targetAmount;
@@ -91,6 +93,7 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
                 {deadlineInfo.label}
               </span>
             )}
+            {!isDemo && (
             <Button
               size="icon-sm"
               variant="ghost"
@@ -100,6 +103,7 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
             >
               <Trash2 />
             </Button>
+            )}
           </div>
         </CardAction>
       </CardHeader>
