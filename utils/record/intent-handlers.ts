@@ -119,6 +119,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
       where: { userId_name: { userId, name: category } },
       update: savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated" ? { isSavings: true } : {},
       create: { userId, name: category, ...(savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated" ? { isSavings: true } : {}) },
+      select: { id: true },
     });
 
     if (savingsResolution.kind === "resolved") {
@@ -217,6 +218,7 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
         where: { userId_name: { userId, name: item.category } },
         update: {},
         create: { userId, name: item.category },
+        select: { id: true },
       });
       transactions.push(transaction);
     }
@@ -317,6 +319,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
           where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
           update: {},
           create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+          select: { id: true },
         });
       }
 
@@ -380,6 +383,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
         where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
         update: {},
         create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+        select: { id: true },
       });
     }
 
@@ -428,6 +432,7 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
       where: { userId_name: { userId, name: incomeCategory } },
       update: {},
       create: { userId, name: incomeCategory },
+      select: { id: true },
     });
 
     return NextResponse.json({
@@ -464,6 +469,7 @@ export async function handleBudgetSetting(parsed: ParsedIntent, ctx: RecordConte
       where: { userId_name: { userId, name: budgetCategory } },
       update: {},
       create: { userId, name: budgetCategory },
+      select: { id: true },
     });
 
     await prisma.budget.upsert({

@@ -22,7 +22,11 @@ export async function POST(
 
   const bill = await prisma.recurringBill.findUnique({
     where: { id },
-    include: { category: true, account: true, user: true },
+    include: {
+      category: { select: { name: true } },
+      account: { select: { name: true } },
+      user: { select: { id: true } },
+    },
   });
   if (!bill || bill.userId !== session.userId) {
     return NextResponse.json({ error: "Tagihan tidak ditemukan." }, { status: 404 });

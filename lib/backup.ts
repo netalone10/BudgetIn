@@ -31,6 +31,15 @@ type CanonicalCategory = {
   budgetType?: BudgetType;
 };
 
+type CategoryExportRow = {
+  id: string;
+  name: string;
+  type: string;
+  isSavings: boolean;
+  rolloverEnabled: boolean;
+  budgetType?: string | null;
+};
+
 type CanonicalAccountType = {
   id: string;
   name: string;
@@ -187,6 +196,46 @@ function toNumber(value: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function isMissingBudgetTypeColumnError(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  const maybeError = error as { code?: string; message?: string; meta?: { column?: string } };
+  return (
+    maybeError.code === "P2022" &&
+    (maybeError.meta?.column === "budget_type" || maybeError.message?.includes("budget_type"))
+  );
+}
+
+async function findCategoriesForBackup(userId: string, includeBudgetType = true): Promise<CategoryExportRow[]> {
+  if (!includeBudgetType) {
+    return prisma.category.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, isSavings: true, rolloverEnabled: true },
+    });
+  }
+
+  try {
+    return await prisma.category.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, isSavings: true, rolloverEnabled: true, budgetType: true },
+    });
+  } catch (error) {
+    if (isMissingBudgetTypeColumnError(error)) {
+      return findCategoriesForBackup(userId, false);
+    }
+    throw error;
+  }
+}
+
+async function canUseCategoryBudgetType(userId: string) {
+  try {
+    await prisma.category.findFirst({ where: { userId }, select: { budgetType: true } });
+    return true;
+  } catch (error) {
+    if (isMissingBudgetTypeColumnError(error)) return false;
+    throw error;
+  }
+}
+
 function summaryOf(data: BudgetInBackup["data"]): BackupSummary {
   const summary = {
     categories: data.categories.length,
@@ -236,7 +285,7 @@ export async function createBudgetInBackup(userId: string, options?: { forceData
       : "database";
 
   const [categories, savingsGoals, savingsContributions, recurringBills, billPayments] = await Promise.all([
-    prisma.category.findMany({ where: { userId } }),
+    findCategoriesForBackup(userId),
     prisma.savingsGoal.findMany({ where: { userId } }),
     prisma.savingsContribution.findMany({ where: { userId } }),
     prisma.recurringBill.findMany({
@@ -765,24 +814,38 @@ async function restoreCommonDbBackedData(userId: string, backup: BudgetInBackup,
 
 async function restoreCategories(userId: string, backup: BudgetInBackup) {
   const categoryId = new Map<string, string>();
+  const includeBudgetType = await canUseCategoryBudgetType(userId);
   for (const category of backup.data.categories) {
-    const restored = await prisma.category.upsert({
-      where: { userId_name: { userId, name: category.name } },
-      update: {
-        type: category.type === "income" ? "income" : "expense",
-        isSavings: category.isSavings,
-        rolloverEnabled: category.rolloverEnabled,
-        budgetType: resolveBudgetType(category.name, category.budgetType),
-      },
-      create: {
-        userId,
-        name: category.name,
-        type: category.type === "income" ? "income" : "expense",
-        isSavings: category.isSavings,
-        rolloverEnabled: category.rolloverEnabled,
-        budgetType: resolveBudgetType(category.name, category.budgetType),
-      },
-    });
+    const categoryData = {
+      type: category.type === "income" ? "income" : "expense",
+      isSavings: category.isSavings,
+      rolloverEnabled: category.rolloverEnabled,
+    };
+    const restored = includeBudgetType
+      ? await prisma.category.upsert({
+        where: { userId_name: { userId, name: category.name } },
+        update: {
+          ...categoryData,
+          budgetType: resolveBudgetType(category.name, category.budgetType),
+        },
+        create: {
+          userId,
+          name: category.name,
+          ...categoryData,
+          budgetType: resolveBudgetType(category.name, category.budgetType),
+        },
+        select: { id: true },
+      })
+      : await prisma.category.upsert({
+        where: { userId_name: { userId, name: category.name } },
+        update: categoryData,
+        create: {
+          userId,
+          name: category.name,
+          ...categoryData,
+        },
+        select: { id: true },
+      });
     categoryId.set(category.id, restored.id);
   }
   return categoryId;
@@ -790,6 +853,7 @@ async function restoreCategories(userId: string, backup: BudgetInBackup) {
 
 async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
   await ensureDefaultAccountTypes(userId);
+  const includeBudgetType = await canUseCategoryBudgetType(userId);
   const maps = {
     categoryId: new Map<string, string>(),
     accountTypeId: new Map<string, string>(),
@@ -801,23 +865,36 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
 
   await prisma.$transaction(async (tx) => {
     for (const category of backup.data.categories) {
-      const restored = await tx.category.upsert({
-        where: { userId_name: { userId, name: category.name } },
-        update: {
-          type: category.type === "income" ? "income" : "expense",
-          isSavings: category.isSavings,
-          rolloverEnabled: category.rolloverEnabled,
-          budgetType: resolveBudgetType(category.name, category.budgetType),
-        },
-        create: {
-          userId,
-          name: category.name,
-          type: category.type === "income" ? "income" : "expense",
-          isSavings: category.isSavings,
-          rolloverEnabled: category.rolloverEnabled,
-          budgetType: resolveBudgetType(category.name, category.budgetType),
-        },
-      });
+      const categoryData = {
+        type: category.type === "income" ? "income" : "expense",
+        isSavings: category.isSavings,
+        rolloverEnabled: category.rolloverEnabled,
+      };
+      const restored = includeBudgetType
+        ? await tx.category.upsert({
+          where: { userId_name: { userId, name: category.name } },
+          update: {
+            ...categoryData,
+            budgetType: resolveBudgetType(category.name, category.budgetType),
+          },
+          create: {
+            userId,
+            name: category.name,
+            ...categoryData,
+            budgetType: resolveBudgetType(category.name, category.budgetType),
+          },
+          select: { id: true },
+        })
+        : await tx.category.upsert({
+          where: { userId_name: { userId, name: category.name } },
+          update: categoryData,
+          create: {
+            userId,
+            name: category.name,
+            ...categoryData,
+          },
+          select: { id: true },
+        });
       maps.categoryId.set(category.id, restored.id);
     }
 
@@ -940,11 +1017,12 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
     for (const budget of backup.data.budgets) {
       const categoryId = budget.categoryId ? maps.categoryId.get(budget.categoryId) : null;
       const category = categoryId
-        ? await tx.category.findUnique({ where: { id: categoryId } })
+        ? await tx.category.findUnique({ where: { id: categoryId }, select: { id: true } })
         : await tx.category.upsert({
             where: { userId_name: { userId, name: budget.categoryName } },
             update: {},
             create: { userId, name: budget.categoryName, type: "expense" },
+            select: { id: true },
           });
       if (!category) continue;
       await tx.budget.upsert({

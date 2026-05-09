@@ -103,6 +103,7 @@ export async function POST(req: Request) {
           name: name.trim(),
         },
       },
+      select: { id: true },
     });
 
     if (existing) {
@@ -110,15 +111,18 @@ export async function POST(req: Request) {
     }
 
     const data = {
-        userId: session.userId,
-        name: name.trim(),
-        type,
-        budgetType: type === "expense" ? resolveBudgetType(name.trim()) : "variable",
+      userId: session.userId,
+      name: name.trim(),
+      type,
+      budgetType: type === "expense" ? resolveBudgetType(name.trim()) : "variable",
     };
 
     let category;
     try {
-      category = await prisma.category.create({ data });
+      category = await prisma.category.create({
+        data,
+        select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
+      });
     } catch (error) {
       if (!isMissingBudgetTypeColumnError(error)) throw error;
       category = await prisma.category.create({
@@ -127,6 +131,7 @@ export async function POST(req: Request) {
           name: name.trim(),
           type,
         },
+        select: { id: true, name: true, type: true, isSavings: true },
       });
     }
 

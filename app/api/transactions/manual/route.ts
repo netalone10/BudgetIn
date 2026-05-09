@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
         where: { userId_name: { userId: session.userId, name: category.trim() } },
         update: {},
         create: { userId: session.userId, name: category.trim(), type: type === "income" ? "income" : "expense" },
+        select: { id: true },
       });
 
       return NextResponse.json({ transaction, accountName: account.name }, { status: 201 });
@@ -153,6 +154,7 @@ export async function POST(req: NextRequest) {
           where: { userId_name: { userId: session.userId, name: TRANSFER_FEE_CATEGORY } },
           update: {},
           create: { userId: session.userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+          select: { id: true },
         });
       }
 
@@ -212,6 +214,7 @@ export async function POST(req: NextRequest) {
         name: category.trim(),
         type: type === "income" ? "income" : "expense",
       },
+      select: { id: true },
     });
 
     return NextResponse.json({ transaction, accountName: account.name }, { status: 201 });
@@ -321,6 +324,7 @@ export async function POST(req: NextRequest) {
           name: TRANSFER_FEE_CATEGORY,
           type: "expense",
         },
+        select: { id: true },
       });
     }
 
