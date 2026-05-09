@@ -28,12 +28,10 @@ export default async function BudgetPage({ searchParams }: Props) {
 
   let loadError: string | null = null;
 
-  try {
-    await seedDefaultCategories(session.userId);
-  } catch (error) {
+  // Seed default categories best-effort — kategori existing tetap bisa dimuat dari fetchBudgetCategories walaupun seed gagal.
+  await seedDefaultCategories(session.userId).catch((error) => {
     console.error("Failed to seed default categories on budget page:", error);
-    loadError = "Sebagian data kategori gagal dimuat. Coba muat ulang halaman.";
-  }
+  });
 
   let initialData: BudgetMonthData = emptyBudgetMonthData(month);
   let categories: BudgetCategoryOption[] = [];

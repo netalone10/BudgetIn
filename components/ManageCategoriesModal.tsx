@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Pencil, Trash2, Check, Plus } from "lucide-react";
+import { X, Loader2, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -28,9 +28,8 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
   const [newCatName, setNewCatName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
-  // Edit state
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
+  // Edit modal state
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -76,25 +75,53 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
     }
   }
 
-  async function handleRename(id: string) {
-    if (!editName.trim()) return;
+  async function handleSaveEdit(payload: {
+    id: string;
+    name: string;
+    budgetType: BudgetType;
+    isSavings: boolean;
+  }) {
+    const original = categories.find((c) => c.id === payload.id);
+    if (!original) return;
 
-    setSavingId(id);
+    const body: Record<string, unknown> = {};
+    const trimmedName = payload.name.trim();
+    if (trimmedName && trimmedName !== original.name) body.name = trimmedName;
+    if (payload.budgetType !== resolveBudgetType(original.name, original.budgetType)) {
+      body.budgetType = payload.budgetType;
+    }
+    if (payload.isSavings !== original.isSavings) body.isSavings = payload.isSavings;
+
+    if (Object.keys(body).length === 0) {
+      setEditingCategory(null);
+      return;
+    }
+
+    setSavingId(payload.id);
     try {
-      const res = await fetch(`/api/categories/${id}`, {
+      const res = await fetch(`/api/categories/${payload.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName.trim() }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok) {
         setCategories((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, name: editName.trim() } : c))
+          prev.map((c) =>
+            c.id === payload.id
+              ? {
+                  ...c,
+                  name: trimmedName || c.name,
+                  budgetType: payload.budgetType,
+                  isSavings: payload.isSavings,
+                }
+              : c
+          )
         );
-        setEditingId(null);
+        setEditingCategory(null);
         onSaved?.();
       } else {
-        alert(data.error || "Gagal merubah nama");
+        alert(data.error || "Gagal menyimpan perubahan");
       }
     } catch {
       alert("Terjadi kesalahan");
@@ -124,56 +151,7 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
     }
   }
 
-  async function handleToggleSavings(id: string, currentValue: boolean) {
-    try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isSavings: !currentValue }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCategories((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, isSavings: !currentValue } : c))
-        );
-        onSaved?.();
-      } else {
-        alert(data.error || "Gagal mengubah status tabungan");
-      }
-    } catch {
-      alert("Terjadi kesalahan");
-    }
-  }
 
-  async function handleToggleBudgetType(id: string, currentValue: BudgetType) {
-    const nextValue = currentValue === "fixed" ? "variable" : "fixed";
-    setSavingId(id);
-    try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budgetType: nextValue }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCategories((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, budgetType: nextValue } : c))
-        );
-        onSaved?.();
-      } else {
-        alert(data.error || "Gagal mengubah tipe budget");
-      }
-    } catch {
-      alert("Terjadi kesalahan");
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  function startEdit(c: Category) {
-    setEditingId(c.id);
-    setEditName(c.name);
-  }
 
   const displayedCategories = categories.filter((c) => (c.type || "expense") === activeTab);
 
@@ -246,66 +224,36 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
             <div className="space-y-1">
               {displayedCategories.map((c) => (
                 <div key={c.id} className="flex items-center justify-between gap-3 py-2 px-3 hover:bg-muted/30 rounded-lg group text-sm">
-                  {editingId === c.id ? (
-                    <div className="flex flex-1 items-center gap-2">
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="h-7 text-xs flex-1"
-                        maxLength={30}
-                      />
-                      <Button size="icon" variant="ghost" className="size-7 text-green-600" onClick={() => handleRename(c.id)} disabled={savingId === c.id || !editName.trim()}>
-                        {savingId === c.id ? <Loader2 className="size-3 animate-spin"/> : <Check className="size-3" />}
+                  <span className="font-medium truncate pr-4">{c.name}</span>
+                  <div className="flex items-center gap-1">
+                    {activeTab === "expense" && (
+                      <>
+                        <span
+                          className={cn(
+                            "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                            resolveBudgetType(c.name, c.budgetType) === "fixed"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {resolveBudgetType(c.name, c.budgetType) === "fixed" ? "Fixed" : "Variable"}
+                        </span>
+                        {c.isSavings && (
+                          <span className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                            💰 Tabungan
+                          </span>
+                        )}
+                      </>
+                    )}
+                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button size="icon" variant="ghost" className="size-7" onClick={() => setEditingCategory(c)} disabled={savingId === c.id}>
+                        <Pencil className="size-3" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="size-7 text-muted-foreground" onClick={() => setEditingId(null)} disabled={savingId === c.id}>
-                        <X className="size-3" />
+                      <Button size="icon" variant="ghost" className="size-7 hover:text-destructive" onClick={() => handleDelete(c.id, c.name)} disabled={savingId === c.id}>
+                        {savingId === c.id ? <Loader2 className="size-3 animate-spin"/> : <Trash2 className="size-3" />}
                       </Button>
                     </div>
-                  ) : (
-                    <>
-                      <span className="font-medium truncate pr-4">{c.name}</span>
-                      <div className="flex items-center gap-1">
-                        {activeTab === "expense" && (
-                          <>
-                            <button
-                              onClick={() => handleToggleBudgetType(c.id, resolveBudgetType(c.name, c.budgetType))}
-                              disabled={savingId === c.id}
-                              title="Ubah Fixed/Variable budget"
-                              className={cn(
-                                "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
-                                resolveBudgetType(c.name, c.budgetType) === "fixed"
-                                  ? "bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/40 dark:text-blue-400"
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-                              )}
-                            >
-                              {resolveBudgetType(c.name, c.budgetType) === "fixed" ? "Fixed" : "Variable"}
-                            </button>
-                            <button
-                              onClick={() => handleToggleSavings(c.id, c.isSavings)}
-                              disabled={savingId === c.id}
-                              title={c.isSavings ? "Tandai bukan tabungan" : "Tandai sebagai tabungan"}
-                              className={cn(
-                                "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors",
-                                c.isSavings
-                                  ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-400"
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80 opacity-0 group-hover:opacity-100"
-                              )}
-                            >
-                              💰 {c.isSavings ? "Tabungan" : "Tabungan?"}
-                            </button>
-                          </>
-                        )}
-                        <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" className="size-7" onClick={() => startEdit(c)} disabled={savingId === c.id}>
-                            <Pencil className="size-3" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="size-7 hover:text-destructive" onClick={() => handleDelete(c.id, c.name)} disabled={savingId === c.id}>
-                            {savingId === c.id ? <Loader2 className="size-3 animate-spin"/> : <Trash2 className="size-3" />}
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -313,6 +261,131 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
         </div>
 
       </div>
+
+      {editingCategory && (
+        <EditCategoryModal
+          category={editingCategory}
+          saving={savingId === editingCategory.id}
+          onClose={() => setEditingCategory(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
+    </>
+  );
+}
+
+interface EditCategoryModalProps {
+  category: Category;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (payload: { id: string; name: string; budgetType: BudgetType; isSavings: boolean }) => void;
+}
+
+function EditCategoryModal({ category, saving, onClose, onSave }: EditCategoryModalProps) {
+  const isExpense = (category.type || "expense") === "expense";
+  const [name, setName] = useState(category.name);
+  const [budgetType, setBudgetType] = useState<BudgetType>(
+    resolveBudgetType(category.name, category.budgetType)
+  );
+  const [isSavings, setIsSavings] = useState(category.isSavings);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave({ id: category.id, name, budgetType, isSavings });
+  }
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm"
+        onClick={saving ? undefined : onClose}
+        onKeyDown={(e) => { if (e.key === "Escape" && !saving) onClose(); }}
+        role="button"
+        tabIndex={-1}
+      />
+
+      <form
+        onSubmit={handleSubmit}
+        className="fixed left-1/2 top-1/2 z-[60] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-6 shadow-xl"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold">Edit Kategori</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Nama kategori</label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={30}
+              disabled={saving}
+              autoFocus
+            />
+          </div>
+
+          {isExpense && (
+            <>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Tipe budget</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["fixed", "variable"] as const).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setBudgetType(opt)}
+                      disabled={saving}
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                        budgetType === opt
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      {opt === "fixed" ? "Fixed" : "Variable"}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Fixed dihitung 100% dari budget. Variable diprorata terhadap hari berjalan.
+                </p>
+              </div>
+
+              <label className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 cursor-pointer">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-medium">Kategori tabungan</span>
+                  <p className="text-[11px] text-muted-foreground">Dihitung sebagai saving, bukan pengeluaran.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isSavings}
+                  onChange={(e) => setIsSavings(e.target.checked)}
+                  disabled={saving}
+                  className="size-4 accent-primary"
+                />
+              </label>
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 mt-6">
+          <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
+            Batal
+          </Button>
+          <Button type="submit" disabled={saving || !name.trim()}>
+            {saving ? <Loader2 className="size-4 animate-spin" /> : "Simpan"}
+          </Button>
+        </div>
+      </form>
     </>
   );
 }
