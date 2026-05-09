@@ -31,12 +31,14 @@ interface CalendarResponse {
 
 const DAY_LABELS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
+const IDR_FORMAT = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
 function formatIDR(value: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return IDR_FORMAT.format(value);
 }
 
 function formatMonthYear(year: number, month: number): string {
@@ -78,8 +80,8 @@ function isTransfer(type: CalendarTransaction["type"]): boolean {
 
 export default function CalendarClient() {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(() => now.getFullYear());
+  const [month, setMonth] = useState(() => now.getMonth() + 1);
   const [calData, setCalData] = useState<CalendarResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -159,7 +161,7 @@ export default function CalendarClient() {
             className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             aria-label="Bulan sebelumnya"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="size-4" />
           </button>
           <span className="text-sm font-semibold text-foreground">
             {formatMonthYear(year, month)}
@@ -169,7 +171,7 @@ export default function CalendarClient() {
             className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             aria-label="Bulan berikutnya"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="size-4" />
           </button>
         </div>
 
@@ -263,12 +265,14 @@ export default function CalendarClient() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-semibold text-foreground">
-                {new Date(selectedDay + "T00:00:00").toLocaleDateString("id-ID", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
+                <span suppressHydrationWarning>
+                  {new Date(selectedDay + "T00:00:00").toLocaleDateString("id-ID", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
               </div>
               {selectedDayData && (
                 <div className="text-xs text-muted-foreground mt-0.5">
@@ -308,7 +312,7 @@ export default function CalendarClient() {
                     <div className="flex items-center gap-1.5">
                       <span
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full shrink-0",
+                          "size-1.5 rounded-full shrink-0",
                           isTransfer(tx.type) ? "bg-muted-foreground" : isIncome(tx.type) ? "bg-emerald-500" : "bg-red-500"
                         )}
                       />

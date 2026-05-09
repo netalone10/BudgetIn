@@ -49,8 +49,11 @@ function isFixed(item: BudgetItem): boolean {
   return resolveBudgetType(item.category, item.budgetType) === "fixed";
 }
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+const ID_MONTH_FORMAT = new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" });
+
 function fmt(n: number) {
-  return new Intl.NumberFormat("id-ID").format(Math.abs(n));
+  return ID_NUMBER_FORMAT.format(Math.abs(n));
 }
 
 function fmtCompact(n: number) {
@@ -106,9 +109,7 @@ function getBudgetDay(month: string) {
 
 function formatMonthLabel(month: string) {
   const [year, monthNum] = month.split("-").map(Number);
-  return new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(
-    new Date(year, monthNum - 1, 1)
-  );
+  return ID_MONTH_FORMAT.format(new Date(year, monthNum - 1, 1));
 }
 
 export default function BudgetClient({ initialData, categories }: Props) {
@@ -296,7 +297,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
             <Button variant="outline" size="icon-sm" onClick={() => loadMonth(shiftMonth(month, -1))} disabled={loading || saving}>
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="size-4" />
             </Button>
             <Input
               type="month"
@@ -308,7 +309,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
               className="w-full text-sm font-medium sm:w-40"
             />
             <Button variant="outline" size="icon-sm" onClick={() => loadMonth(shiftMonth(month, 1))} disabled={loading || saving}>
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="size-4" />
             </Button>
           </div>
 
@@ -317,7 +318,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
               Bulan Ini
             </Button>
             <Button size="sm" onClick={handleCopyPreviousMonth} disabled={loading || saving} className="whitespace-normal sm:whitespace-nowrap">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              {saving ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
               {copyConfirm ? "Klik Lagi untuk Overwrite" : hasExistingBudget ? "Overwrite dari Bulan Lalu" : "Copy dari Bulan Lalu"}
             </Button>
           </div>
@@ -335,7 +336,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
         </div>
 
         <div className="flex items-start gap-2 rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
           <span>
             Prorated memakai {dayOfMonth}/{totalDays} hari ({prorationPct}%). Kategori Fixed dihitung 100%, Variable diproporsikan.
           </span>
@@ -351,7 +352,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
       {!isDemo && (
       <form onSubmit={handleAdd} className="rounded-2xl border bg-card p-4 shadow-sm">
         <div className="mb-3 flex items-center gap-2">
-          <Plus className="h-4 w-4 text-primary" />
+          <Plus className="size-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Tambah Budget</h2>
         </div>
         <div className="grid gap-3 md:grid-cols-[1fr_180px_auto] md:items-center">
@@ -387,7 +388,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
       <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-14 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin" />
+            <Loader2 className="size-6 animate-spin" />
           </div>
         ) : data.budgets.length === 0 ? (
           <div className="px-4 py-12 text-center text-sm text-muted-foreground">
@@ -457,7 +458,6 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             if (e.key === "Escape") setEditingId(null);
                           }}
                           className="mt-1 h-8 w-full text-xs"
-                          autoFocus
                         />
                       ) : (
                         <p className="break-words font-medium tabular-nums">
@@ -489,10 +489,10 @@ export default function BudgetClient({ initialData, categories }: Props) {
                     {isEditing ? (
                       <>
                         <Button variant="ghost" size="icon-xs" onClick={() => handleSave(item)} disabled={saving}>
-                          <Check className="h-3.5 w-3.5 text-green-600" />
+                          <Check className="size-3.5 text-green-600" />
                         </Button>
                         <Button variant="ghost" size="icon-xs" onClick={() => setEditingId(null)} disabled={saving}>
-                          <X className="h-3.5 w-3.5" />
+                          <X className="size-3.5" />
                         </Button>
                       </>
                     ) : isConfirmDelete ? (
@@ -510,7 +510,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                           className={item.rolloverEnabled ? "text-violet-600 bg-violet-100 dark:bg-violet-900/30" : "text-muted-foreground"}
                           title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover"}
                         >
-                          <RotateCcw className="h-3 w-3" />
+                          <RotateCcw className="size-3" />
                         </Button>
                         {!isDemo && (
                           <>
@@ -525,7 +525,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             disabled={saving}
                             title="Edit budget"
                           >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="size-3" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -538,7 +538,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             className="text-muted-foreground hover:text-destructive"
                             title="Hapus budget"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="size-3" />
                           </Button>
                           </>
                         )}
@@ -628,7 +628,6 @@ export default function BudgetClient({ initialData, categories }: Props) {
                               if (e.key === "Escape") setEditingId(null);
                             }}
                             className="ml-auto w-28 text-right text-xs"
-                            autoFocus
                           />
                         ) : (
                           <div>
@@ -652,10 +651,10 @@ export default function BudgetClient({ initialData, categories }: Props) {
                         {isEditing ? (
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="icon-xs" onClick={() => handleSave(item)} disabled={saving}>
-                              <Check className="h-3.5 w-3.5 text-green-600" />
+                              <Check className="size-3.5 text-green-600" />
                             </Button>
                             <Button variant="ghost" size="icon-xs" onClick={() => setEditingId(null)} disabled={saving}>
-                              <X className="h-3.5 w-3.5" />
+                              <X className="size-3.5" />
                             </Button>
                           </div>
                         ) : isConfirmDelete ? (
@@ -673,7 +672,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                               className={item.rolloverEnabled ? "text-violet-600 bg-violet-100 dark:bg-violet-900/30" : "text-muted-foreground"}
                               title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover"}
                             >
-                              <RotateCcw className="h-3 w-3" />
+                              <RotateCcw className="size-3" />
                             </Button>
                             {!isDemo && (
                             <>
@@ -688,7 +687,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                               disabled={saving}
                               title="Edit budget"
                             >
-                              <Pencil className="h-3 w-3" />
+                              <Pencil className="size-3" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -701,7 +700,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                               className="text-muted-foreground hover:text-destructive"
                               title="Hapus budget"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="size-3" />
                             </Button>
                             </>
                             )}
@@ -741,7 +740,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
       {data.unbudgeted.length > 0 && (
         <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
           <div className="px-4 py-2.5 border-b bg-muted/30 flex items-center gap-2">
-            <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+            <AlertCircle className="size-3.5 text-muted-foreground" />
             <span className="text-[11px] font-medium text-muted-foreground">Pengeluaran tanpa budget</span>
           </div>
           <div className="divide-y">

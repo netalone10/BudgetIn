@@ -38,12 +38,14 @@ type ActionConfig = {
 };
 
 function storageLabel(user: UserProfile | null) {
-  if (!user) return "Memuat...";
+  if (!user) return "Memuat…";
   return user.sheetsId ? "Google Sheets" : "Database";
 }
 
+const ID_LONG_DATE_FORMAT = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
+  return ID_LONG_DATE_FORMAT.format(new Date(value));
 }
 
 function ActionCard({ action, onOpen }: { action: ActionConfig; onOpen: (type: ActionType) => void }) {
@@ -51,7 +53,7 @@ function ActionCard({ action, onOpen }: { action: ActionConfig; onOpen: (type: A
     <section className={`rounded-[28px] border p-5 shadow-sm md:p-6 ${action.destructive ? "border-destructive/30 bg-destructive/5" : "border-border/70 bg-card"}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex gap-4">
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${action.destructive ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
+          <div className={`flex size-11 shrink-0 items-center justify-center rounded-2xl ${action.destructive ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
             {action.icon}
           </div>
           <div>
@@ -60,7 +62,7 @@ function ActionCard({ action, onOpen }: { action: ActionConfig; onOpen: (type: A
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               {action.impact.map((item) => (
                 <li key={item} className="flex gap-2">
-                  <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${action.destructive ? "text-destructive" : "text-amber-500"}`} />
+                  <AlertTriangle className={`mt-0.5 size-4 shrink-0 ${action.destructive ? "text-destructive" : "text-amber-500"}`} />
                   <span>{item}</span>
                 </li>
               ))}
@@ -99,7 +101,7 @@ function ConfirmationModal({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`rounded-2xl p-2.5 ${action.destructive ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-600"}`}>
-              <ShieldAlert className="h-5 w-5" />
+              <ShieldAlert className="size-5" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground">Konfirmasi {action.title}</h2>
@@ -107,7 +109,7 @@ function ConfirmationModal({
             </div>
           </div>
           <button onClick={onClose} disabled={loading} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50">
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         </div>
 
@@ -121,7 +123,6 @@ function ConfirmationModal({
         <input
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
-          autoFocus
           disabled={loading}
           className="mt-2 w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/40 disabled:opacity-60"
         />
@@ -131,7 +132,7 @@ function ConfirmationModal({
             Batal
           </Button>
           <Button variant={action.destructive ? "destructive" : "default"} className="flex-1 rounded-2xl" onClick={onConfirm} disabled={!canConfirm}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
             Konfirmasi
           </Button>
         </div>
@@ -166,7 +167,7 @@ export default function AccountSettingsPage() {
       ],
       endpoint: "/api/user/reset-data",
       method: "POST",
-      icon: <Eraser className="h-5 w-5" />,
+      icon: <Eraser className="size-5" />,
     },
     {
       type: "reset-account",
@@ -180,7 +181,7 @@ export default function AccountSettingsPage() {
       ],
       endpoint: "/api/user/reset-account",
       method: "POST",
-      icon: <RefreshCw className="h-5 w-5" />,
+      icon: <RefreshCw className="size-5" />,
       destructive: true,
     },
     {
@@ -195,7 +196,7 @@ export default function AccountSettingsPage() {
       ],
       endpoint: "/api/user/account",
       method: "DELETE",
-      icon: <Trash2 className="h-5 w-5" />,
+      icon: <Trash2 className="size-5" />,
       destructive: true,
     },
   ], []);
@@ -263,7 +264,7 @@ export default function AccountSettingsPage() {
   if (status === "loading" || loadingUser) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -280,15 +281,15 @@ export default function AccountSettingsPage() {
 
       {message && (
         <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${message.ok ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
-          {message.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4" /> : <AlertTriangle className="mt-0.5 h-4 w-4" />}
+          {message.ok ? <CheckCircle2 className="mt-0.5 size-4" /> : <AlertTriangle className="mt-0.5 size-4" />}
           <span>{message.text}</span>
         </div>
       )}
 
       <section className="grid gap-4 rounded-[28px] border border-border/70 bg-card p-5 shadow-sm md:grid-cols-3 md:p-6">
         <div className="flex items-center gap-3 md:col-span-2">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <UserCog className="h-5 w-5" />
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <UserCog className="size-5" />
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold text-foreground">{user?.name}</h2>
@@ -298,7 +299,7 @@ export default function AccountSettingsPage() {
         </div>
         <div className="rounded-2xl border border-border bg-background p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <Database className="h-4 w-4" />
+            <Database className="size-4" />
             <p className="text-xs font-semibold uppercase tracking-[0.18em]">Storage</p>
           </div>
           <p className="mt-2 text-lg font-semibold text-foreground">{storageLabel(user)}</p>

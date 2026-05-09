@@ -18,12 +18,14 @@ const typeClassName: Record<ChangelogType, string> = {
   fix: "border-amber-500/25 bg-amber-500/10 text-amber-600 dark:text-amber-300",
 };
 
+const ID_RELEASE_DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
 function formatReleaseDate(value: string) {
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
+  return ID_RELEASE_DATE_FORMAT.format(new Date(`${value}T00:00:00`));
 }
 
 function getShortCommitSha() {
@@ -47,8 +49,8 @@ export default async function ChangelogPage() {
             <div className="relative flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <History className="h-5 w-5" />
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <History className="size-5" />
                   </div>
                   <div>
                     <p className="label-mono text-primary">Production Updates</p>
@@ -64,7 +66,7 @@ export default async function ChangelogPage() {
 
               <div className="rounded-3xl border border-border bg-background/70 p-4 md:min-w-[260px]">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Rocket className="h-4 w-4 text-primary" />
+                  <Rocket className="size-4 text-primary" />
                   Latest production
                 </div>
                 <div className="mt-3 space-y-2 text-sm text-muted-foreground">
@@ -89,7 +91,7 @@ export default async function ChangelogPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-3xl border border-border/70 bg-card p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <GitBranch className="h-4 w-4 text-primary" />
+              <GitBranch className="size-4 text-primary" />
               Version control
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -98,7 +100,7 @@ export default async function ChangelogPage() {
           </div>
           <div className="rounded-3xl border border-border/70 bg-card p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ShieldCheck className="h-4 w-4 text-primary" />
+              <ShieldCheck className="size-4 text-primary" />
               Semantic versioning
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -112,7 +114,7 @@ export default async function ChangelogPage() {
             className="rounded-3xl border border-border/70 bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5"
           >
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <ExternalLink className="h-4 w-4 text-primary" />
+              <ExternalLink className="size-4 text-primary" />
               GitHub repository
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -164,7 +166,7 @@ export default async function ChangelogPage() {
                         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                       >
                         Lihat commit
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="size-3.5" />
                       </Link>
                     )}
                   </div>
@@ -174,7 +176,7 @@ export default async function ChangelogPage() {
                   <ul className="space-y-2">
                     {item.changes.map((change) => (
                       <li key={change} className="flex gap-2 text-sm text-muted-foreground">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
                         <span>{change}</span>
                       </li>
                     ))}

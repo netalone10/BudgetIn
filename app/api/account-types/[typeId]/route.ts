@@ -77,13 +77,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!existing) return NextResponse.json({ error: "Tipe akun tidak ditemukan." }, { status: 404 });
   if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-  const accountCount = await prisma.account.count({ where: { accountTypeId: typeId } });
-
   if (soft) {
     // Soft-delete: type jadi isActive=false, akun tetap aktif
     await prisma.accountType.update({ where: { id: typeId }, data: { isActive: false } });
     return NextResponse.json({ message: "Tipe akun diarsipkan." });
   }
+
+  const accountCount = await prisma.account.count({ where: { accountTypeId: typeId } });
 
   // Hard-delete: hanya boleh kalau tidak ada akun yang pakai
   if (accountCount > 0) {

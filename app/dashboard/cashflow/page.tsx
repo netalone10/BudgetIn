@@ -46,13 +46,16 @@ interface CashflowResponse {
   };
 }
 
+const IDR_FORMAT = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function formatIDR(value: string | number): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(num);
+  return IDR_FORMAT.format(num);
 }
 
 function formatDate(dateStr: string): string {
@@ -65,8 +68,8 @@ export default function CashflowPage() {
     onUnauthenticated() { redirect("/"); },
   });
 
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(() => new Date().getMonth() + 1);
+  const [year, setYear] = useState(() => new Date().getFullYear());
   const [data, setData] = useState<CashflowResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +126,7 @@ export default function CashflowPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -133,11 +136,11 @@ export default function CashflowPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
-            <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+          <div className="size-9 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
+            <TrendingDown className="size-5 text-red-600 dark:text-red-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Laporan Arus Kas</h1>
+            <h1 className="text-xl font-semibold text-foreground">Laporan Arus Kas</h1>
             <p className="text-xs text-muted-foreground">Pantau pengeluaran Kartu Kredit</p>
           </div>
         </div>
@@ -149,27 +152,27 @@ export default function CashflowPage() {
           onClick={handlePrevMonth}
           className="p-2 rounded-lg border border-border hover:bg-muted transition-colors"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="size-4" />
         </button>
         <span className="text-base font-semibold min-w-[140px] text-center">{monthName}</span>
         <button
           onClick={handleNextMonth}
           className="p-2 rounded-lg border border-border hover:bg-muted transition-colors"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="size-4" />
         </button>
       </div>
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl p-4">
-          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+          <AlertCircle className="size-4 shrink-0" /> {error}
         </div>
       )}
 
       {/* Empty State */}
       {!loading && (!data?.creditCards || data.creditCards.length === 0) && (
         <div className="text-center py-12 border border-dashed border-border rounded-2xl">
-          <CreditCard className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <CreditCard className="size-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-2">Belum ada Kartu Kredit.</p>
           <p className="text-xs text-muted-foreground">
             Tambahkan akun dengan tipe "Kartu Kredit" untuk melihat laporan arus kas.
@@ -229,7 +232,7 @@ export default function CashflowPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border gap-2">
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-red-500 shrink-0" />
+                    <CreditCard className="size-4 text-red-500 shrink-0" />
                     <span className="break-words text-sm font-medium">{cc.accountName}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -286,9 +289,9 @@ export default function CashflowPage() {
                       className="w-full flex items-center justify-center gap-1.5 pt-2 border-t border-border/50 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {expandedCards.has(cc.accountId) ? (
-                        <><ChevronUp className="h-3.5 w-3.5" /> Sembunyikan transaksi</>
+                        <><ChevronUp className="size-3.5" /> Sembunyikan transaksi</>
                       ) : (
-                        <><ChevronDown className="h-3.5 w-3.5" /> {cc.transactions.length} transaksi</>
+                        <><ChevronDown className="size-3.5" /> {cc.transactions.length} transaksi</>
                       )}
                     </button>
                   )}
@@ -303,7 +306,7 @@ export default function CashflowPage() {
                         className="grid gap-1 border-b px-4 py-2.5 text-xs transition-colors last:border-0 hover:bg-muted/20 sm:grid-cols-[4rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-3"
                       >
                         <span className="text-muted-foreground sm:w-16 sm:shrink-0">
-                          {format(new Date(tx.date), "d MMM", { locale: id })}
+                          <span suppressHydrationWarning>{format(new Date(tx.date), "d MMM", { locale: id })}</span>
                         </span>
                         <span className="break-words">{tx.note || "â€”"}</span>
                         <span className="text-muted-foreground sm:shrink-0">{tx.category}</span>
@@ -312,7 +315,7 @@ export default function CashflowPage() {
                           tx.type === "payment" ? "text-emerald-500" : "text-red-500"
                         )}>
                           {tx.type === "payment" ? "+" : "-"}
-                          {new Intl.NumberFormat("id-ID").format(tx.amount)}
+                          {ID_NUMBER_FORMAT.format(tx.amount)}
                         </span>
                       </div>
                     ))}

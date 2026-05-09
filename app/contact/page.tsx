@@ -65,7 +65,7 @@ export default function ContactPage() {
             <ul className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
               {contactTopics.map((topic) => (
                 <li key={topic} className="flex gap-3">
-                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
                   <span>{topic}</span>
                 </li>
               ))}

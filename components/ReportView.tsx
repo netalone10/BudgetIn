@@ -22,8 +22,10 @@ interface Props {
   data: ReportData;
 }
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function formatRupiah(amount: number) {
-  return new Intl.NumberFormat("id-ID").format(amount);
+  return ID_NUMBER_FORMAT.format(amount);
 }
 
 export default function ReportView({ data }: Props) {
@@ -65,7 +67,7 @@ export default function ReportView({ data }: Props) {
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
-                        "h-2 w-2 rounded-full",
+                        "size-2 rounded-full",
                         pct !== null && pct >= 100
                           ? "bg-destructive"
                           : pct !== null && pct >= 80
@@ -102,7 +104,7 @@ export default function ReportView({ data }: Props) {
 
         {/* AI Summary */}
         {data.summary && (
-          <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground leading-relaxed border-l-2 border-primary/30">
+          <div className="rounded-md border border-primary/20 bg-muted/50 p-3 text-sm leading-relaxed text-muted-foreground">
             {data.summary}
           </div>
         )}

@@ -21,12 +21,12 @@ export default function AccountsSkeleton() {
 
       {/* Account list skeleton */}
       <div className="space-y-6">
-        {[1, 2].map((g) => (
-          <section key={g}>
+        {["asset", "liability"].map((group) => (
+          <section key={group}>
             <div className="h-3 w-24 bg-muted rounded mb-3 animate-pulse" />
             <div className="space-y-2">
-              {[1, 2].map((i) => (
-                <div key={i} className="h-20 rounded-xl border border-border bg-card animate-pulse" />
+              {[`${group}-primary`, `${group}-secondary`].map((key) => (
+                <div key={key} className="h-20 rounded-xl border border-border bg-card animate-pulse" />
               ))}
             </div>
           </section>

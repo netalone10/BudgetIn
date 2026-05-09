@@ -70,14 +70,16 @@ type ResponseData =
   | { intent: "unknown"; clarification: string; clarificationType?: string; pendingAction?: SavingsPendingAction; options?: SavingsGoalOption[] }
   | { error: string };
 
+const ID_SHORT_DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
 function formatTanggalID(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
   if (isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat("id-ID", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(d);
+  return ID_SHORT_DATE_FORMAT.format(d);
 }
 
 function formatSignedIDR(amount: number, positivePrefix = ""): string {
@@ -226,10 +228,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [budgetData, setBudgetData] = useState<BudgetData | null>(initialData.budgetData);
   const [budgetLoading, setBudgetLoading] = useState(false);
 
-  const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(
+  const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(() =>
     initialData.categories.map((c) => ({ name: c.name, type: c.type }))
   );
-  const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(
+  const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(() =>
     new Set(initialData.savingsCategoryNames)
   );
   const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
@@ -536,7 +538,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             disabled={dataLoading}
             className="w-full rounded-lg sm:w-auto"
           >
-            <RefreshCw className={cn("h-4 w-4", dataLoading && "animate-spin")} />
+            <RefreshCw className={cn("size-4", dataLoading && "animate-spin")} />
             Refresh data
           </Button>
         }
@@ -545,7 +547,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="min-w-0 rounded-[18px] border border-border/70 bg-background p-3">
               <div className="mb-1.5 flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-destructive" />
+                <TrendingDown className="size-4 text-destructive" />
                 <span className="text-[13px] font-medium text-muted-foreground">
                   Keluar hari ini
                 </span>
@@ -566,7 +568,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               <div className="mb-1.5 flex items-center gap-2">
                 <TrendingUp
                   className={cn(
-                    "h-4 w-4",
+                    "size-4",
                     todayStats.income >= 0 ? "text-emerald-500" : "text-destructive"
                   )}
                 />
@@ -610,7 +612,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/70 bg-background p-4">
               <div className="mb-3 flex items-center gap-2">
-                <MicVocal className="h-4 w-4 text-primary" />
+                <MicVocal className="size-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">
                   AI capture box
                 </p>
@@ -632,12 +634,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     type="submit"
                     size="icon"
                     disabled={!prompt.trim() || loading}
-                    className="absolute bottom-3 right-3 h-11 w-11 rounded-lg shadow-md transition-transform hover:-translate-y-px"
+                    className="absolute bottom-3 right-3 size-11 rounded-lg shadow-md transition-transform hover:-translate-y-px"
                   >
                     {loading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="size-4 animate-spin" />
                     ) : (
-                      <SendHorizonal className="h-4 w-4" />
+                      <SendHorizonal className="size-4" />
                     )}
                   </Button>
                 </div>
@@ -651,7 +653,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                       className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       title="Acak saran prompt"
                     >
-                      <Dices className="h-3 w-3" />
+                      <Dices className="size-3" />
                       Acak
                     </button>
                   </div>
@@ -684,12 +686,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               <div className="rounded-[22px] border border-border/70 bg-background p-3 sm:rounded-[28px] sm:p-4">
                 {"error" in response ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
                     <p className="text-sm text-destructive">{response.error}</p>
                   </div>
                 ) : response.intent === "transaksi" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                         Transaksi dicatat
@@ -717,7 +719,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </div>
                 ) : response.intent === "transaksi_bulk" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                         {response.details?.count ?? response.transactions.length} transaksi dicatat
@@ -746,7 +748,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </div>
                 ) : response.intent === "pemasukan" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                         Pemasukan dicatat
@@ -765,7 +767,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </div>
                 ) : response.intent === "budget_setting" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-blue-500/25 bg-blue-500/5 px-4 py-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
                         Budget tersimpan
@@ -783,7 +785,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   <ReportView data={response} />
                 ) : response.intent === "unknown" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/25 bg-yellow-500/5 px-4 py-3">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                    <Info className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
                     <div className="flex-1">
                       <p className="text-sm text-yellow-700 dark:text-yellow-400">
                         {response.clarification}
@@ -810,14 +812,14 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </div>
                 ) : response.intent === "transfer" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                       {response.message || "Transfer berhasil diproses."}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/25 bg-yellow-500/5 px-4 py-3">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
+                    <Info className="mt-0.5 size-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
                     <p className="text-sm text-yellow-700 dark:text-yellow-400">
                       Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda.
                     </p>
@@ -829,7 +831,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
           <div className="rounded-[28px] border border-border/70 bg-background p-4">
             <div className="mb-4 flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4 text-primary" />
+              <LayoutGrid className="size-4 text-primary" />
               <p className="text-sm font-semibold text-foreground">
                 Input manual
               </p>
@@ -931,7 +933,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </table>
             </div>
 
-            <div className="flex flex-col gap-4 border-t border-border bg-muted/20 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+            <div className="flex flex-col gap-4 border-t border-border bg-muted/20 p-4 md:flex-row md:items-center md:justify-between md:px-5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[13px] font-medium text-muted-foreground">
                   Tampilkan

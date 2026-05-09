@@ -29,8 +29,10 @@ interface Props {
   onDelete: (goalId: string) => void;
 }
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function formatRupiah(amount: number) {
-  return new Intl.NumberFormat("id-ID").format(amount);
+  return ID_NUMBER_FORMAT.format(amount);
 }
 
 function formatDate(dateStr: string) {

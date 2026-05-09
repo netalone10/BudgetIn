@@ -161,7 +161,7 @@ export default function BackupRestorePage() {
 
       {message && (
         <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm ${message.ok ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300" : "border-destructive/30 bg-destructive/10 text-destructive"}`}>
-          {message.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4" /> : <AlertTriangle className="mt-0.5 h-4 w-4" />}
+          {message.ok ? <CheckCircle2 className="mt-0.5 size-4" /> : <AlertTriangle className="mt-0.5 size-4" />}
           <span>{message.text}</span>
         </div>
       )}
@@ -170,7 +170,7 @@ export default function BackupRestorePage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex items-center gap-2 text-primary">
-              <Download className="h-5 w-5" />
+              <Download className="size-5" />
               <p className="text-sm font-semibold uppercase tracking-[0.18em]">Backup</p>
             </div>
             <h2 className="mt-2 text-xl font-semibold text-foreground">Export data akun ini</h2>
@@ -179,14 +179,14 @@ export default function BackupRestorePage() {
             </p>
           </div>
           <Button onClick={handleDownload} className="rounded-2xl">
-            <Download className="mr-2 h-4 w-4" /> Download backup JSON
+            <Download className="mr-2 size-4" /> Download backup JSON
           </Button>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-border/70 bg-card p-5 shadow-sm md:p-6">
         <div className="flex items-center gap-2 text-primary">
-          <Upload className="h-5 w-5" />
+          <Upload className="size-5" />
           <p className="text-sm font-semibold uppercase tracking-[0.18em]">Restore</p>
         </div>
         <h2 className="mt-2 text-xl font-semibold text-foreground">Restore ke akun aktif</h2>
@@ -195,7 +195,7 @@ export default function BackupRestorePage() {
         </p>
 
         <label className="mt-5 flex cursor-pointer flex-col items-center justify-center rounded-[24px] border border-dashed border-border bg-background px-6 py-8 text-center transition hover:border-primary/60 hover:bg-primary/5">
-          <FileJson className="h-9 w-9 text-muted-foreground" />
+          <FileJson className="size-9 text-muted-foreground" />
           <span className="mt-3 text-sm font-medium text-foreground">{fileName || "Pilih file backup JSON"}</span>
           <span className="mt-1 text-xs text-muted-foreground">Maksimal sesuai limit server backup.</span>
           <input type="file" accept="application/json,.json" className="hidden" onChange={handleFileChange} />
@@ -203,7 +203,7 @@ export default function BackupRestorePage() {
 
         {loadingPreview && (
           <div className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Membaca preview backup...
+            <Loader2 className="size-4 animate-spin" /> Membaca preview backup...
           </div>
         )}
 
@@ -220,7 +220,7 @@ export default function BackupRestorePage() {
             {preview.warnings.length > 0 && (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-300">
                 <div className="flex items-center gap-2 font-semibold">
-                  <AlertTriangle className="h-4 w-4" /> Perhatian
+                  <AlertTriangle className="size-4" /> Perhatian
                 </div>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}
@@ -232,11 +232,11 @@ export default function BackupRestorePage() {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button disabled={!canRestore} onClick={handleRestore} className="rounded-2xl">
-                {restoring ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                {restoring ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
                 Konfirmasi restore
               </Button>
               <Button variant="outline" className="rounded-2xl" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Refresh halaman
+                <RefreshCw className="mr-2 size-4" /> Refresh halaman
               </Button>
             </div>
           </div>

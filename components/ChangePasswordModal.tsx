@@ -57,6 +57,9 @@ export default function ChangePasswordModal({ onClose }: Props) {
       <div
         className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        role="button"
+        tabIndex={-1}
       />
 
       {/* Modal */}
@@ -68,13 +71,13 @@ export default function ChangePasswordModal({ onClose }: Props) {
             onClick={onClose}
             className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         </div>
 
         {success ? (
           <div className="flex flex-col items-center gap-3 py-4">
-            <CheckCircle2 className="h-10 w-10 text-green-500" />
+            <CheckCircle2 className="size-10 text-green-500" />
             <p className="text-sm font-medium text-green-600 dark:text-green-400">
               Password berhasil diubah!
             </p>
@@ -89,9 +92,9 @@ export default function ChangePasswordModal({ onClose }: Props) {
 
             {/* Password lama */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 Password Lama
-              </label>
+              </span>
               <div className="relative">
                 <Input
                   type={showCurrent ? "text" : "password"}
@@ -107,16 +110,16 @@ export default function ChangePasswordModal({ onClose }: Props) {
                   onClick={() => setShowCurrent((v) => !v)}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showCurrent ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
             </div>
 
             {/* Password baru */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 Password Baru
-              </label>
+              </span>
               <div className="relative">
                 <Input
                   type={showNew ? "text" : "password"}
@@ -132,19 +135,19 @@ export default function ChangePasswordModal({ onClose }: Props) {
                   onClick={() => setShowNew((v) => !v)}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
               {/* Strength indicator */}
               {newPassword.length > 0 && (
                 <div className="flex gap-1 mt-1">
-                  {[1, 2, 3].map((i) => (
+                  {[1, 2, 3].map((level) => (
                     <div
-                      key={i}
+                      key={`strength-${level}`}
                       className={cn(
                         "h-1 flex-1 rounded-full transition-colors",
-                        newPassword.length >= i * 4
-                          ? i === 1 ? "bg-red-400" : i === 2 ? "bg-yellow-400" : "bg-green-500"
+                        newPassword.length >= level * 4
+                          ? level === 1 ? "bg-red-400" : level === 2 ? "bg-yellow-400" : "bg-green-500"
                           : "bg-muted"
                       )}
                     />
@@ -155,9 +158,9 @@ export default function ChangePasswordModal({ onClose }: Props) {
 
             {/* Konfirmasi */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 Konfirmasi Password Baru
-              </label>
+              </span>
               <Input
                 type="password"
                 placeholder="Ulangi password baru"
@@ -179,7 +182,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
               className="w-full"
               disabled={loading || !currentPassword || !newPassword || !confirmPassword}
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {loading && <Loader2 className="size-4 animate-spin mr-2" />}
               Simpan Password
             </Button>
           </form>

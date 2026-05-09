@@ -9,6 +9,8 @@ import PayBillModal from "@/components/PayBillModal";
 import { format, startOfDay, differenceInCalendarDays } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
+const CURRENT_MONTH_LABEL = format(new Date(), "MMMM yyyy", { locale: idLocale });
+
 type FilterType = "all" | "due-today" | "overdue" | "due-soon" | "paid" | "upcoming";
 
 interface Summary {
@@ -75,9 +77,9 @@ export default function BillsClient() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Tagihan Rutin</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Tagihan Rutin</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {format(new Date(), "MMMM yyyy", { locale: idLocale })}
+            <span suppressHydrationWarning>{CURRENT_MONTH_LABEL}</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -86,14 +88,14 @@ export default function BillsClient() {
             className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
             title="Refresh"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="size-4" />
           </button>
           {!isDemo && (
           <button
             onClick={() => { setEditBill(null); setShowAdd(true); }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="size-4" />
             Tambah
           </button>
           )}
@@ -148,12 +150,12 @@ export default function BillsClient() {
       {/* Bills List */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <RefreshCw className="h-5 w-5 animate-spin mr-2" />
-          Memuat...
+          <RefreshCw className="size-5 animate-spin mr-2" />
+          Memuat…
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-          <BellRing className="h-10 w-10 text-muted-foreground/40" />
+          <BellRing className="size-10 text-muted-foreground/40" />
           <p className="text-muted-foreground text-sm">
             {filter === "all" ? "Belum ada tagihan rutin. Klik \"Tambah\" untuk mulai." : "Tidak ada tagihan dengan filter ini."}
           </p>

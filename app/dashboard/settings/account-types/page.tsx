@@ -80,8 +80,8 @@ function TypeFormModal({ editType, hasActiveAccounts, onClose, onSaved }: TypeFo
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Nama Tipe *</label>
-            <input
+            <label htmlFor="page-field-1" className="block text-xs font-medium text-muted-foreground mb-1">Nama Tipe *</label>
+            <input id="page-field-1"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -93,7 +93,7 @@ function TypeFormModal({ editType, hasActiveAccounts, onClose, onSaved }: TypeFo
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Klasifikasi *</label>
+            <span className="block text-xs font-medium text-muted-foreground mb-1">Klasifikasi *</span>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -134,7 +134,7 @@ function TypeFormModal({ editType, hasActiveAccounts, onClose, onSaved }: TypeFo
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Warna</label>
+            <span className="block text-xs font-medium text-muted-foreground mb-1">Warna</span>
             <div className="flex flex-wrap gap-2">
               {PRESET_COLORS.map((c) => (
                 <button
@@ -142,7 +142,7 @@ function TypeFormModal({ editType, hasActiveAccounts, onClose, onSaved }: TypeFo
                   type="button"
                   onClick={() => setColor(c)}
                   className={cn(
-                    "h-7 w-7 rounded-full border-2 transition-transform",
+                    "size-7 rounded-full border-2 transition-transform",
                     color === c ? "border-foreground scale-110" : "border-transparent hover:scale-105"
                   )}
                   style={{ backgroundColor: c }}
@@ -156,7 +156,7 @@ function TypeFormModal({ editType, hasActiveAccounts, onClose, onSaved }: TypeFo
           <div className="flex gap-3 pt-1">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Batal</Button>
             <Button type="submit" className="flex-1" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Simpan" : "Tambah Tipe"}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : isEdit ? "Simpan" : "Tambah Tipe"}
             </Button>
           </div>
         </form>
@@ -187,7 +187,7 @@ function TypeCard({
     )}>
       <div className="flex min-w-0 items-center gap-3">
         <div
-          className="h-8 w-8 rounded-lg shrink-0 flex items-center justify-center text-white text-xs font-bold"
+          className="size-8 rounded-lg shrink-0 flex items-center justify-center text-white text-xs font-bold"
           style={{ backgroundColor: type.color }}
         >
           {type.name.slice(0, 1).toUpperCase()}
@@ -213,21 +213,21 @@ function TypeCard({
           title="Edit"
           className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
         >
-          <Edit2 className="h-3.5 w-3.5" />
+          <Edit2 className="size-3.5" />
         </button>
         <button
           onClick={() => onArchive(type)}
           title="Arsipkan tipe"
           className="p-1.5 text-muted-foreground hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-md transition-colors"
         >
-          <Archive className="h-3.5 w-3.5" />
+          <Archive className="size-3.5" />
         </button>
         <button
           onClick={() => onDelete(type)}
           title="Hapus permanen"
           className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
         >
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="size-3.5" />
         </button>
       </div>
       )}
@@ -293,7 +293,7 @@ export default function AccountTypesPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -302,24 +302,24 @@ export default function AccountTypesPage() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Tags className="h-5 w-5 text-primary" />
+          <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Tags className="size-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Tipe Akun</h1>
+            <h1 className="text-xl font-semibold text-foreground">Tipe Akun</h1>
             <p className="text-xs text-muted-foreground">Kelola kategori akun kamu</p>
           </div>
         </div>
         {!isDemo && (
         <Button onClick={() => setShowAddModal(true)} size="sm" className="w-full gap-1.5 sm:w-auto">
-          <Plus className="h-4 w-4" /> Tambah Tipe
+          <Plus className="size-4" /> Tambah Tipe
         </Button>
         )}
       </div>
 
       {/* Info banner */}
       <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 flex items-start gap-3">
-        <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <AlertCircle className="size-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
         <p className="text-xs text-blue-700 dark:text-blue-300">
           Tipe akun mengelompokkan akunmu dan menentukan apakah masuk hitungan <strong>aset</strong> (menambah net worth) atau <strong>liability</strong> (mengurangi net worth).
         </p>
@@ -369,7 +369,7 @@ export default function AccountTypesPage() {
 
       {types.length === 0 && (
         <div className="text-center py-12 border border-dashed border-border rounded-2xl">
-          <Tags className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <Tags className="size-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Belum ada tipe akun.</p>
         </div>
       )}

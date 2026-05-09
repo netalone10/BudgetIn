@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 type Summary = { accounts: number; transactions: number; budgets: number; categories: number; savingsGoals: number; savingsContributions: number; recurringBills: number; billPayments: number; totalRecords: number };
 type Preview = { summary: Summary; existing: Summary; warnings: string[]; canMigrate: boolean; canMarkComplete: boolean; migratedAt: string | null };
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function fmt(n: number) {
-  return new Intl.NumberFormat("id-ID").format(n);
+  return ID_NUMBER_FORMAT.format(n);
 }
 
 export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "migrate" }) {
@@ -74,7 +76,7 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
       <div className="w-full rounded-[32px] border bg-card p-6 shadow-sm md:p-8">
         <div className="flex items-start gap-4">
           <div className="rounded-2xl bg-yellow-500/10 p-3 text-yellow-600">
-            {done ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
+            {done ? <CheckCircle2 className="size-6" /> : <AlertTriangle className="size-6" />}
           </div>
           <div className="space-y-2">
             <p className="label-mono text-primary">Google Sheets Setup</p>
@@ -91,10 +93,10 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
 
         {mode === "reconnect" ? (
           <Button className="mt-6" onClick={() => signIn("google", { callbackUrl: "/dashboard" })}>
-            <RefreshCw className="h-4 w-4" /> Reconnect Google
+            <RefreshCw className="size-4" /> Reconnect Google
           </Button>
         ) : loading ? (
-          <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Memuat preview...</div>
+          <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Memuat preview...</div>
         ) : (
           <div className="mt-6 space-y-4">
             {summary && (
@@ -111,7 +113,7 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
             {error && <p className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
             <div className="flex gap-2">
               <Button onClick={migrate} disabled={!preview?.canMigrate || busy || done}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                 Migrasikan data saya ke Google Sheets
               </Button>
               {preview?.canMarkComplete && (

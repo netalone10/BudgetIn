@@ -30,13 +30,13 @@ function Accordion({ section }: { section: Section }) {
         onClick={() => setOpen((p) => !p)}
         className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/30 transition-colors text-left"
       >
-        <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center shrink-0", section.iconBg)}>
-          <Icon className={cn("h-4 w-4", section.iconColor)} />
+        <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", section.iconBg)}>
+          <Icon className={cn("size-4", section.iconColor)} />
         </div>
         <span className="flex-1 text-sm font-semibold text-foreground">{section.title}</span>
         {open
-          ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-          : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          ? <ChevronUp className="size-4 text-muted-foreground shrink-0" />
+          : <ChevronDown className="size-4 text-muted-foreground shrink-0" />
         }
       </button>
 
@@ -52,7 +52,7 @@ function Accordion({ section }: { section: Section }) {
 function Tip({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2">
-      <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">✓</span>
+      <span className="mt-0.5 size-4 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">✓</span>
       <span>{children}</span>
     </li>
   );
@@ -235,11 +235,11 @@ export default function PanduanPage() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="h-9 w-9 rounded-xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
-          <BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        <div className="size-9 rounded-xl bg-blue-100 dark:bg-blue-950/40 flex items-center justify-center shrink-0">
+          <BookOpen className="size-5 text-blue-600 dark:text-blue-400" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-foreground">Panduan BudgetIn</h1>
+          <h1 className="text-xl font-semibold text-foreground">Panduan BudgetIn</h1>
           <p className="text-xs text-muted-foreground">Referensi lengkap semua fitur</p>
         </div>
       </div>
@@ -260,8 +260,8 @@ export default function PanduanPage() {
             "Set budget bulanan per kategori",
             "Pantau laporan di tab vs Budget atau AI Analyst",
           ].map((step, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-3">
-              <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center shrink-0">
+            <div key={step} className="flex items-center gap-3 px-4 py-3">
+              <span className="size-5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center shrink-0">
                 {i + 1}
               </span>
               <span className="text-sm text-foreground">{step}</span>

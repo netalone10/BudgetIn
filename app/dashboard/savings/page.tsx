@@ -131,16 +131,16 @@ export default function SavingsPage() {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="mx-auto w-full max-w-5xl px-4 md:px-8 py-8 space-y-6">
+      <div className="mx-auto w-full max-w-5xl px-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3 pb-2 mt-4 md:mt-2">
-          <PiggyBank className="h-7 w-7 text-primary" />
+          <PiggyBank className="size-7 text-primary" />
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">Tabungan</h2>
         </div>
 
         {/* Create Goal Form */}
         {!isDemo && (
-        <div className="rounded-2xl border border-border bg-card px-5 py-5 shadow-sm">
+        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground mb-4">Buat Goal Baru</h3>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
@@ -185,8 +185,8 @@ export default function SavingsPage() {
             <Button type="submit" disabled={submitting} className="self-start">
               {submitting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Menyimpan...
+                  <Loader2 className="size-4 animate-spin" />
+                  Menyimpan…
                 </>
               ) : (
                 "Buat Goal"
@@ -199,12 +199,12 @@ export default function SavingsPage() {
         {/* Goals List */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center gap-3 py-12">
             <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
+              <AlertCircle className="size-5" />
               <p className="text-sm">{error}</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchGoals}>
@@ -213,7 +213,7 @@ export default function SavingsPage() {
           </div>
         ) : goals.length === 0 ? (
           <div className="rounded-2xl border border-border bg-card px-5 py-12 text-center shadow-sm">
-            <PiggyBank className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+            <PiggyBank className="size-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">Belum ada savings goal. Buat goal pertamamu di atas!</p>
           </div>
         ) : (

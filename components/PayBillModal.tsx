@@ -16,7 +16,7 @@ interface PayBillModalProps {
 }
 
 export default function PayBillModal({ bill, onClose, onPaid }: PayBillModalProps) {
-  const [amount, setAmount] = useState(parseFloat(bill.amount).toString());
+  const [amount, setAmount] = useState(() => parseFloat(bill.amount).toString());
   const [accountId, setAccountId] = useState(bill.account?.id ?? "");
   const [note, setNote] = useState(`Pembayaran ${bill.name}`);
   const [loading, setLoading] = useState(false);
@@ -50,12 +50,18 @@ export default function PayBillModal({ bill, onClose, onPaid }: PayBillModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        role="button"
+        tabIndex={-1}
+      />
       <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">Bayar Tagihan</h2>
           <button onClick={onClose} className="p-1.5 rounded-md text-muted-foreground hover:bg-muted transition-colors">
-            <X className="h-5 w-5" />
+            <X className="size-5" />
           </button>
         </div>
 
@@ -66,8 +72,8 @@ export default function PayBillModal({ bill, onClose, onPaid }: PayBillModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Nominal (Rp)</label>
-            <input
+            <label htmlFor="paybillmodal-field-1" className="block text-sm font-medium text-foreground mb-1.5">Nominal (Rp)</label>
+            <input id="paybillmodal-field-1"
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -78,8 +84,8 @@ export default function PayBillModal({ bill, onClose, onPaid }: PayBillModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Akun Pembayaran</label>
-            <select
+            <label htmlFor="paybillmodal-field-2" className="block text-sm font-medium text-foreground mb-1.5">Akun Pembayaran</label>
+            <select id="paybillmodal-field-2"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -92,8 +98,8 @@ export default function PayBillModal({ bill, onClose, onPaid }: PayBillModalProp
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Catatan</label>
-            <input
+            <label htmlFor="paybillmodal-field-3" className="block text-sm font-medium text-foreground mb-1.5">Catatan</label>
+            <input id="paybillmodal-field-3"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -112,7 +118,7 @@ export default function PayBillModal({ bill, onClose, onPaid }: PayBillModalProp
               disabled={loading}
               className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              {loading ? "Memproses..." : "Konfirmasi Bayar"}
+              {loading ? "Memproses…" : "Konfirmasi Bayar"}
             </button>
           </div>
         </div>

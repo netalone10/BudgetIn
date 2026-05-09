@@ -117,21 +117,27 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        role="button"
+        tabIndex={-1}
+      />
       <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">
             {editBill ? "Edit Tagihan" : "Tambah Tagihan"}
           </h2>
           <button onClick={onClose} className="p-1.5 rounded-md text-muted-foreground hover:bg-muted transition-colors">
-            <X className="h-5 w-5" />
+            <X className="size-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="p-5 flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Nama Tagihan</label>
-            <input
+            <label htmlFor="addbillmodal-field-1" className="block text-sm font-medium text-foreground mb-1.5">Nama Tagihan</label>
+            <input id="addbillmodal-field-1"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -143,8 +149,8 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Nominal (Rp)</label>
-              <input
+              <label htmlFor="addbillmodal-field-2" className="block text-sm font-medium text-foreground mb-1.5">Nominal (Rp)</label>
+              <input id="addbillmodal-field-2"
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
@@ -155,8 +161,8 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Tanggal Jatuh Tempo</label>
-              <input
+              <label htmlFor="addbillmodal-field-3" className="block text-sm font-medium text-foreground mb-1.5">Tanggal Jatuh Tempo</label>
+              <input id="addbillmodal-field-3"
                 type="number"
                 value={dueDay}
                 onChange={(e) => setDueDay(e.target.value)}
@@ -170,8 +176,8 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Kategori</label>
-            <select
+            <label htmlFor="addbillmodal-field-4" className="block text-sm font-medium text-foreground mb-1.5">Kategori</label>
+            <select id="addbillmodal-field-4"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -184,8 +190,8 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Akun Pembayaran</label>
-            <select
+            <label htmlFor="addbillmodal-field-5" className="block text-sm font-medium text-foreground mb-1.5">Akun Pembayaran</label>
+            <select id="addbillmodal-field-5"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
@@ -198,15 +204,15 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Pengingat</label>
+            <span className="block text-sm font-medium text-foreground mb-2">Pengingat</span>
             <div className="flex flex-col gap-2">
               {REMINDER_OPTIONS.map((opt) => (
-                <label key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
-                  <input
+                <label htmlFor="addbillmodal-field-7" key={opt.value} className="flex items-center gap-2.5 cursor-pointer">
+                  <input id="addbillmodal-field-7"
                     type="checkbox"
                     checked={reminderDays.includes(opt.value)}
                     onChange={() => toggleReminder(opt.value)}
-                    className="h-4 w-4 rounded border-border accent-primary"
+                    className="size-4 rounded border-border accent-primary"
                   />
                   <span className="text-sm text-foreground">{opt.label}</span>
                 </label>
@@ -224,13 +230,13 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
               onClick={() => setAutoRecord(!autoRecord)}
               className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${autoRecord ? "bg-primary" : "bg-muted"}`}
             >
-              <span className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${autoRecord ? "translate-x-5" : "translate-x-0"}`} />
+              <span className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white shadow transition-transform ${autoRecord ? "translate-x-5" : "translate-x-0"}`} />
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Catatan (opsional)</label>
-            <input
+            <label htmlFor="addbillmodal-field-8" className="block text-sm font-medium text-foreground mb-1.5">Catatan (opsional)</label>
+            <input id="addbillmodal-field-8"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -250,7 +256,7 @@ export default function AddBillModal({ onClose, onSaved, editBill }: AddBillModa
               disabled={loading}
               className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              {loading ? "Menyimpan..." : editBill ? "Simpan Perubahan" : "Tambah Tagihan"}
+              {loading ? "Menyimpan…" : editBill ? "Simpan Perubahan" : "Tambah Tagihan"}
             </button>
           </div>
         </form>

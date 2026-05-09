@@ -180,8 +180,8 @@ export default function LandingPage() {
           </div>
 
           <div className="relative">
-            <div className="absolute -left-8 top-8 hidden h-24 w-24 rounded-full bg-primary/15 blur-2xl lg:block" />
-            <div className="absolute -right-6 bottom-8 hidden h-28 w-28 rounded-full bg-foreground/8 blur-3xl dark:bg-white/8 lg:block" />
+            <div className="absolute -left-8 top-8 hidden size-24 rounded-full bg-primary/15 blur-2xl lg:block" />
+            <div className="absolute -right-6 bottom-8 hidden size-28 rounded-full bg-foreground/8 blur-3xl dark:bg-white/8 lg:block" />
             <div className="relative overflow-hidden rounded-[32px] border border-border bg-card/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur dark:shadow-[0_24px_80px_rgba(0,0,0,0.28)]">
               <div className="flex items-center justify-between rounded-[24px] border border-border bg-background/90 px-4 py-3">
                 <div>
@@ -200,7 +200,7 @@ export default function LandingPage() {
               <div className="mt-4 space-y-3 rounded-[24px] border border-border bg-background p-4">
                 {quickEntries.map((entry, index) => (
                   <div
-                    key={`${entry.from}-${index}`}
+                    key={`${entry.from}-${entry.text}`}
                     className={cn(
                       "landing-reveal rounded-2xl px-4 py-3",
                       entry.from === "Kamu"

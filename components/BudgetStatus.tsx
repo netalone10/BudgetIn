@@ -33,8 +33,10 @@ function formatRupiah(amount: number) {
   return amount.toString();
 }
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function formatRupiahFull(amount: number) {
-  return new Intl.NumberFormat("id-ID").format(amount);
+  return ID_NUMBER_FORMAT.format(amount);
 }
 
 function isFixed(item: BudgetItem): boolean {
@@ -106,8 +108,8 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
       <div className="space-y-3">
         <h3 className="text-sm font-medium text-muted-foreground">Status Budget</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="rounded-xl border bg-card p-4 space-y-3 animate-pulse">
+          {["budget-skeleton-1", "budget-skeleton-2", "budget-skeleton-3", "budget-skeleton-4"].map((key) => (
+            <div key={key} className="rounded-xl border bg-card p-4 space-y-3 animate-pulse">
               <div className="h-3 w-16 rounded bg-muted" />
               <div className="h-5 w-12 rounded bg-muted" />
               <div className="h-1.5 w-full rounded-full bg-muted" />
@@ -128,7 +130,7 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-xl border bg-card p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+              <TrendingUp className="size-3.5 text-green-500" />
               <span className="text-xs text-muted-foreground">Pemasukan</span>
             </div>
             <p className="text-base font-bold text-green-600 dark:text-green-400 tabular-nums">
@@ -137,7 +139,7 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
           </div>
           <div className="rounded-xl border bg-card p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+              <TrendingDown className="size-3.5 text-destructive" />
               <span className="text-xs text-muted-foreground">Pengeluaran</span>
             </div>
             <p className="text-base font-bold text-destructive tabular-nums">
@@ -146,7 +148,7 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
           </div>
           <div className="rounded-xl border bg-card p-4">
             <div className="flex items-center gap-1.5 mb-1">
-              <Minus className="h-3.5 w-3.5 text-muted-foreground" />
+              <Minus className="size-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Net</span>
             </div>
             <p className={cn(

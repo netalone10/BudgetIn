@@ -14,13 +14,15 @@ interface NetWorthData {
   };
 }
 
+const IDR_FORMAT = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
 function formatIDR(value: string | number): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(num);
+  return IDR_FORMAT.format(num);
 }
 
 interface Props {
@@ -76,7 +78,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
         style={{ minHeight: compact ? 128 : 192 }}
       >
         <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <Wallet className="h-3.5 w-3.5" />
+          <Wallet className="size-3.5" />
           <span>Kekayaan Bersih</span>
         </div>
         <div className={cn("font-bold tracking-tight text-muted-foreground", compact ? "text-2xl" : "text-4xl")}>-</div>
@@ -102,7 +104,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
       >
         <div className={cn("flex items-center justify-between", compact ? "mb-2" : "mb-3")}>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Wallet className="h-3.5 w-3.5" />
+            <Wallet className="size-3.5" />
             <span>Kekayaan Bersih</span>
           </div>
           <span className="text-xs text-muted-foreground transition-colors group-hover:text-primary">
@@ -114,7 +116,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
           <TrendIcon
             className={cn(
               "shrink-0",
-              compact ? "h-4 w-4" : "h-6 w-6",
+              compact ? "size-4" : "size-6",
               isPositive ? "text-emerald-500" : "text-red-500"
             )}
           />

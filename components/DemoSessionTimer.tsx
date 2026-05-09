@@ -26,7 +26,7 @@ export default function DemoSessionTimer() {
       )}
       {/* Countdown badge — show in header */}
       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-        <Clock className="w-3 h-3" />
+        <Clock className="size-3" />
         <span>{display}</span>
       </div>
     </>

@@ -56,31 +56,31 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
       badge: "Lunas",
       badgeClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
       border: "border-l-emerald-400",
-      icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+      icon: <CheckCircle2 className="size-4 text-emerald-500" />,
     },
     "due-today": {
       badge: "Jatuh Tempo Hari Ini",
       badgeClass: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
       border: "border-l-red-500",
-      icon: <AlertTriangle className="h-4 w-4 text-red-500" />,
+      icon: <AlertTriangle className="size-4 text-red-500" />,
     },
     overdue: {
       badge: "Terlambat",
       badgeClass: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
       border: "border-l-red-500",
-      icon: <AlertTriangle className="h-4 w-4 text-red-500" />,
+      icon: <AlertTriangle className="size-4 text-red-500" />,
     },
     "due-soon": {
       badge: `H-${differenceInCalendarDays(startOfDay(dueDate), startOfDay(new Date()))}`,
       badgeClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
       border: "border-l-amber-400",
-      icon: <Clock className="h-4 w-4 text-amber-500" />,
+      icon: <Clock className="size-4 text-amber-500" />,
     },
     upcoming: {
       badge: format(dueDate, "d MMM", { locale: idLocale }),
       badgeClass: "bg-muted text-muted-foreground",
       border: "border-l-border",
-      icon: <CalendarClock className="h-4 w-4 text-muted-foreground" />,
+      icon: <CalendarClock className="size-4 text-muted-foreground" />,
     },
   };
 
@@ -104,7 +104,7 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
             </p>
             {bill.account && (
               <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <CreditCard className="h-3 w-3" /> {bill.account.name}
+                <CreditCard className="size-3" /> {bill.account.name}
               </p>
             )}
           </div>
@@ -133,7 +133,7 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
                   className="p-1 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   title="Lewati bulan ini"
                 >
-                  <SkipForward className="h-3.5 w-3.5" />
+                  <SkipForward className="size-3.5" />
                 </button>
               </>
             )}
@@ -144,14 +144,14 @@ export default function BillCard({ bill, onPay, onSkip, onEdit, onDelete }: Bill
               className="p-1 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               title="Edit"
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="size-3.5" />
             </button>
             <button
               onClick={onDelete}
               className="p-1 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
               title="Hapus"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="size-3.5" />
             </button>
             </>
             )}

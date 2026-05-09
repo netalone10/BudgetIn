@@ -1,7 +1,7 @@
 export default function DashboardLoading() {
   return (
     <div className="flex flex-col w-full">
-      <div className="mx-auto w-full max-w-5xl px-4 md:px-8 py-8 space-y-6">
+      <div className="mx-auto w-full max-w-5xl px-4 md:p-8 space-y-6">
         {/* Greeting */}
         <div className="space-y-2 pb-2 mt-4 md:mt-2">
           <div className="h-9 w-48 bg-muted rounded-lg animate-pulse" />
@@ -12,7 +12,7 @@ export default function DashboardLoading() {
         <div className="flex gap-4">
           <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm space-y-2">
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 bg-muted rounded animate-pulse" />
+              <div className="size-4 bg-muted rounded animate-pulse" />
               <div className="h-3.5 w-24 bg-muted rounded animate-pulse" />
             </div>
             <div className="h-7 w-32 bg-muted rounded animate-pulse" />
@@ -20,7 +20,7 @@ export default function DashboardLoading() {
           </div>
           <div className="flex-1 rounded-2xl border border-border bg-card px-5 py-4 shadow-sm space-y-2">
             <div className="flex items-center gap-2">
-              <div className="h-4 w-4 bg-muted rounded animate-pulse" />
+              <div className="size-4 bg-muted rounded animate-pulse" />
               <div className="h-3.5 w-24 bg-muted rounded animate-pulse" />
             </div>
             <div className="h-7 w-32 bg-muted rounded animate-pulse" />
@@ -31,7 +31,7 @@ export default function DashboardLoading() {
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-3.5 w-3.5 bg-muted rounded animate-pulse" />
+              <div className="size-3.5 bg-muted rounded animate-pulse" />
               <div className="h-3.5 w-28 bg-muted rounded animate-pulse" />
             </div>
             <div className="h-3 w-16 bg-muted rounded animate-pulse" />
@@ -48,7 +48,7 @@ export default function DashboardLoading() {
         <div className="space-y-2 mt-2">
           <div className="relative">
             <div className="h-[72px] rounded-[20px] border border-border bg-card shadow-sm animate-pulse" />
-            <div className="absolute bottom-2.5 right-2 h-9 w-9 rounded-full bg-muted animate-pulse" />
+            <div className="absolute bottom-2.5 right-2 size-9 rounded-full bg-muted animate-pulse" />
           </div>
           <div className="h-4 w-56 bg-muted rounded animate-pulse px-2" />
         </div>
@@ -110,9 +110,9 @@ export default function DashboardLoading() {
               <div className="h-4 w-16 bg-muted rounded animate-pulse" />
             </div>
             {/* Table rows */}
-            {[1, 2, 3, 4, 5].map((i) => (
+            {["row-1", "row-2", "row-3", "row-4", "row-5"].map((key) => (
               <div
-                key={i}
+                key={key}
                 className="flex items-center gap-4 px-5 py-4 border-b border-border"
               >
                 <div className="h-4 w-12 bg-muted rounded animate-pulse" />

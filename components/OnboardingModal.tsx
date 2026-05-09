@@ -141,22 +141,22 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
           className="absolute top-3 right-3 p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors z-10"
           title="Lewati"
         >
-          <X className="h-4 w-4" />
+          <X className="size-4" />
         </button>
 
         {/* Progress dots */}
         <div className="flex items-center justify-center gap-1.5 pt-5 pb-2 px-6">
-          {slides.map((_, i) => (
+          {slides.map((slideItem, i) => (
             <button
-              key={i}
+              key={slideItem.title}
               onClick={() => setCurrent(i)}
               className={cn(
                 "rounded-full transition-all duration-200",
                 i === current
                   ? "w-6 h-2 bg-primary"
                   : i < current
-                  ? "w-2 h-2 bg-primary/40"
-                  : "w-2 h-2 bg-muted"
+                  ? "size-2 bg-primary/40"
+                  : "size-2 bg-muted"
               )}
             />
           ))}
@@ -166,10 +166,10 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Icon + Title */}
           <div className="flex flex-col items-center text-center gap-3">
-            <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center", slide.iconBg)}>
-              <Icon className={cn("h-7 w-7", slide.iconColor)} />
+            <div className={cn("size-14 rounded-2xl flex items-center justify-center", slide.iconBg)}>
+              <Icon className={cn("size-7", slide.iconColor)} />
             </div>
-            <h2 className="text-lg font-bold text-foreground leading-snug">{slide.title}</h2>
+            <h2 className="text-lg font-semibold text-foreground leading-snug">{slide.title}</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">{slide.desc}</p>
           </div>
 
@@ -183,8 +183,8 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
           {/* Examples (multiple) */}
           {"examples" in slide && slide.examples && (
             <div className="rounded-xl border border-border bg-muted/30 divide-y divide-border overflow-hidden">
-              {slide.examples.map((ex, i) => (
-                <div key={i} className="px-4 py-2 text-xs font-mono text-foreground">
+              {slide.examples.map((ex) => (
+                <div key={ex} className="px-4 py-2 text-xs font-mono text-foreground">
                   {ex}
                 </div>
               ))}
@@ -195,8 +195,8 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
           {"tips" in slide && slide.tips && (
             <ul className="space-y-2">
               {slide.tips.map((tip, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
+                <li key={tip} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-0.5 size-4 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
                     {i + 1}
                   </span>
                   {tip}
@@ -208,8 +208,8 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
           {/* Features (slide 7) */}
           {"features" in slide && slide.features && (
             <div className="space-y-2">
-              {slide.features.map((f, i) => (
-                <div key={i} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+              {slide.features.map((f) => (
+                <div key={f.label} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
                   <p className="text-sm font-medium text-foreground">{f.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{f.desc}</p>
                 </div>
@@ -233,7 +233,7 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
                 onClick={() => setCurrent((p) => p - 1)}
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <ChevronLeft className="h-4 w-4" /> Kembali
+                <ChevronLeft className="size-4" /> Kembali
               </button>
             )}
           </div>
@@ -248,14 +248,14 @@ export default function OnboardingModal({ onClose, onOpenPanduan }: Props) {
                 onClick={() => { onClose(); onOpenPanduan?.(); }}
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
               >
-                Mulai <ChevronRight className="h-4 w-4" />
+                Mulai <ChevronRight className="size-4" />
               </button>
             ) : (
               <button
                 onClick={() => setCurrent((p) => p + 1)}
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
               >
-                Lanjut <ChevronRight className="h-4 w-4" />
+                Lanjut <ChevronRight className="size-4" />
               </button>
             )}
           </div>

@@ -308,7 +308,13 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        role="button"
+        tabIndex={-1}
+      />
 
       <div
         className="fixed left-1/2 top-1/2 z-50 w-full max-w-xs -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-5 shadow-xl"
@@ -325,7 +331,7 @@ export default function CalculatorModal({ onClose }: CalculatorModalProps) {
             className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Tutup calculator"
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         </div>
 

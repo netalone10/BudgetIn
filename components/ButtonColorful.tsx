@@ -19,10 +19,10 @@ export function ButtonColorful({ href, label, className }: ButtonColorfulProps) 
         className
       )}
     >
-      <span className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-40 blur transition-opacity duration-500 group-hover:opacity-80 dark:from-primary dark:via-primary dark:to-primary dark:opacity-0 dark:group-hover:opacity-10" />
+      <span className="absolute inset-0 bg-gradient-to-r from-primary via-primary to-primary opacity-40 blur transition-opacity duration-500 group-hover:opacity-80 dark:opacity-0 dark:group-hover:opacity-10" />
       <span className="relative flex items-center justify-center gap-2">
         <span>{label}</span>
-        <ArrowUpRight className="h-3.5 w-3.5 text-white/90 dark:text-primary-foreground/90" />
+        <ArrowUpRight className="size-3.5 text-white/90 dark:text-primary-foreground/90" />
       </span>
     </Link>
   );

@@ -12,7 +12,7 @@ export default function AccountDetailSkeleton() {
         style={{ minHeight: 96 }}
       >
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-muted shrink-0" />
+          <div className="size-12 rounded-xl bg-muted shrink-0" />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="h-5 w-40 bg-muted rounded" />
             <div className="h-3.5 w-24 bg-muted rounded" />
@@ -26,16 +26,16 @@ export default function AccountDetailSkeleton() {
 
       {/* Period Filter */}
       <div className="flex flex-wrap gap-2" style={{ minHeight: 32 }}>
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-8 w-20 rounded-lg bg-muted animate-pulse" />
+        {["month-current", "month-prev", "quarter", "all"].map((key) => (
+          <div key={key} className="h-8 w-20 rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3" style={{ minHeight: 84 }}>
-        {[1, 2, 3].map((i) => (
+        {["income", "expense", "net"].map((key) => (
           <div
-            key={i}
+            key={key}
             className="rounded-xl border border-border bg-card p-4 animate-pulse"
           >
             <div className="h-3 w-12 bg-muted rounded mb-2" />
@@ -53,9 +53,9 @@ export default function AccountDetailSkeleton() {
           <div className="border-b bg-muted/30 px-4 py-2.5">
             <div className="h-3 w-full max-w-md bg-muted rounded animate-pulse" />
           </div>
-          {[1, 2, 3, 4, 5].map((i) => (
+          {["row-1", "row-2", "row-3", "row-4", "row-5"].map((key) => (
             <div
-              key={i}
+              key={key}
               className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0"
             >
               <div className="h-4 w-12 bg-muted rounded animate-pulse" />

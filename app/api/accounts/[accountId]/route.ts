@@ -14,6 +14,12 @@ import { blockDemoResponse } from "@/lib/demo-account";
 
 type Params = { params: Promise<{ accountId: string }> };
 
+const IDR_FORMAT = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
 export async function PATCH(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   const demoBlock = await blockDemoResponse(session);
@@ -202,9 +208,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const currentBalance = await getSingleAccountBalance(session.userId, accountId);
   if (!currentBalance.isZero()) {
-    const formatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(
-      currentBalance.toNumber()
-    );
+    const formatted = IDR_FORMAT.format(currentBalance.toNumber());
     return NextResponse.json(
       { error: `Saldo akun ini masih ${formatted}. Transfer atau sesuaikan saldo ke 0 sebelum mengarsipkan.` },
       { status: 400 }

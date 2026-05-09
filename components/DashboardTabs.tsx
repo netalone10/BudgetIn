@@ -33,8 +33,10 @@ import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 const TIMEZONE = "Asia/Jakarta";
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function fmt(n: number) {
-  return new Intl.NumberFormat("id-ID").format(Math.abs(n));
+  return ID_NUMBER_FORMAT.format(Math.abs(n));
 }
 
 function fmtSigned(n: number, positivePrefix = "+") {
@@ -309,7 +311,7 @@ export default function DashboardTabs({
                   : "bg-muted/70 text-muted-foreground hover:bg-background hover:text-foreground"
               )}
             >
-              {p === "custom" && <Calendar className="h-3 w-3" />}
+              {p === "custom" && <Calendar className="size-3" />}
               {PERIOD_LABELS[p]}
             </button>
           ))}
@@ -350,25 +352,25 @@ export default function DashboardTabs({
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard
-              icon={<TrendingUp className="h-4 w-4 text-emerald-500" />}
+              icon={<TrendingUp className="size-4 text-emerald-500" />}
               label="Pemasukan"
               value={fmtEffect("income", totalIncome)}
               valueClass={totalIncome >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}
             />
             <MetricCard
-              icon={<TrendingDown className="h-4 w-4 text-destructive" />}
+              icon={<TrendingDown className="size-4 text-destructive" />}
               label="Pengeluaran"
               value={fmtEffect("expense", totalExpense)}
               valueClass="text-destructive"
             />
             <MetricCard
-              icon={<PiggyBank className="h-4 w-4 text-blue-500" />}
+              icon={<PiggyBank className="size-4 text-blue-500" />}
               label="Tabungan"
               value={fmtEffect("expense", totalSavings)}
               valueClass="text-blue-600 dark:text-blue-400"
             />
             <MetricCard
-              icon={<Minus className="h-4 w-4 text-muted-foreground" />}
+              icon={<Minus className="size-4 text-muted-foreground" />}
               label="Sisa"
               value={fmtSigned(sisa)}
               valueClass={sisa >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}
@@ -433,7 +435,7 @@ export default function DashboardTabs({
         <div className="space-y-4">
           <div className="flex flex-col gap-3 rounded-[24px] border border-border/70 bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <Info className="mt-0.5 size-4 shrink-0" />
               <span>
                 Hari ini <span className="font-semibold text-foreground">{dayOfMonth}/{totalDays}</span>, setara{" "}
                 <span className="font-semibold text-foreground">{prorationPct}% bulan berjalan</span>.
@@ -446,10 +448,10 @@ export default function DashboardTabs({
           </div>
 
           {totalIncome > 0 && (
-            <div className="rounded-[24px] border border-border/70 bg-background px-4 py-4">
+            <div className="rounded-[24px] border border-border/70 bg-background p-4">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  <TrendingUp className="size-4 text-emerald-500" />
                   <span className="text-sm font-medium text-foreground">Total pemasukan bulan ini</span>
                 </div>
                 <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
@@ -533,7 +535,6 @@ export default function DashboardTabs({
                                 if (e.key === "Escape") setEditingId(null);
                               }}
                               className="mt-1 w-full rounded-xl border border-border bg-card px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                              autoFocus
                             />
                           ) : (
                             <p className="font-medium text-foreground">{fmt(item.budget)}</p>
@@ -560,17 +561,17 @@ export default function DashboardTabs({
                             <button
                               onClick={() => handleEditSave(item)}
                               disabled={editLoading}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
+                              className="flex size-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
                               title="Simpan"
                             >
-                              <Check className="h-3.5 w-3.5" />
+                              <Check className="size-3.5" />
                             </button>
                             <button
                               onClick={() => setEditingId(null)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+                              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
                               title="Batal"
                             >
-                              <X className="h-3.5 w-3.5" />
+                              <X className="size-3.5" />
                             </button>
                           </>
                         ) : isConfirmDelete ? (
@@ -594,14 +595,14 @@ export default function DashboardTabs({
                             <button
                               onClick={() => handleToggleRollover(item)}
                               className={cn(
-                                "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                                "flex size-8 items-center justify-center rounded-lg transition-colors",
                                 item.rolloverEnabled
                                   ? "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
                                   : "text-muted-foreground hover:bg-violet-100 hover:text-violet-600 dark:hover:bg-violet-900/30"
                               )}
                               title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover"}
                             >
-                              <RotateCcw className="h-3.5 w-3.5" />
+                              <RotateCcw className="size-3.5" />
                             </button>
                             <button
                               onClick={() => {
@@ -609,20 +610,20 @@ export default function DashboardTabs({
                                 setEditAmount(item.budget.toString());
                                 setDeletingId(null);
                               }}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               title="Edit budget"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="size-3.5" />
                             </button>
                             <button
                               onClick={() => {
                                 setDeletingId(item.id);
                                 setEditingId(null);
                               }}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                              className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                               title="Hapus budget"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="size-3.5" />
                             </button>
                           </>
                         )}
@@ -662,7 +663,7 @@ export default function DashboardTabs({
 
                         return (
                           <tr key={item.id} className="group border-b border-border last:border-0 hover:bg-muted/20">
-                            <td className="px-4 py-4">
+                            <td className="p-4">
                               <div className="max-w-[280px]">
                                 <div className="flex items-center gap-2">
                                   <p className="text-sm font-semibold text-foreground">{item.category}</p>
@@ -708,7 +709,6 @@ export default function DashboardTabs({
                                     if (e.key === "Escape") setEditingId(null);
                                   }}
                                   className="w-28 rounded-xl border border-border bg-card px-2 py-1 text-right text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                                  autoFocus
                                 />
                               ) : (
                                 <div>
@@ -758,17 +758,17 @@ export default function DashboardTabs({
                                   <button
                                     onClick={() => handleEditSave(item)}
                                     disabled={editLoading}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
+                                    className="flex size-7 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
                                     title="Simpan"
                                   >
-                                    <Check className="h-3.5 w-3.5" />
+                                    <Check className="size-3.5" />
                                   </button>
                                   <button
                                     onClick={() => setEditingId(null)}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
+                                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted"
                                     title="Batal"
                                   >
-                                    <X className="h-3.5 w-3.5" />
+                                    <X className="size-3.5" />
                                   </button>
                                 </div>
                               ) : isConfirmDelete ? (
@@ -792,14 +792,14 @@ export default function DashboardTabs({
                                   <button
                                     onClick={() => handleToggleRollover(item)}
                                     className={cn(
-                                      "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+                                      "flex size-7 items-center justify-center rounded-lg transition-colors",
                                       item.rolloverEnabled
                                         ? "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
                                         : "text-muted-foreground hover:bg-violet-100 hover:text-violet-600 dark:hover:bg-violet-900/30"
                                     )}
                                     title={item.rolloverEnabled ? "Nonaktifkan rollover" : "Aktifkan rollover"}
                                   >
-                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    <RotateCcw className="size-3.5" />
                                   </button>
                                   <button
                                     onClick={() => {
@@ -807,20 +807,20 @@ export default function DashboardTabs({
                                       setEditAmount(item.budget.toString());
                                       setDeletingId(null);
                                     }}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                                     title="Edit budget"
                                   >
-                                    <Pencil className="h-3.5 w-3.5" />
+                                    <Pencil className="size-3.5" />
                                   </button>
                                   <button
                                     onClick={() => {
                                       setDeletingId(item.id);
                                       setEditingId(null);
                                     }}
-                                    className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                                    className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                     title="Hapus budget"
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <Trash2 className="size-3.5" />
                                   </button>
                                 </div>
                               )}
@@ -871,7 +871,7 @@ export default function DashboardTabs({
               {budgetData.unbudgeted && budgetData.unbudgeted.length > 0 && (
                 <div className="rounded-[28px] border border-border/70 bg-background overflow-hidden">
                   <div className="flex items-center gap-2 border-b border-border bg-muted/35 px-4 py-3">
-                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                    <AlertCircle className="size-4 text-muted-foreground" />
                     <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
                       Pengeluaran tanpa budget
                     </span>
@@ -999,9 +999,9 @@ function CategorySection({
             >
               <div className="flex items-center gap-3">
                 {isOpen ? (
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="mb-1.5 flex items-center justify-between gap-3">

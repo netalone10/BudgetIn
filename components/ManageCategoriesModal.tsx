@@ -179,7 +179,13 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+        onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+        role="button"
+        tabIndex={-1}
+      />
 
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-6 shadow-xl flex flex-col max-h-[85vh]">
         
@@ -190,7 +196,7 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
             onClick={onClose}
             className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="size-4" />
           </button>
         </div>
 
@@ -222,7 +228,7 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
             maxLength={30}
           />
           <Button type="submit" disabled={!newCatName.trim() || isAdding || loading}>
-            {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {isAdding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
           </Button>
         </form>
 
@@ -230,7 +236,7 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
         <div className="flex-1 overflow-y-auto min-h-[50px] -mx-4 px-4">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
           ) : displayedCategories.length === 0 ? (
             <div className="text-center py-8 text-sm text-muted-foreground">
@@ -247,13 +253,12 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
                         onChange={(e) => setEditName(e.target.value)}
                         className="h-7 text-xs flex-1"
                         maxLength={30}
-                        autoFocus
                       />
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => handleRename(c.id)} disabled={savingId === c.id || !editName.trim()}>
-                        {savingId === c.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Check className="h-3 w-3" />}
+                      <Button size="icon" variant="ghost" className="size-7 text-green-600" onClick={() => handleRename(c.id)} disabled={savingId === c.id || !editName.trim()}>
+                        {savingId === c.id ? <Loader2 className="size-3 animate-spin"/> : <Check className="size-3" />}
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingId(null)} disabled={savingId === c.id}>
-                        <X className="h-3 w-3" />
+                      <Button size="icon" variant="ghost" className="size-7 text-muted-foreground" onClick={() => setEditingId(null)} disabled={savingId === c.id}>
+                        <X className="size-3" />
                       </Button>
                     </div>
                   ) : (
@@ -291,11 +296,11 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
                           </>
                         )}
                         <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(c)} disabled={savingId === c.id}>
-                            <Pencil className="h-3 w-3" />
+                          <Button size="icon" variant="ghost" className="size-7" onClick={() => startEdit(c)} disabled={savingId === c.id}>
+                            <Pencil className="size-3" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 hover:text-destructive" onClick={() => handleDelete(c.id, c.name)} disabled={savingId === c.id}>
-                            {savingId === c.id ? <Loader2 className="h-3 w-3 animate-spin"/> : <Trash2 className="h-3 w-3" />}
+                          <Button size="icon" variant="ghost" className="size-7 hover:text-destructive" onClick={() => handleDelete(c.id, c.name)} disabled={savingId === c.id}>
+                            {savingId === c.id ? <Loader2 className="size-3 animate-spin"/> : <Trash2 className="size-3" />}
                           </Button>
                         </div>
                       </div>

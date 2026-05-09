@@ -218,11 +218,11 @@ function AuthForm() {
         <div className="rounded-xl border bg-card p-8 shadow-sm text-center space-y-4">
           <div className="flex justify-center">
             <div className="rounded-full bg-primary/10 p-4">
-              <MailCheck className="h-8 w-8 text-primary" />
+              <MailCheck className="size-8 text-primary" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-xl font-bold">Cek email kamu!</h2>
+            <h2 className="text-xl font-semibold">Cek email kamu!</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Kami mengirim link verifikasi ke{" "}
               <span className="font-medium text-foreground">{verificationSentEmail}</span>.
@@ -232,7 +232,7 @@ function AuthForm() {
           <p className="text-xs text-muted-foreground">Link berlaku 24 jam.</p>
           {resendSuccess ? (
             <div className="flex items-center justify-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <CheckCircle2 className="size-3.5" />
               Email terkirim ulang!
             </div>
           ) : (
@@ -276,11 +276,11 @@ function AuthForm() {
         <div className="rounded-xl border bg-card p-8 shadow-sm text-center space-y-4">
           <div className="flex justify-center">
             <div className="rounded-full bg-yellow-500/10 p-4">
-              <AlertCircle className="h-8 w-8 text-yellow-500" />
+              <AlertCircle className="size-8 text-yellow-500" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <h2 className="text-xl font-bold">Email belum diverifikasi</h2>
+            <h2 className="text-xl font-semibold">Email belum diverifikasi</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Kamu perlu memverifikasi email{" "}
               <span className="font-medium text-foreground">{unverifiedEmail}</span>{" "}
@@ -289,7 +289,7 @@ function AuthForm() {
           </div>
           {resendSuccess ? (
             <div className="flex items-center justify-center gap-1.5 text-xs text-green-600 dark:text-green-400">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <CheckCircle2 className="size-3.5" />
               Email verifikasi terkirim!
             </div>
           ) : (
@@ -304,7 +304,7 @@ function AuthForm() {
                 disabled={resendLoading}
               >
                 {resendLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Loader2 className="size-4 animate-spin mr-2" />
                 ) : null}
                 Kirim ulang email verifikasi
               </Button>
@@ -331,20 +331,20 @@ function AuthForm() {
       {/* Banner: email berhasil diverifikasi */}
       {verifiedParam === "true" && (
         <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/40 px-3 py-2.5 text-sm text-green-700 dark:text-green-400">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <CheckCircle2 className="size-4 shrink-0" />
           Email berhasil diverifikasi! Silakan login.
         </div>
       )}
       {verifiedParam === "already" && (
         <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 px-3 py-2.5 text-sm text-blue-700 dark:text-blue-400">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <CheckCircle2 className="size-4 shrink-0" />
           Email sudah diverifikasi sebelumnya. Silakan login.
         </div>
       )}
       {errorParam === "token_expired" && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive space-y-2">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertCircle className="size-4 shrink-0" />
             Link verifikasi sudah kadaluarsa.
           </div>
           <button
@@ -360,13 +360,13 @@ function AuthForm() {
       )}
       {errorParam === "invalid_token" && (
         <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+          <AlertCircle className="size-4 shrink-0" />
           Link verifikasi tidak valid atau sudah digunakan.
         </div>
       )}
 
       <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {tab === "login" ? "Masuk ke BudgetIn" : "Buat akun baru"}
         </h1>
         <p className="text-sm text-muted-foreground">
@@ -401,9 +401,9 @@ function AuthForm() {
           disabled={googleLoading || loading}
         >
           {googleLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="size-4 animate-spin" />
           ) : (
-            <svg className="h-4 w-4" viewBox="0 0 24 24">
+            <svg className="size-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -445,7 +445,7 @@ function AuthForm() {
         <form onSubmit={handleSubmit} className="space-y-3">
           {tab === "register" && (
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Nama</label>
+              <span className="text-xs font-medium text-muted-foreground">Nama</span>
               <Input
                 placeholder="Nama lengkap"
                 value={name}
@@ -457,7 +457,7 @@ function AuthForm() {
           )}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Email</label>
+            <span className="text-xs font-medium text-muted-foreground">Email</span>
             <Input
               type="email"
               placeholder="kamu@email.com"
@@ -469,7 +469,7 @@ function AuthForm() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Password</label>
+            <span className="text-xs font-medium text-muted-foreground">Password</span>
             <div className="relative">
               <Input
                 type={showPass ? "text" : "password"}
@@ -485,7 +485,7 @@ function AuthForm() {
                 onClick={() => setShowPass((v) => !v)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
           </div>
@@ -510,7 +510,7 @@ function AuthForm() {
             disabled={loading || googleLoading || (captchaEnabled && !turnstileToken)}
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <Loader2 className="size-4 animate-spin mr-2" />
             ) : null}
             {tab === "login" ? "Masuk" : "Buat Akun"}
           </Button>
@@ -554,7 +554,7 @@ export default function AuthPage() {
       <main id="main-content" className="flex flex-1 items-center justify-center px-4 py-12">
         <Suspense fallback={
           <div className="flex items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         }>
           <AuthForm />

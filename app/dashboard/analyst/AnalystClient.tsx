@@ -145,7 +145,7 @@ export default function AIAnalystPage() {
   if (status === "loading") {
     return (
       <div className="flex h-[80vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -164,15 +164,15 @@ export default function AIAnalystPage() {
       {/* Action bar — heading dirender di server shell */}
       <div className="flex items-center justify-end gap-2 print:hidden flex-wrap">
         <Button variant="outline" size="sm" onClick={handlePredict} disabled={predLoading} className="h-9">
-          {predLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
+          {predLoading ? <Loader2 className="size-4 mr-2 animate-spin" /> : <TrendingUp className="size-4 mr-2" />}
           Prediksi Bulan Depan
         </Button>
         <Button variant="outline" size="sm" onClick={handleDownloadCsv} disabled={downloadingCsv} className="h-9">
-          {downloadingCsv ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+          {downloadingCsv ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Download className="size-4 mr-2" />}
           CSV
         </Button>
         <Button variant="outline" size="sm" onClick={handlePrintPdf} disabled={downloadingPdf} className="h-9">
-          {downloadingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Printer className="h-4 w-4 mr-2" />}
+          {downloadingPdf ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Printer className="size-4 mr-2" />}
           Unduh PDF
         </Button>
       </div>
@@ -180,8 +180,8 @@ export default function AIAnalystPage() {
         {/* Empty / Loading State */}
         {!report && !loading && !error && (
           <div className="rounded-[24px] border border-border bg-card p-12 text-center shadow-sm print:hidden">
-            <div className="h-16 w-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="h-8 w-8" />
+            <div className="size-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="size-8" />
             </div>
             <h3 className="text-xl font-semibold mb-2">Laporan Belum Dibuat</h3>
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto text-sm">
@@ -189,14 +189,14 @@ export default function AIAnalystPage() {
             </p>
             <Button onClick={handleGenerate} size="lg" className="rounded-full shadow-md font-medium group">
               ⚡ Generate Analisis Bulan Ini
-              <ChevronRight className="h-4 w-4 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight className="size-4 ml-1 opacity-50 group-hover:opacity-100 transition-opacity" />
             </Button>
           </div>
         )}
 
         {loading && (
           <div className="rounded-[24px] border border-border bg-card p-12 flex flex-col items-center justify-center shadow-sm">
-            <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+            <Loader2 className="size-10 animate-spin text-primary mb-4" />
             <h3 className="text-[17px] font-semibold animate-pulse">Menghitung matriks keuangan...</h3>
             <p className="text-sm text-muted-foreground">AI sedang menyusun ringkasan eksekutif Anda.</p>
           </div>
@@ -204,7 +204,7 @@ export default function AIAnalystPage() {
 
         {error && (
           <div className="rounded-[24px] border border-destructive/20 bg-destructive/5 p-6 shadow-sm text-center">
-            <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-3" />
+            <AlertTriangle className="size-8 text-destructive mx-auto mb-3" />
             <h3 className="font-semibold text-destructive mb-1">Gagal Diproses</h3>
             <p className="text-sm text-destructive/80 mb-4">{error}</p>
             <Button onClick={handleGenerate} variant="outline" size="sm">Coba Lagi</Button>
@@ -214,7 +214,7 @@ export default function AIAnalystPage() {
         {/* Prediction Error */}
         {predError && (
           <div className="rounded-[24px] border border-destructive/20 bg-destructive/5 p-4 flex items-center gap-3 print:hidden">
-            <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+            <AlertTriangle className="size-5 text-destructive shrink-0" />
             <p className="text-sm text-destructive">{predError}</p>
           </div>
         )}
@@ -225,7 +225,7 @@ export default function AIAnalystPage() {
             <div className="px-6 py-4 border-b bg-muted/30 flex items-center justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-base flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <TrendingUp className="size-4 text-primary" />
                   Prediksi Pengeluaran Bulan Depan
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -267,15 +267,15 @@ export default function AIAnalystPage() {
                       <td className="py-3 pr-3 text-right">
                         {p.trend === "up" ? (
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-                            <TrendingUp className="h-3 w-3" /> Naik
+                            <TrendingUp className="size-3" /> Naik
                           </span>
                         ) : p.trend === "down" ? (
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
-                            <TrendingDown className="h-3 w-3" /> Turun
+                            <TrendingDown className="size-3" /> Turun
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-                            <Minus className="h-3 w-3" /> Stabil
+                            <Minus className="size-3" /> Stabil
                           </span>
                         )}
                       </td>
@@ -320,7 +320,7 @@ export default function AIAnalystPage() {
                 <ul className="space-y-4">
                   {report.recommendations.map((rec, i) => (
                     <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                      <CheckCircle2 className="size-5 text-primary shrink-0 mt-0.5" />
                       <span className="text-[15px] leading-relaxed text-foreground">{rec}</span>
                     </li>
                   ))}
@@ -334,7 +334,7 @@ export default function AIAnalystPage() {
                   <ul className="space-y-3">
                     {report.anomalies.map((ano, i) => (
                       <li key={i} className="flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                        <AlertTriangle className="size-5 text-destructive shrink-0 mt-0.5" />
                         <span className="text-[15px] leading-relaxed text-destructive">{ano}</span>
                       </li>
                     ))}
@@ -409,7 +409,7 @@ export default function AIAnalystPage() {
                 <span className="label-mono text-muted-foreground mb-6 block w-full text-left">Health Score</span>
                 
                 {/* Circular Gauge */}
-                <div className={cn("relative flex h-40 w-40 items-center justify-center rounded-full border-8", ScoreColor)}>
+                <div className={cn("relative flex size-40 items-center justify-center rounded-full border-8", ScoreColor)}>
                   <div className="flex flex-col">
                     <span className="text-4xl font-bold tracking-tight">{report.healthScore}</span>
                     <span className="text-xs font-medium uppercase tracking-widest opacity-80 mt-1">/ 100</span>

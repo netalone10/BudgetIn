@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
-export default function AuthErrorContent() {
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+function AuthErrorInner() {
+  const { get } = useSearchParams();
+  const error = get("error");
 
   const isOnboardingFailed = error === "OnboardingFailed";
   const isGooglePermissionRequired = error === "GooglePermissionRequired";
@@ -14,7 +15,7 @@ export default function AuthErrorContent() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-destructive">
+        <h1 className="text-2xl font-semibold text-destructive">
           {isGooglePermissionRequired
             ? "Permission Google diperlukan"
             : isOnboardingFailed
@@ -34,5 +35,13 @@ export default function AuthErrorContent() {
         Coba Lagi
       </Button>
     </main>
+  );
+}
+
+export default function AuthErrorContent() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Memuat…</p></div>}>
+      <AuthErrorInner />
+    </Suspense>
   );
 }

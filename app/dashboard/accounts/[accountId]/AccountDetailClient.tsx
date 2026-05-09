@@ -48,13 +48,15 @@ type PromptResult =
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+const IDR_FORMAT = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+
 function formatIDR(value: string | number): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(num);
+  return IDR_FORMAT.format(num);
 }
 
 function promptMentionsAccount(prompt: string, accounts: AccountOption[]): boolean {
@@ -277,7 +279,8 @@ export default function AccountDetailClient({ initialData }: Props) {
     if (showAddModal) {
       fetchModalData();
       setPromptResult(null);
-      setTimeout(() => textareaRef.current?.focus(), 0);
+      const focusTimer = setTimeout(() => textareaRef.current?.focus(), 0);
+      return () => clearTimeout(focusTimer);
     }
   }, [showAddModal, fetchModalData]);
 
@@ -314,14 +317,14 @@ export default function AccountDetailClient({ initialData }: Props) {
       <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <div
-            className="h-12 w-12 rounded-xl shrink-0 flex items-center justify-center text-white text-lg font-bold"
+            className="size-12 rounded-xl shrink-0 flex items-center justify-center text-white text-lg font-bold"
             style={{ backgroundColor: color }}
           >
             {account.name.slice(0, 1).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="break-words text-xl font-bold leading-tight">{account.name}</h1>
+              <h1 className="break-words text-xl font-semibold leading-tight">{account.name}</h1>
               {isLiability && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium shrink-0">
                   Hutang
@@ -364,7 +367,7 @@ export default function AccountDetailClient({ initialData }: Props) {
             onClick={() => setShowAddModal(true)}
             className="w-full shrink-0 sm:w-auto"
           >
-            <Plus className="h-4 w-4 mr-1.5" />
+            <Plus className="size-4 mr-1.5" />
             Tambah Transaksi
           </Button>
         </div>
@@ -392,25 +395,25 @@ export default function AccountDetailClient({ initialData }: Props) {
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-1.5 mb-1">
-            <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+            <TrendingUp className="size-3.5 text-emerald-500" />
             <span className="text-xs text-muted-foreground">Masuk</span>
           </div>
           <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-            {loading ? "..." : formatIDR(summary.totalIn)}
+            {loading ? "…" : formatIDR(summary.totalIn)}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-1.5 mb-1">
-            <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+            <TrendingDown className="size-3.5 text-red-500" />
             <span className="text-xs text-muted-foreground">Keluar</span>
           </div>
           <p className="text-base font-bold text-red-500 tabular-nums">
-            {loading ? "..." : formatIDR(summary.totalOut)}
+            {loading ? "…" : formatIDR(summary.totalOut)}
           </p>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-1.5 mb-1">
-            <Activity className="h-3.5 w-3.5 text-primary" />
+            <Activity className="size-3.5 text-primary" />
             <span className="text-xs text-muted-foreground">Net</span>
           </div>
           <p
@@ -421,7 +424,7 @@ export default function AccountDetailClient({ initialData }: Props) {
                 : "text-red-500"
             )}
           >
-            {loading ? "..." : formatIDR(summary.net)}
+            {loading ? "…" : formatIDR(summary.net)}
           </p>
         </div>
       </div>
@@ -435,7 +438,7 @@ export default function AccountDetailClient({ initialData }: Props) {
               <span className="text-muted-foreground font-normal">({summary.count})</span>
             )}
           </h2>
-          {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
         </div>
 
         {transactions.length === 0 && !loading ? (
@@ -537,6 +540,9 @@ export default function AccountDetailClient({ initialData }: Props) {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
           onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowAddModal(false); }}
+          role="button"
+          tabIndex={-1}
         >
           <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-border">
@@ -571,12 +577,12 @@ export default function AccountDetailClient({ initialData }: Props) {
                     type="submit"
                     size="icon"
                     disabled={!prompt.trim() || promptLoading}
-                    className="absolute bottom-2.5 right-2 h-9 w-9 rounded-full shadow-md hover:-translate-y-px transition-transform"
+                    className="absolute bottom-2.5 right-2 size-9 rounded-full shadow-md hover:-translate-y-px transition-transform"
                   >
                     {promptLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="size-4 animate-spin" />
                     ) : (
-                      <SendHorizonal className="h-4 w-4" />
+                      <SendHorizonal className="size-4" />
                     )}
                   </Button>
                 </div>
@@ -588,19 +594,19 @@ export default function AccountDetailClient({ initialData }: Props) {
               {promptResult && (
                 "error" in promptResult ? (
                   <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-red-500/40 bg-red-500/5">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
+                    <AlertCircle className="size-4 shrink-0 mt-0.5 text-destructive" />
                     <p className="text-sm text-destructive">{promptResult.error}</p>
                   </div>
                 ) : promptResult.intent === "transaksi" || promptResult.intent === "transaksi_bulk" || promptResult.intent === "pemasukan" ? (
                   <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-green-500/30 bg-green-500/5">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
+                    <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-green-600 dark:text-green-400" />
                     <p className="text-sm font-medium text-green-700 dark:text-green-400">
                       {promptResult.message ?? "Transaksi berhasil dicatat."}
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-start gap-3 rounded-xl px-4 py-3 border border-amber-500/30 bg-amber-500/5">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                    <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                     <div className="flex-1">
                       <p className="text-sm text-amber-700 dark:text-amber-400">
                         {promptResult.clarification ?? promptResult.message ?? "Tidak bisa memproses permintaan. Coba ulangi dengan kalimat yang berbeda."}

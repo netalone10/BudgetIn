@@ -49,7 +49,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   const [accountId, setAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
   const [category, setCategory] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [time, setTime] = useState(currentLocalTime);
   const [timeManuallyEdited, setTimeManuallyEdited] = useState(false);
   const [note, setNote] = useState("");
@@ -196,13 +196,13 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             key={key}
             onClick={() => setTab(key)}
             className={cn(
-              "flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-semibold transition-all",
+              "flex min-w-0 items-center justify-center gap-1.5 rounded-lg p-2 text-[13px] font-semibold transition-all",
               tab === key
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <Icon className={cn("h-4 w-4 shrink-0", tab === key ? "text-primary-foreground" : color)} />
+            <Icon className={cn("size-4 shrink-0", tab === key ? "text-primary-foreground" : color)} />
             <span className="hidden sm:inline">{label}</span>
           </button>
         ))}
@@ -223,8 +223,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
 
         {/* Amount */}
         <div className={FORM_FIELD_CLS}>
-          <label className={FORM_LABEL_CLS}>Nominal (Rp)</label>
-          <input
+          <label htmlFor="manualtransactionform-field-1" className={FORM_LABEL_CLS}>Nominal (Rp)</label>
+          <input id="manualtransactionform-field-1"
             type="number"
             min={tab === "transfer" ? "1" : "-1000000000"}
             max="1000000000"
@@ -242,8 +242,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
           <div className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className={FORM_FIELD_CLS}>
-              <label className={FORM_LABEL_CLS}>Dari Akun</label>
-              <select
+              <label htmlFor="manualtransactionform-field-2" className={FORM_LABEL_CLS}>Dari Akun</label>
+              <select id="manualtransactionform-field-2"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
                 required
@@ -262,10 +262,10 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
               </select>
             </div>
             <div className={FORM_FIELD_CLS}>
-              <label className={FORM_LABEL_CLS}>
+              <label htmlFor="manualtransactionform-field-3" className={FORM_LABEL_CLS}>
                 {isLiabilityTarget ? "Bayar ke" : "Ke Akun"}
               </label>
-              <select
+              <select id="manualtransactionform-field-3"
                 value={toAccountId}
                 onChange={(e) => setToAccountId(e.target.value)}
                 required
@@ -285,8 +285,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             </div>
             </div>
             <div className={FORM_FIELD_CLS}>
-              <label className={FORM_LABEL_CLS}>Fee (opsional)</label>
-              <input
+              <label htmlFor="manualtransactionform-field-4" className={FORM_LABEL_CLS}>Fee (opsional)</label>
+              <input id="manualtransactionform-field-4"
                 type="number"
                 min="0"
                 max="1000000000"
@@ -301,10 +301,10 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
           </div>
         ) : (
           <div className={FORM_FIELD_CLS}>
-            <label className={FORM_LABEL_CLS}>
+            <label htmlFor="manualtransactionform-field-5" className={FORM_LABEL_CLS}>
               {tab === "income" ? "Masuk ke Akun" : "Dari Akun"}
             </label>
-            <select
+            <select id="manualtransactionform-field-5"
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
               required
@@ -327,8 +327,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         {/* Category (not for transfer) */}
         {tab !== "transfer" && (
           <div className={FORM_FIELD_CLS}>
-            <label className={FORM_LABEL_CLS}>Kategori</label>
-            <select
+            <label htmlFor="manualtransactionform-field-6" className={FORM_LABEL_CLS}>Kategori</label>
+            <select id="manualtransactionform-field-6"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               required
@@ -345,8 +345,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         {/* Date + Note */}
         <div className="grid grid-cols-2 gap-3">
           <div className={FORM_FIELD_CLS}>
-            <label className={FORM_LABEL_CLS}>Tanggal</label>
-            <input
+            <label htmlFor="manualtransactionform-field-7" className={FORM_LABEL_CLS}>Tanggal</label>
+            <input id="manualtransactionform-field-7"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
@@ -355,8 +355,8 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             />
           </div>
           <div className={FORM_FIELD_CLS}>
-            <label className={FORM_LABEL_CLS}>Jam</label>
-            <input
+            <label htmlFor="manualtransactionform-field-8" className={FORM_LABEL_CLS}>Jam</label>
+            <input id="manualtransactionform-field-8"
               type="time"
               value={time}
               onChange={(e) => {
@@ -369,12 +369,12 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
           </div>
         </div>
         <div className={FORM_FIELD_CLS}>
-          <label className={FORM_LABEL_CLS}>Catatan (opsional)</label>
-          <input
+          <label htmlFor="manualtransactionform-field-9" className={FORM_LABEL_CLS}>Catatan (opsional)</label>
+          <input id="manualtransactionform-field-9"
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Tulis catatan..."
+            placeholder="Tulis catatan…"
             className={FORM_CONTROL_CLS}
           />
         </div>
@@ -397,7 +397,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
           size="sm"
         >
           {loading ? (
-            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Menyimpan...</>
+            <><Loader2 className="size-4 animate-spin mr-2" /> Menyimpan…</>
           ) : tab === "transfer" ? (
             isLiabilityTarget ? "Catat Pembayaran Cicilan/Hutang" : "Catat Transfer"
           ) : tab === "income" ? (

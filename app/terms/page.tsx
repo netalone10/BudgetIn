@@ -44,7 +44,7 @@ export default function TermsPage() {
       <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
         <div className="space-y-2 mb-10">
           <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Legal</p>
-          <h1 className="text-3xl font-bold tracking-tight">Syarat &amp; Ketentuan</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Syarat &amp; Ketentuan</h1>
           <p className="text-sm text-muted-foreground">Terakhir diperbarui: 12 April 2026</p>
         </div>
 

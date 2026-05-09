@@ -58,17 +58,20 @@ interface Summary {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const IDR_FORMAT = new Intl.NumberFormat("id-ID", {
+  style: "currency",
+  currency: "IDR",
+  maximumFractionDigits: 0,
+});
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function formatIDR(value: string | number): string {
   const num = typeof value === "string" ? parseFloat(value) : value;
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(num);
+  return IDR_FORMAT.format(num);
 }
 
 function formatShortAmount(amount: number): string {
-  return new Intl.NumberFormat("id-ID").format(amount);
+  return ID_NUMBER_FORMAT.format(amount);
 }
 
 function formatShortDate(dateStr: string): string {
@@ -275,8 +278,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Nama Akun *</label>
-            <input
+            <label htmlFor="accountsclient-field-1" className="block text-xs font-medium text-muted-foreground mb-1">Nama Akun *</label>
+            <input id="accountsclient-field-1"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -288,8 +291,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Tipe Akun *</label>
-            <select
+            <label htmlFor="accountsclient-field-2" className="block text-xs font-medium text-muted-foreground mb-1">Tipe Akun *</label>
+            <select id="accountsclient-field-2"
               value={accountTypeId}
               onChange={(e) => setAccountTypeId(e.target.value)}
               required
@@ -308,8 +311,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
 
           {!isEdit && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Saldo Awal (Rp)</label>
-              <input
+              <label htmlFor="accountsclient-field-3" className="block text-xs font-medium text-muted-foreground mb-1">Saldo Awal (Rp)</label>
+              <input id="accountsclient-field-3"
                 type="number"
                 min="0"
                 step="1"
@@ -330,8 +333,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
 
           {!hasTransactions && (
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">Mata Uang</label>
-              <select
+              <label htmlFor="accountsclient-field-4" className="block text-xs font-medium text-muted-foreground mb-1">Mata Uang</label>
+              <select id="accountsclient-field-4"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -343,8 +346,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
           )}
 
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
-            <input
+            <label htmlFor="accountsclient-field-5" className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
+            <input id="accountsclient-field-5"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -359,8 +362,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
               <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-2">Pengaturan Kartu Kredit</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Settlement *</label>
-                  <select
+                  <label htmlFor="accountsclient-field-6" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Settlement *</label>
+                  <select id="accountsclient-field-6"
                     value={tanggalSettlement}
                     onChange={(e) => setTanggalSettlement(e.target.value ? Number(e.target.value) : "")}
                     required
@@ -374,8 +377,8 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
                   <p className="text-[10px] text-muted-foreground mt-1">Awal periode tagihan</p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Jatuh Tempo *</label>
-                  <select
+                  <label htmlFor="accountsclient-field-7" className="block text-xs font-medium text-muted-foreground mb-1">Tanggal Jatuh Tempo *</label>
+                  <select id="accountsclient-field-7"
                     value={tanggalJatuhTempo}
                     onChange={(e) => setTanggalJatuhTempo(e.target.value ? Number(e.target.value) : "")}
                     required
@@ -400,7 +403,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
           <div className="flex gap-3 pt-1">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Batal</Button>
             <Button type="submit" className="flex-1" disabled={loading || !selectedType}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : isEdit ? "Simpan" : "Tambah Akun"}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : isEdit ? "Simpan" : "Tambah Akun"}
             </Button>
           </div>
         </form>
@@ -412,7 +415,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
 // ── Adjust Balance Modal ──────────────────────────────────────────────────────
 
 function AdjustBalanceModal({ account, onClose, onSaved }: { account: AccountData; onClose: () => void; onSaved: () => void }) {
-  const [targetBalance, setTargetBalance] = useState(parseFloat(account.currentBalance).toFixed(0));
+  const [targetBalance, setTargetBalance] = useState(() => parseFloat(account.currentBalance).toFixed(0));
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -439,8 +442,8 @@ function AdjustBalanceModal({ account, onClose, onSaved }: { account: AccountDat
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Saldo Seharusnya (Rp)</label>
-            <input
+            <label htmlFor="accountsclient-field-8" className="block text-xs font-medium text-muted-foreground mb-1">Saldo Seharusnya (Rp)</label>
+            <input id="accountsclient-field-8"
               type="number"
               step="1"
               value={targetBalance}
@@ -453,8 +456,8 @@ function AdjustBalanceModal({ account, onClose, onSaved }: { account: AccountDat
             </p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
-            <input
+            <label htmlFor="accountsclient-field-9" className="block text-xs font-medium text-muted-foreground mb-1">Catatan (opsional)</label>
+            <input id="accountsclient-field-9"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -466,7 +469,7 @@ function AdjustBalanceModal({ account, onClose, onSaved }: { account: AccountDat
           <div className="flex gap-3">
             <Button type="button" variant="outline" className="flex-1" onClick={onClose}>Batal</Button>
             <Button type="submit" className="flex-1" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sesuaikan"}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : "Sesuaikan"}
             </Button>
           </div>
         </form>
@@ -502,10 +505,10 @@ const AccountCard = memo(function AccountCard({
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <div
-            className="h-9 w-9 rounded-lg shrink-0 flex items-center justify-center text-white"
+            className="size-9 rounded-lg shrink-0 flex items-center justify-center text-white"
             style={{ backgroundColor: color }}
           >
-            <AccountIcon className="h-4 w-4" />
+            <AccountIcon className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -535,7 +538,7 @@ const AccountCard = memo(function AccountCard({
               title="Sesuaikan Saldo"
               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="size-3.5" />
             </button>
             {!isDemo && (
             <>
@@ -544,7 +547,7 @@ const AccountCard = memo(function AccountCard({
               title="Edit"
               className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
             >
-              <Edit2 className="h-3.5 w-3.5" />
+              <Edit2 className="size-3.5" />
             </button>
             <button
               onClick={() => onDelete(account)}
@@ -556,7 +559,7 @@ const AccountCard = memo(function AccountCard({
                   : "text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
               )}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="size-3.5" />
             </button>
             </>
             )}
@@ -589,9 +592,9 @@ const AccountCard = memo(function AccountCard({
         onClick={() => router.push(`/dashboard/accounts/${account.id}`)}
         className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-t border-border px-4 py-2 text-xs text-primary transition-all hover:bg-muted/40 hover:text-primary/80 active:scale-[0.98] active:bg-muted/60"
       >
-        <Eye className="h-3 w-3" />
+        <Eye className="size-3" />
         Lihat semua transaksi
-        <ChevronRight className="h-3 w-3" />
+        <ChevronRight className="size-3" />
       </button>
     </div>
   );
@@ -743,7 +746,7 @@ export default function AccountsPage() {
   if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -754,7 +757,7 @@ export default function AccountsPage() {
       {!isDemo && (
       <div className="flex items-center justify-end">
         <Button onClick={() => setShowAddModal(true)} size="sm" className="gap-1.5">
-          <Plus className="h-4 w-4" /> Tambah Akun
+          <Plus className="size-4" /> Tambah Akun
         </Button>
       </div>
       )}
@@ -762,7 +765,7 @@ export default function AccountsPage() {
       {/* Sheets banner */}
       {isSheets && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 flex items-start gap-3">
-          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <AlertCircle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 dark:text-amber-300">
             Kamu login via Google. Fitur Akun & Dompet disimpan di database terpisah dari Google Sheets.
             Transaksi baru melalui form manual akan dicatat di sini.
@@ -803,7 +806,7 @@ export default function AccountsPage() {
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 dark:bg-red-950/30 rounded-xl p-4">
-          <AlertCircle className="h-4 w-4 shrink-0" /> {error}
+          <AlertCircle className="size-4 shrink-0" /> {error}
         </div>
       )}
 
@@ -812,11 +815,11 @@ export default function AccountsPage() {
         <AccountsSkeleton />
       ) : accounts.length === 0 && !loading ? (
         <div className="text-center py-12 border border-dashed border-border rounded-2xl">
-          <Wallet className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <Wallet className="size-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-4">Belum ada akun. Tambahkan akun pertamamu!</p>
           {!isDemo && (
           <Button onClick={() => setShowAddModal(true)} size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" /> Tambah Akun
+            <Plus className="size-4" /> Tambah Akun
           </Button>
           )}
         </div>
@@ -825,7 +828,7 @@ export default function AccountsPage() {
           {assetGroups.length > 0 && (
             <section>
               <div className="mb-3 flex items-start justify-between gap-3 px-1">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                   Aset
                 </h2>
                 <span className="min-w-0 text-right text-xs font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">
@@ -861,7 +864,7 @@ export default function AccountsPage() {
           {liabilityGroups.length > 0 && (
             <section>
               <div className="mb-3 flex items-start justify-between gap-3 px-1">
-                <h2 className="text-xs font-bold uppercase tracking-widest text-red-500">
+                <h2 className="text-xs font-semibold uppercase tracking-widest text-red-500">
                   Liabilitas
                 </h2>
                 <span className="min-w-0 text-right text-xs font-semibold text-red-500 tabular-nums">
@@ -902,7 +905,7 @@ export default function AccountsPage() {
           href="/dashboard/settings/account-types"
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
-          <Tags className="h-3.5 w-3.5" />
+          <Tags className="size-3.5" />
           Kelola tipe akun →
         </Link>
       </div>

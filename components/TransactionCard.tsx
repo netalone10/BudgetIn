@@ -40,6 +40,8 @@ interface Props {
 const INPUT_CLS = "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus:ring-3 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50";
 const SELECT_CLS = `${INPUT_CLS} min-w-0 truncate`;
 const LABEL_CLS = "mb-1.5 block text-[12px] font-semibold text-muted-foreground";
+const EMPTY_CATEGORIES: TransactionCategory[] = [];
+const EMPTY_ACCOUNTS: { id: string; name: string }[] = [];
 
 const idFormat = new Intl.NumberFormat("id-ID");
 function formatRupiah(amount: number) {
@@ -68,7 +70,7 @@ interface EditModalProps {
 
 function EditModal({ transaction, categories, accounts, onClose, onSaved }: EditModalProps) {
   const [editDate, setEditDate] = useState(transaction.date);
-  const [editTime, setEditTime] = useState(formatTime(transaction.time));
+  const [editTime, setEditTime] = useState(() => formatTime(transaction.time));
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
@@ -80,9 +82,9 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
     transaction.type === "income" || transaction.type === "transfer_in"
       ? "income"
       : "expense";
-  const filteredCategoryNames = categories
-    .filter((c) => c.type === categoryType)
-    .map((c) => c.name);
+  const filteredCategoryNames = categories.flatMap((c) =>
+    c.type === categoryType ? [c.name] : []
+  );
   const categoryOptions = filteredCategoryNames.includes(transaction.category)
     ? filteredCategoryNames
     : [...filteredCategoryNames, transaction.category].sort();
@@ -123,6 +125,9 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 p-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+      role="button"
+      tabIndex={-1}
     >
       <div className="w-full max-w-md overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-[var(--shadow-offset-x)_var(--shadow-offset-y)_var(--shadow-blur)_var(--shadow-spread)_color-mix(in_srgb,var(--shadow-color)_70%,transparent)]">
         <div className="flex items-center justify-between border-b border-border/70 bg-muted/25 px-5 py-4">
@@ -132,7 +137,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
           </div>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-lg leading-none text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+            className="flex size-8 items-center justify-center rounded-lg text-lg leading-none text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
           >
             ×
           </button>
@@ -140,8 +145,8 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
         <form onSubmit={handleSubmit} className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={LABEL_CLS}>Tanggal</label>
-              <input
+              <label htmlFor="transactioncard-field-1" className={LABEL_CLS}>Tanggal</label>
+              <input id="transactioncard-field-1"
                 type="date"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
@@ -150,8 +155,8 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
               />
             </div>
             <div>
-              <label className={LABEL_CLS}>Jam</label>
-              <input
+              <label htmlFor="transactioncard-field-2" className={LABEL_CLS}>Jam</label>
+              <input id="transactioncard-field-2"
                 type="time"
                 value={editTime}
                 onChange={(e) => setEditTime(e.target.value)}
@@ -162,8 +167,8 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
           </div>
 
           <div>
-            <label className={LABEL_CLS}>Nominal (Rp)</label>
-            <input
+            <label htmlFor="transactioncard-field-3" className={LABEL_CLS}>Nominal (Rp)</label>
+            <input id="transactioncard-field-3"
               type="number"
               step="1"
               value={editAmount}
@@ -174,19 +179,19 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
           </div>
 
           <div>
-            <label className={LABEL_CLS}>Catatan</label>
-            <input
+            <label htmlFor="transactioncard-field-4" className={LABEL_CLS}>Catatan</label>
+            <input id="transactioncard-field-4"
               type="text"
               value={editNote}
               onChange={(e) => setEditNote(e.target.value)}
-              placeholder="Tulis catatan..."
+              placeholder="Tulis catatan…"
               className={INPUT_CLS}
             />
           </div>
 
           <div>
-            <label className={LABEL_CLS}>Kategori</label>
-            <select
+            <label htmlFor="transactioncard-field-5" className={LABEL_CLS}>Kategori</label>
+            <select id="transactioncard-field-5"
               value={editCategory}
               onChange={(e) => setEditCategory(e.target.value)}
               className={SELECT_CLS}
@@ -202,8 +207,8 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
 
           {accounts.length > 0 && (
             <div>
-              <label className={LABEL_CLS}>Akun</label>
-              <select
+              <label htmlFor="transactioncard-field-6" className={LABEL_CLS}>Akun</label>
+              <select id="transactioncard-field-6"
                 value={editAccountId}
                 onChange={(e) => setEditAccountId(e.target.value)}
                 className={SELECT_CLS}
@@ -227,7 +232,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
               Batal
             </Button>
             <Button type="submit" className="h-10 rounded-lg" disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Simpan"}
+              {loading ? <Loader2 className="size-4 animate-spin" /> : "Simpan"}
             </Button>
           </div>
         </form>
@@ -239,7 +244,7 @@ function EditModal({ transaction, categories, accounts, onClose, onSaved }: Edit
 
 // ── Transaction Row ───────────────────────────────────────────────────────────
 
-function TransactionCard({ transaction, categories = [], accounts = [], onDelete, onUpdate }: Props) {
+function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts = EMPTY_ACCOUNTS, onDelete, onUpdate }: Props) {
   const isDemo = useIsDemo();
   const [showModal, setShowModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -331,20 +336,20 @@ function TransactionCard({ transaction, categories = [], accounts = [], onDelete
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 rounded-lg shadow-none"
+              className="size-7 rounded-lg shadow-none"
               onClick={() => setShowModal(true)}
               disabled={deleting}
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="size-3" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 rounded-lg shadow-none hover:text-destructive"
+              className="size-7 rounded-lg shadow-none hover:text-destructive"
               onClick={handleDelete}
               disabled={deleting}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="size-3" />
             </Button>
           </div>
           )}

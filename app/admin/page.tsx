@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -110,8 +110,10 @@ const sortOptions: SelectOption[] = [
   { value: "name", label: "Nama A-Z" },
 ];
 
+const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
+
 function fmt(n: number) {
-  return new Intl.NumberFormat("id-ID").format(n);
+  return ID_NUMBER_FORMAT.format(n);
 }
 
 function pct(part: number, total: number) {
@@ -287,7 +289,7 @@ export default function AdminPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -296,7 +298,7 @@ export default function AdminPage() {
     return (
       <div className="flex flex-col w-full">
         <div className="flex flex-1 items-center justify-center flex-col gap-3 min-h-[60vh]">
-          <ShieldCheck className="h-12 w-12 text-muted-foreground" />
+          <ShieldCheck className="size-12 text-muted-foreground" />
           <p className="text-lg font-semibold">Akses Ditolak</p>
           <p className="text-sm text-muted-foreground">Kamu tidak memiliki izin untuk halaman ini.</p>
         </div>
@@ -306,16 +308,16 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-col w-full">
-      <div className="mx-auto w-full max-w-7xl px-4 md:px-8 py-8 space-y-6">
+      <div className="mx-auto w-full max-w-7xl px-4 md:p-8 space-y-6">
         <div className="overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/12 via-card to-card p-6 shadow-sm">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                <ShieldCheck className="size-3.5 text-primary" />
                 Super Admin
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Admin Command Center</h1>
+                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Admin Command Center</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Kelola user, pantau growth, dan cek aktivitas produk BudgetIn.
                 </p>
@@ -334,14 +336,14 @@ export default function AdminPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={<Users className="h-4 w-4" />} label="Total User" value={statsLoading ? "..." : fmt(stats?.totalUsers ?? 0)} sub={stats ? `${fmt(stats.newThisMonth)} baru bulan ini` : ""} />
-          <StatCard icon={<Chrome className="h-4 w-4 text-blue-500" />} label="Google Users" value={statsLoading ? "..." : fmt(stats?.googleUsers ?? 0)} sub={stats ? pct(stats.googleUsers, stats.totalUsers) : ""} />
-          <StatCard icon={<Mail className="h-4 w-4 text-purple-500" />} label="Email Users" value={statsLoading ? "..." : fmt(stats?.emailUsers ?? 0)} sub={stats ? `${fmt(stats.verifiedEmailUsers)} verified • ${fmt(stats.unverifiedEmailUsers)} pending` : ""} />
-          <StatCard icon={<Database className="h-4 w-4 text-teal-500" />} label="Mode Data" value={statsLoading ? "..." : `${fmt(stats?.dbOnlyUsers ?? 0)} DB`} sub={stats ? `${fmt(stats.sheetsUsers)} Sheets • ${fmt(stats.googleSetupIssueUsers)} setup issue` : ""} />
-          <StatCard icon={<Wallet className="h-4 w-4 text-emerald-500" />} label="Akun/Wallet" value={statsLoading ? "..." : fmt(stats?.totalAccounts ?? 0)} sub="Total account records" />
-          <StatCard icon={<TrendingUp className="h-4 w-4 text-orange-500" />} label="Budget" value={statsLoading ? "..." : fmt(stats?.totalBudgets ?? 0)} sub="Budget aktif tersimpan" />
-          <StatCard icon={<PiggyBank className="h-4 w-4 text-pink-500" />} label="Savings Goals" value={statsLoading ? "..." : fmt(stats?.totalSavingsGoals ?? 0)} sub="Target tabungan user" />
-          <StatCard icon={<Calendar className="h-4 w-4 text-indigo-500" />} label="Recurring Bills" value={statsLoading ? "..." : fmt(stats?.totalRecurringBills ?? 0)} sub="Tagihan berulang" />
+          <StatCard icon={<Users className="size-4" />} label="Total User" value={statsLoading ? "…" : fmt(stats?.totalUsers ?? 0)} sub={stats ? `${fmt(stats.newThisMonth)} baru bulan ini` : ""} />
+          <StatCard icon={<Chrome className="size-4 text-blue-500" />} label="Google Users" value={statsLoading ? "…" : fmt(stats?.googleUsers ?? 0)} sub={stats ? pct(stats.googleUsers, stats.totalUsers) : ""} />
+          <StatCard icon={<Mail className="size-4 text-purple-500" />} label="Email Users" value={statsLoading ? "…" : fmt(stats?.emailUsers ?? 0)} sub={stats ? `${fmt(stats.verifiedEmailUsers)} verified • ${fmt(stats.unverifiedEmailUsers)} pending` : ""} />
+          <StatCard icon={<Database className="size-4 text-teal-500" />} label="Mode Data" value={statsLoading ? "…" : `${fmt(stats?.dbOnlyUsers ?? 0)} DB`} sub={stats ? `${fmt(stats.sheetsUsers)} Sheets • ${fmt(stats.googleSetupIssueUsers)} setup issue` : ""} />
+          <StatCard icon={<Wallet className="size-4 text-emerald-500" />} label="Akun/Wallet" value={statsLoading ? "…" : fmt(stats?.totalAccounts ?? 0)} sub="Total account records" />
+          <StatCard icon={<TrendingUp className="size-4 text-orange-500" />} label="Budget" value={statsLoading ? "…" : fmt(stats?.totalBudgets ?? 0)} sub="Budget aktif tersimpan" />
+          <StatCard icon={<PiggyBank className="size-4 text-pink-500" />} label="Savings Goals" value={statsLoading ? "…" : fmt(stats?.totalSavingsGoals ?? 0)} sub="Target tabungan user" />
+          <StatCard icon={<Calendar className="size-4 text-primary" />} label="Recurring Bills" value={statsLoading ? "…" : fmt(stats?.totalRecurringBills ?? 0)} sub="Tagihan berulang" />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -356,7 +358,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <div className="relative sm:w-64">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       value={search}
                       onChange={(e) => {
@@ -368,7 +370,7 @@ export default function AdminPage() {
                     />
                   </div>
                   <Button variant="outline" size="sm" onClick={refreshAll} disabled={statsLoading || usersLoading}>
-                    {statsLoading || usersLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    {statsLoading || usersLoading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
                     Refresh
                   </Button>
                 </div>
@@ -379,7 +381,7 @@ export default function AdminPage() {
                 <FilterSelect value={dataMode} onChange={setDataMode} options={dataModeOptions} />
                 <FilterSelect value={sort} onChange={setSort} options={sortOptions} />
                 <Button variant="ghost" size="sm" onClick={resetFilters} disabled={!hasActiveFilters} className="justify-start xl:justify-center">
-                  <Filter className="h-3.5 w-3.5" />
+                  <Filter className="size-3.5" />
                   Reset filter
                 </Button>
               </div>
@@ -390,10 +392,10 @@ export default function AdminPage() {
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="py-3 pl-5 pr-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">User</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data</th>
-                    <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Usage</th>
-                    <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Activity</th>
+                    <th className="p-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                    <th className="p-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Data</th>
+                    <th className="p-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Usage</th>
+                    <th className="p-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Activity</th>
                     <th className="py-3 pl-3 pr-5 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Aksi</th>
                   </tr>
                 </thead>
@@ -401,7 +403,7 @@ export default function AdminPage() {
                   {usersLoading ? (
                     <tr>
                       <td colSpan={6} className="py-14 text-center text-sm text-muted-foreground">
-                        <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
+                        <Loader2 className="mx-auto mb-2 size-5 animate-spin" />
                         Memuat user...
                       </td>
                     </tr>
@@ -415,7 +417,7 @@ export default function AdminPage() {
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="py-4 pl-5 pr-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
                             {u.name.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase() || "U"}
                           </div>
                           <div className="min-w-0">
@@ -428,12 +430,12 @@ export default function AdminPage() {
                       <td className="px-3 py-4">
                         <div className="flex flex-col gap-1.5">
                           <Badge className={u.type === "google" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"}>
-                            {u.type === "google" ? <Chrome className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
+                            {u.type === "google" ? <Chrome className="size-3" /> : <Mail className="size-3" />}
                             {u.type === "google" ? "Google" : "Email"}
                           </Badge>
                           {u.type === "email" && (
                             <Badge className={u.emailVerified ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500"}>
-                              {u.emailVerified ? <BadgeCheck className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                              {u.emailVerified ? <BadgeCheck className="size-3" /> : <Clock className="size-3" />}
                               {u.emailVerified ? "Verified" : "Unverified"}
                             </Badge>
                           )}
@@ -447,7 +449,7 @@ export default function AdminPage() {
                               ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-500"
                               : "bg-slate-100 text-slate-700 dark:bg-slate-900/50 dark:text-slate-300"
                         }>
-                          {u.dataMode === "google_setup_required" ? <AlertTriangle className="h-3 w-3" /> : <Database className="h-3 w-3" />}
+                          {u.dataMode === "google_setup_required" ? <AlertTriangle className="size-3" /> : <Database className="size-3" />}
                           {u.dataMode === "sheets" ? "Sheets" : u.dataMode === "google_setup_required" ? "Setup Required" : "DB"}
                         </Badge>
                       </td>
@@ -470,7 +472,7 @@ export default function AdminPage() {
                               title="Kirim ulang email verifikasi"
                               className="rounded-md p-1.5 text-muted-foreground hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
                             >
-                              <MailCheck className="h-3.5 w-3.5" />
+                              <MailCheck className="size-3.5" />
                             </button>
                           )}
                           {u.type === "email" && (
@@ -479,7 +481,7 @@ export default function AdminPage() {
                               title="Reset password"
                               className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                             >
-                              <KeyRound className="h-3.5 w-3.5" />
+                              <KeyRound className="size-3.5" />
                             </button>
                           )}
                           {u.id !== session?.userId && (
@@ -488,7 +490,7 @@ export default function AdminPage() {
                               title="Hapus user"
                               className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="size-3.5" />
                             </button>
                           )}
                         </div>
@@ -514,22 +516,22 @@ export default function AdminPage() {
                   <option value={50}>50 / halaman</option>
                 </select>
                 <Button variant="outline" size="icon-sm" onClick={() => setPage(pagination.page - 1)} disabled={usersLoading || pagination.page <= 1}>
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="size-4" />
                 </Button>
                 <Button variant="outline" size="icon-sm" onClick={() => setPage(pagination.page + 1)} disabled={usersLoading || pagination.page >= pagination.totalPages}>
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="size-4" />
                 </Button>
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
-            <SidePanel icon={<Activity className="h-4 w-4 text-primary" />} title="Activation Snapshot">
+            <SidePanel icon={<Activity className="size-4 text-primary" />} title="Activation Snapshot">
               <SideMetric label="Active 7 hari" value={stats ? fmt(stats.activeLast7Days) : "-"} sub={stats ? pct(stats.activeLast7Days, stats.totalUsers) : ""} />
               <SideMetric label="Active 30 hari" value={stats ? fmt(stats.activeLast30Days) : "-"} sub={stats ? pct(stats.activeLast30Days, stats.totalUsers) : ""} />
               <SideMetric label="User baru minggu ini" value={stats ? fmt(stats.newLast7Days) : "-"} sub="Akuisisi terbaru" />
             </SidePanel>
-            <SidePanel icon={<Sparkles className="h-4 w-4 text-primary" />} title="Ops Queue">
+            <SidePanel icon={<Sparkles className="size-4 text-primary" />} title="Ops Queue">
               <SideMetric label="Email belum verified" value={stats ? fmt(stats.unverifiedEmailUsers) : "-"} sub="Butuh follow-up" />
               <SideMetric label="DB-only users" value={stats ? fmt(stats.dbOnlyUsers) : "-"} sub="Tanpa Sheets sync" />
               <SideMetric label="Google setup issue" value={stats ? fmt(stats.googleSetupIssueUsers) : "-"} sub="Perlu reconnect permission" />
@@ -550,10 +552,10 @@ export default function AdminPage() {
                   dialog.type === "resend-verification" ? "bg-blue-500/10" : "bg-yellow-500/10"
                 )}>
                   {dialog.type === "delete"
-                    ? <AlertTriangle className="h-5 w-5 text-destructive" />
+                    ? <AlertTriangle className="size-5 text-destructive" />
                     : dialog.type === "resend-verification"
-                    ? <MailCheck className="h-5 w-5 text-blue-500" />
-                    : <KeyRound className="h-5 w-5 text-yellow-500" />
+                    ? <MailCheck className="size-5 text-blue-500" />
+                    : <KeyRound className="size-5 text-yellow-500" />
                   }
                 </div>
                 <div>
@@ -565,7 +567,7 @@ export default function AdminPage() {
                 </div>
               </div>
               <button onClick={() => setDialog({ type: null, user: null })} className="text-muted-foreground hover:text-foreground">
-                <X className="h-4 w-4" />
+                <X className="size-4" />
               </button>
             </div>
 
@@ -598,7 +600,7 @@ export default function AdminPage() {
                 disabled={actionLoading}
               >
                 {actionLoading
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  ? <Loader2 className="size-4 animate-spin" />
                   : dialog.type === "delete" ? "Hapus"
                   : dialog.type === "resend-verification" ? "Kirim Email"
                   : "Reset & Kirim Email"
@@ -617,8 +619,8 @@ export default function AdminPage() {
             : "border-destructive/30 bg-destructive/10 text-destructive"
         )}>
           {toast.ok
-            ? <CheckCircle2 className="h-4 w-4 shrink-0" />
-            : <AlertTriangle className="h-4 w-4 shrink-0" />
+            ? <CheckCircle2 className="size-4 shrink-0" />
+            : <AlertTriangle className="size-4 shrink-0" />
           }
           {toast.msg}
         </div>
