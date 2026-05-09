@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
-const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true } as const;
+const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true, budgetType: true } as const;
 
 export interface DashboardInitialData {
   transactions: Transaction[];

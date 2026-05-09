@@ -11,7 +11,7 @@ import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 const TIMEZONE = "Asia/Jakarta";
 const MONTH_RE = /^\d{4}-\d{2}$/;
-const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true } as const;
+const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true, budgetType: true } as const;
 
 export interface BudgetMonthData {
   month: string;

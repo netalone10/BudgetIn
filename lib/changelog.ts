@@ -14,6 +14,33 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.9.2",
+    date: "2026-05-09",
+    title: "React Doctor fixes dan hardening input transaksi",
+    description: "Rilis patch untuk membersihkan issue React/Next.js lint-doctor, memperkuat parsing transaksi, dan memastikan setting tipe budget kategori terbaca konsisten.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/commit/e5ffd4c`,
+    changes: [
+      "Memperbaiki temuan React Doctor di halaman dashboard, admin, auth, akun, budget, tagihan, kalender, cashflow, changelog, dan komponen UI terkait.",
+      "Memperkuat parsing nominal transaksi agar input natural seperti ribuan/jutaan lebih aman dan konsisten.",
+      "Membersihkan note transaksi dari hasil parsing agar catatan yang tersimpan lebih rapi.",
+      "Memastikan pilihan kategori Fixed/Variable yang sudah tersimpan di database ikut terbaca pada data budget dan dashboard.",
+    ],
+  },
+  {
+    version: "v1.9.1",
+    date: "2026-05-09",
+    title: "Compatibility kategori budget type",
+    description: "Rilis patch untuk menjaga kompatibilitas produksi saat kolom budget type belum tersedia di sebagian environment database.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/commit/fd4411f`,
+    changes: [
+      "Menambahkan fallback pada API kategori ketika kolom budget_type belum tersedia di database production.",
+      "Menjaga alur tagihan, transaksi manual, cron bills, dan backup tetap berjalan tanpa bergantung langsung pada field budget type.",
+      "Memastikan kategori lama tetap mendapatkan tipe Fixed/Variable melalui fallback dari nama kategori.",
+    ],
+  },
+  {
     version: "v1.9.0",
     date: "2026-05-08",
     title: "Akun Demo, Audit Keamanan, dan Perbaikan Data Integrity",
