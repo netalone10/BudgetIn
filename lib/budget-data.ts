@@ -11,7 +11,39 @@ import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
 const TIMEZONE = "Asia/Jakarta";
 const MONTH_RE = /^\d{4}-\d{2}$/;
-const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true, budgetType: true } as const;
+const BUDGET_CATEGORY_SELECT_WITH_BUDGET_TYPE = { name: true, rolloverEnabled: true, budgetType: true } as const;
+const BUDGET_CATEGORY_SELECT_FALLBACK = { name: true, rolloverEnabled: true } as const;
+
+function isMissingBudgetTypeColumnError(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  const maybeError = error as { code?: string; message?: string; meta?: { column?: string } };
+  return (
+    maybeError.code === "P2022" &&
+    (maybeError.meta?.column === "budget_type" ||
+      maybeError.message?.includes("budget_type") ||
+      maybeError.message?.includes("Category.budgetType"))
+  );
+}
+
+async function findBudgetsWithCategory(
+  where: { userId: string; month: string },
+  orderBy?: { category: { name: "asc" | "desc" } }
+) {
+  try {
+    return await prisma.budget.findMany({
+      where,
+      include: { category: { select: BUDGET_CATEGORY_SELECT_WITH_BUDGET_TYPE } },
+      ...(orderBy ? { orderBy } : {}),
+    });
+  } catch (error) {
+    if (!isMissingBudgetTypeColumnError(error)) throw error;
+    return prisma.budget.findMany({
+      where,
+      include: { category: { select: BUDGET_CATEGORY_SELECT_FALLBACK } },
+      ...(orderBy ? { orderBy } : {}),
+    });
+  }
+}
 
 export interface BudgetMonthData {
   month: string;
@@ -97,15 +129,8 @@ export async function fetchBudgetMonthData(
     const [txThisMonth, txPreviousMonth, budgets, previousMonthBudgets] = await Promise.all([
       fetchRawTransactions(userId, user?.sheetsId ?? null, month),
       fetchRawTransactions(userId, user?.sheetsId ?? null, previousMonth),
-      prisma.budget.findMany({
-        where: { userId, month },
-        include: { category: { select: BUDGET_CATEGORY_SELECT } },
-        orderBy: { category: { name: "asc" } },
-      }),
-      prisma.budget.findMany({
-        where: { userId, month: previousMonth },
-        include: { category: { select: BUDGET_CATEGORY_SELECT } },
-      }),
+      findBudgetsWithCategory({ userId, month }, { category: { name: "asc" } }),
+      findBudgetsWithCategory({ userId, month: previousMonth }),
     ]);
 
     return computeBudgetData(txThisMonth, txPreviousMonth, budgets, previousMonthBudgets, month);

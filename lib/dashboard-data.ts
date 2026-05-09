@@ -19,7 +19,39 @@ import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const TIMEZONE = "Asia/Jakarta";
-const BUDGET_CATEGORY_SELECT = { name: true, rolloverEnabled: true, budgetType: true } as const;
+const BUDGET_CATEGORY_SELECT_WITH_BUDGET_TYPE = { name: true, rolloverEnabled: true, budgetType: true } as const;
+const BUDGET_CATEGORY_SELECT_FALLBACK = { name: true, rolloverEnabled: true } as const;
+
+function isMissingBudgetTypeColumnError(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  const maybeError = error as { code?: string; message?: string; meta?: { column?: string } };
+  return (
+    maybeError.code === "P2022" &&
+    (maybeError.meta?.column === "budget_type" ||
+      maybeError.message?.includes("budget_type") ||
+      maybeError.message?.includes("Category.budgetType"))
+  );
+}
+
+async function findBudgetsWithCategory(
+  where: { userId: string; month: string },
+  orderBy?: { category: { name: "asc" | "desc" } }
+) {
+  try {
+    return await prisma.budget.findMany({
+      where,
+      include: { category: { select: BUDGET_CATEGORY_SELECT_WITH_BUDGET_TYPE } },
+      ...(orderBy ? { orderBy } : {}),
+    });
+  } catch (error) {
+    if (!isMissingBudgetTypeColumnError(error)) throw error;
+    return prisma.budget.findMany({
+      where,
+      include: { category: { select: BUDGET_CATEGORY_SELECT_FALLBACK } },
+      ...(orderBy ? { orderBy } : {}),
+    });
+  }
+}
 
 export interface DashboardInitialData {
   transactions: Transaction[];
@@ -140,15 +172,8 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
     fetchRawTransactions(userId, sheetsId, "bulan lalu"),
     fetchAccounts(userId, sheetsId),
     fetchCategories(userId),
-    prisma.budget.findMany({
-      where: { userId, month: currentMonth },
-      include: { category: { select: BUDGET_CATEGORY_SELECT } },
-      orderBy: { category: { name: "asc" } },
-    }).catch(() => []),
-    prisma.budget.findMany({
-      where: { userId, month: lastMonth },
-      include: { category: { select: BUDGET_CATEGORY_SELECT } },
-    }).catch(() => []),
+    findBudgetsWithCategory({ userId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
+    findBudgetsWithCategory({ userId, month: lastMonth }).catch(() => []),
   ]);
 
   const transactions = mapTxnsForDisplay(txThisMonthRaw);
