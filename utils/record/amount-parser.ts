@@ -29,10 +29,12 @@ export function parseNominalFromPrompt(text: string): number | null {
   if (m3) return signOf(m3) * parseInt(m3[2]) * 1_000;
   const m4 = s.match(new RegExp(`${SIGN_PREFIX}(\\d+)\\s*k\\b`));
   if (m4) return signOf(m4) * parseInt(m4[2]) * 1_000;
+  const m5 = s.match(new RegExp(`${SIGN_PREFIX}(?:rp\\.?\\s*|idr\\s*)?((?:\\d{1,3}(?:[.]\\d{3})+)|\\d{4,})\\b`));
+  if (m5) return signOf(m5) * parseInt(m5[2].replace(/[.]/g, ""));
   return null;
 }
 
-const MONETARY_TOKEN_GLOBAL = /(?:-|minus\s+)?\d+(?:[.,]\d+)?\s*(?:jt|juta|rb|ribu|k\b)/gi;
+const MONETARY_TOKEN_GLOBAL = /(?:-|minus\s+)?(?:\d+(?:[.,]\d+)?\s*(?:jt|juta|rb|ribu|k\b)|(?:rp\.?\s*|idr\s*)?(?:(?:\d{1,3}(?:[.]\d{3})+)|\d{4,})\b)/gi;
 
 export function countMonetaryTokens(text: string): number {
   const matches = text.match(MONETARY_TOKEN_GLOBAL);

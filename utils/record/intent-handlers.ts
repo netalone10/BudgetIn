@@ -22,6 +22,7 @@ import { correctAmount, isValidAmount } from "./amount-parser";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { isSavingsPrompt, resolveSavingsGoalForPrompt } from "./savings-goal-resolver";
 import { resolvePromptTransactionTime } from "@/lib/transaction-time";
+import { sanitizeTransactionNote } from "./note-sanitizer";
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
@@ -76,7 +77,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   const accountName = account?.name ?? "";
   const date = parsed.date ?? ctx.today;
   const time = resolveTransactionTime(parsed, ctx);
-  const note = parsed.note ?? "";
+  const note = sanitizeTransactionNote(parsed.note);
   const goals = isSavingsPrompt(prompt, parsed.category)
     ? (await prisma.savingsGoal.findMany({
         where: { userId },
@@ -209,7 +210,7 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
     const transactions = [];
     for (const item of items) {
       if (!item.amount || !item.category) continue;
-      const base = { date: parsed.date ?? ctx.today, time, amount: item.amount, category: item.category, note: item.note ?? "", type: "expense" as const };
+      const base = { date: parsed.date ?? ctx.today, time, amount: item.amount, category: item.category, note: sanitizeTransactionNote(item.note), type: "expense" as const };
       const transaction = useSheets
         ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
         : await appendTransactionDB(userId, { ...base, accountId });
@@ -283,7 +284,7 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
   const toAccountName = toAccount?.name ?? "";
   const date = parsed.date ?? ctx.today;
   const time = resolveTransactionTime(parsed, ctx);
-  const note = parsed.note ?? "";
+  const note = sanitizeTransactionNote(parsed.note);
 
   try {
     if (useSheets) {
@@ -419,7 +420,7 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
 
   const account = userAccounts.find((a) => a.id === accountId);
   const accountName = account?.name ?? "";
-  const base = { date: parsed.date ?? ctx.today, time: resolveTransactionTime(parsed, ctx), amount: incomeAmount, category: incomeCategory, note: parsed.note ?? "", type: "income" as const };
+  const base = { date: parsed.date ?? ctx.today, time: resolveTransactionTime(parsed, ctx), amount: incomeAmount, category: incomeCategory, note: sanitizeTransactionNote(parsed.note), type: "income" as const };
 
   try {
     const transaction = useSheets

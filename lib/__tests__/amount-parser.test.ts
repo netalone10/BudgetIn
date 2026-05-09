@@ -9,6 +9,10 @@ describe("parseNominalFromPrompt", () => {
   test("negative rb suffix", () => expect(parseNominalFromPrompt("refund makan -50rb")).toBe(-50_000));
   test("negative minus word", () => expect(parseNominalFromPrompt("koreksi gaji minus 100rb")).toBe(-100_000));
   test("negative decimal jt", () => expect(parseNominalFromPrompt("koreksi bonus -1.5jt")).toBe(-1_500_000));
+  test("plain IDR amount", () => expect(parseNominalFromPrompt("jajan 6000")).toBe(6_000));
+  test("plain IDR amount with Rp prefix", () => expect(parseNominalFromPrompt("jajan Rp 6000")).toBe(6_000));
+  test("plain IDR amount with thousands separator", () => expect(parseNominalFromPrompt("bayar 1.500.000")).toBe(1_500_000));
+  test("negative plain IDR amount", () => expect(parseNominalFromPrompt("refund makan -6000")).toBe(-6_000));
   test("no monetary token", () => expect(parseNominalFromPrompt("bayar tagihan listrik")).toBeNull());
 });
 
@@ -18,6 +22,7 @@ describe("countMonetaryTokens", () => {
   test("zero", () => expect(countMonetaryTokens("rekap bulan ini")).toBe(0));
   test("mixed units", () => expect(countMonetaryTokens("gajian 8jt + bonus 500rb")).toBe(2));
   test("negative token", () => expect(countMonetaryTokens("refund makan -50rb")).toBe(1));
+  test("plain IDR token", () => expect(countMonetaryTokens("jajan 6000")).toBe(1));
 });
 
 describe("correctAmount", () => {
@@ -56,5 +61,9 @@ describe("correctAmount", () => {
 
   test("single token decimal jt", () => {
     expect(correctAmount("freelance 2.5jt", 2_500)).toBe(2_500_000);
+  });
+
+  test("single plain IDR token: AI 100x error gets corrected", () => {
+    expect(correctAmount("jajan 6000", 600_000)).toBe(6_000);
   });
 });
