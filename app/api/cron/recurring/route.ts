@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { addDays, startOfDay } from "date-fns";
-import { sendRecurringReminderEmail } from "@/lib/email";
+import { sendRecurringReminderEmail, sendAutoRecordConfirmation } from "@/lib/email";
 import { runRecurringOccurrence } from "@/utils/recurring-executor";
 
 export async function GET(request: NextRequest) {
@@ -60,22 +60,36 @@ export async function GET(request: NextRequest) {
   const itemsDueToday = await prisma.recurringTransaction.findMany({
     where: {
       isActive: true,
-      autoRecord: true,
       nextDueDate: { gte: today, lt: addDays(today, 1) },
       OR: [{ endDate: null }, { endDate: { gte: today } }],
     },
-    select: { id: true },
+    select: { id: true, user: { select: { email: true } } },
   });
 
-  for (const { id } of itemsDueToday) {
+  for (const { id, user } of itemsDueToday) {
     try {
       const result = await runRecurringOccurrence(id, today);
       if (!result.ok) {
         results.errors.push({ recurringId: id, error: result.error });
         continue;
       }
-      if (result.alreadyRan) results.skipped++;
-      else results.autoRecorded++;
+      if (result.alreadyRan) {
+        results.skipped++;
+      } else {
+        results.autoRecorded++;
+        // Send confirmation email
+        if (user.email && result.recurring && result.occurredDay && result.amount) {
+          try {
+            await sendAutoRecordConfirmation({
+              to: user.email,
+              name: result.recurring.name,
+              type: result.recurring.type as "expense" | "income" | "transfer",
+              amount: result.amount.toNumber(),
+              occurredAt: result.occurredDay,
+            });
+          } catch { /* email failure is non-critical */ }
+        }
+      }
     } catch (err) {
       results.errors.push({ recurringId: id, error: String(err) });
     }

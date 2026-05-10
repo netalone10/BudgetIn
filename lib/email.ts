@@ -130,15 +130,34 @@ export async function sendRecurringReminderEmail(params: {
                 <p style="margin:0 0 4px;font-size:14px;color:#475569;">Jatuh tempo: <strong>${dueDateStr}</strong></p>
                 <p style="margin:0;font-size:14px;color:#dc2626;font-weight:600;">${urgencyLabel}</p>
               </div>
+              ${type === "transfer" ? `
               <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="background:#0f172a;border-radius:8px;">
                     <a href="${APP_URL}/dashboard/recurring" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">
-                      ${type === "income" ? "Lihat Detail" : type === "transfer" ? "Lihat Transfer" : "Bayar Sekarang"}
+                      Lihat Transfer
                     </a>
                   </td>
                 </tr>
-              </table>
+              </table>` : type === "income" ? `
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="background:#0f172a;border-radius:8px;">
+                    <a href="${APP_URL}/dashboard/recurring" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">
+                      Lihat Detail
+                    </a>
+                  </td>
+                </tr>
+              </table>` : `
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+                <tr>
+                  <td style="background:#0f172a;border-radius:8px;">
+                    <a href="${APP_URL}/dashboard/recurring" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">
+                      Lihat Pengeluaran
+                    </a>
+                  </td>
+                </tr>
+              </table>`}
               <p style="margin:0;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:16px;">
                 Email ini dikirim karena kamu mengaktifkan pengingat berulang di BudgetIn.
                 <a href="${APP_URL}/dashboard/recurring" style="color:#3b82f6;">Kelola pengingat</a>
@@ -156,17 +175,20 @@ export async function sendRecurringReminderEmail(params: {
 
 export async function sendAutoRecordConfirmation(params: {
   to: string;
-  billName: string;
+  name: string;
+  type: "expense" | "income" | "transfer";
   amount: number;
-  paidAt: Date;
+  occurredAt: Date;
 }): Promise<void> {
-  const { to, billName, amount, paidAt } = params;
-  const paidAtStr = format(paidAt, "d MMMM yyyy", { locale: idLocale });
+  const { to, name, type, amount, occurredAt } = params;
+  const occurredStr = format(occurredAt, "d MMMM yyyy", { locale: idLocale });
+  const typeLabel = type === "income" ? "Pemasukan" : type === "transfer" ? "Transfer" : "Pengeluaran";
+  const headerLabel = type === "income" ? "Pemasukan Otomatis" : type === "transfer" ? "Transfer Otomatis" : "Pengeluaran Otomatis";
 
   await resend.emails.send({
     from: FROM,
     to,
-    subject: `[BudgetIn] ${billName} otomatis tercatat`,
+    subject: `[BudgetIn] ${name} (${typeLabel}) otomatis tercatat`,
     html: `
 <!DOCTYPE html>
 <html lang="id">
@@ -179,22 +201,23 @@ export async function sendAutoRecordConfirmation(params: {
           <tr>
             <td style="background:#0f172a;padding:24px 32px;">
               <p style="margin:0;color:#f8fafc;font-size:20px;font-weight:700;letter-spacing:-0.5px;">BudgetIn</p>
-              <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Konfirmasi Pembayaran Otomatis</p>
+              <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Konfirmasi ${headerLabel}</p>
             </td>
           </tr>
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Pembayaran Otomatis Berhasil ✅</p>
+              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">${headerLabel} Berhasil ✅</p>
               <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
-                Tagihan berikut telah otomatis dicatat oleh BudgetIn:
+                Transaksi berikut telah otomatis dicatat oleh BudgetIn:
               </p>
               <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
-                <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${billName}</p>
+                <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${name}</p>
+                <p style="margin:0 0 4px;font-size:14px;color:#475569;">Tipe: <strong>${typeLabel}</strong></p>
                 <p style="margin:0 0 4px;font-size:14px;color:#475569;">Nominal: <strong>Rp ${amount.toLocaleString("id-ID")}</strong></p>
-                <p style="margin:0;font-size:14px;color:#475569;">Dicatat pada: <strong>${paidAtStr}</strong></p>
+                <p style="margin:0;font-size:14px;color:#475569;">Dicatat pada: <strong>${occurredStr}</strong></p>
               </div>
               <p style="margin:0;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:16px;">
-                <a href="${APP_URL}/dashboard/recurring" style="color:#3b82f6;">Lihat semua item berulang</a>
+                <a href="${APP_URL}/dashboard/recurring" style="color:#3b82f6;">Lihat semua transaksi berulang</a>
               </p>
             </td>
           </tr>

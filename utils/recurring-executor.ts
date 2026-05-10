@@ -19,7 +19,7 @@ async function loadForExecution(id: string) {
 }
 
 export type RunResult =
-  | { ok: true; alreadyRan: boolean; nextDueDate: Date }
+  | { ok: true; alreadyRan: boolean; nextDueDate: Date; recurring?: RecurringWithRefs; occurredDay?: Date; amount?: Decimal }
   | { ok: false; error: string; status: number };
 
 export async function runRecurringOccurrence(
@@ -149,7 +149,7 @@ export async function runRecurringOccurrence(
     });
   });
 
-  return { ok: true, alreadyRan: false, nextDueDate };
+  return { ok: true, alreadyRan: false, nextDueDate, recurring: r, occurredDay, amount };
 }
 
 export type { RecurringWithRefs };

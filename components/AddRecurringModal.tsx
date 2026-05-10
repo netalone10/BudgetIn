@@ -168,13 +168,13 @@ export default function AddRecurringModal({ onClose, onSaved, editItem }: Props)
           {/* Type tabs */}
           <div>
             <span className={labelCls}>Tipe</span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
               {RECURRING_TYPES.map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setType(t)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  className={`px-2 py-2 rounded-lg text-xs sm:text-sm font-medium border transition-colors truncate ${
                     type === t
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-muted text-foreground border-border hover:bg-muted/80"
@@ -267,10 +267,7 @@ export default function AddRecurringModal({ onClose, onSaved, editItem }: Props)
             </div>
           )}
 
-          <div className="flex items-center gap-2">
-            <input id="rec-auto" type="checkbox" checked={autoRecord} onChange={(e) => setAutoRecord(e.target.checked)} />
-            <label htmlFor="rec-auto" className="text-sm text-foreground cursor-pointer">Otomatis catat saat jatuh tempo</label>
-          </div>
+          <p className="text-xs text-muted-foreground">Transaksi akan otomatis tercatat saat jatuh tempo.</p>
 
           <div>
             <span className={labelCls}>Pengingat Email</span>
