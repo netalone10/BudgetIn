@@ -84,17 +84,20 @@ export async function sendVerificationEmail(
   });
 }
 
-export async function sendBillReminderEmail(params: {
+export async function sendRecurringReminderEmail(params: {
   to: string;
-  billName: string;
+  name: string;
+  type?: "expense" | "income" | "transfer";
   amount: number;
   dueDate: Date;
   daysUntil: number;
 }): Promise<void> {
-  const { to, billName, amount, dueDate, daysUntil } = params;
+  const { to, name, type = "expense", amount, dueDate, daysUntil } = params;
   const dueDateStr = format(dueDate, "d MMMM yyyy", { locale: idLocale });
   const urgencyLabel = daysUntil === 1 ? "⚠️ Besok" : `⏰ ${daysUntil} hari lagi`;
-  const subject = `[BudgetIn] ${billName} jatuh tempo ${daysUntil === 1 ? "besok" : `dalam ${daysUntil} hari`}`;
+  const typeLabel = type === "income" ? "pemasukan" : type === "transfer" ? "transfer" : "pembayaran";
+  const subject = `[BudgetIn] ${name} jatuh tempo ${daysUntil === 1 ? "besok" : `dalam ${daysUntil} hari`}`;
+  const billName = name; // backwards-compat for inline template below
 
   await resend.emails.send({
     from: FROM,
@@ -112,14 +115,14 @@ export async function sendBillReminderEmail(params: {
           <tr>
             <td style="background:#0f172a;padding:24px 32px;">
               <p style="margin:0;color:#f8fafc;font-size:20px;font-weight:700;letter-spacing:-0.5px;">BudgetIn</p>
-              <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Pengingat Tagihan</p>
+              <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Pengingat ${typeLabel}</p>
             </td>
           </tr>
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Pengingat Pembayaran</p>
+              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Pengingat ${typeLabel === "pembayaran" ? "Pembayaran" : typeLabel === "pemasukan" ? "Pemasukan" : "Transfer"}</p>
               <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
-                Tagihan rutin kamu akan segera jatuh tempo:
+                Item berulang kamu akan segera jatuh tempo:
               </p>
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
                 <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${billName}</p>
@@ -130,15 +133,15 @@ export async function sendBillReminderEmail(params: {
               <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="background:#0f172a;border-radius:8px;">
-                    <a href="${APP_URL}/dashboard/bills" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">
-                      Bayar Sekarang
+                    <a href="${APP_URL}/dashboard/recurring" style="display:inline-block;padding:12px 28px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">
+                      ${type === "income" ? "Lihat Detail" : type === "transfer" ? "Lihat Transfer" : "Bayar Sekarang"}
                     </a>
                   </td>
                 </tr>
               </table>
               <p style="margin:0;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:16px;">
-                Email ini dikirim karena kamu mengaktifkan pengingat tagihan di BudgetIn.
-                <a href="${APP_URL}/dashboard/bills" style="color:#3b82f6;">Kelola pengingat</a>
+                Email ini dikirim karena kamu mengaktifkan pengingat berulang di BudgetIn.
+                <a href="${APP_URL}/dashboard/recurring" style="color:#3b82f6;">Kelola pengingat</a>
               </p>
             </td>
           </tr>
@@ -191,7 +194,7 @@ export async function sendAutoRecordConfirmation(params: {
                 <p style="margin:0;font-size:14px;color:#475569;">Dicatat pada: <strong>${paidAtStr}</strong></p>
               </div>
               <p style="margin:0;font-size:12px;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:16px;">
-                <a href="${APP_URL}/dashboard/bills" style="color:#3b82f6;">Lihat semua tagihan</a>
+                <a href="${APP_URL}/dashboard/recurring" style="color:#3b82f6;">Lihat semua item berulang</a>
               </p>
             </td>
           </tr>

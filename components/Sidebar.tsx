@@ -187,7 +187,7 @@ export default function Sidebar() {
     { name: "Budget", href: "/dashboard/budget", icon: Banknote },
     { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
     { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
-    { name: "Tagihan", href: "/dashboard/bills", icon: Bell },
+    { name: "Berulang", href: "/dashboard/recurring", icon: Bell },
   ];
 
   const insightsItems: NavItem[] = [

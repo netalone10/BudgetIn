@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
             accounts: true,
             transactions: true,
             savingsGoals: true,
-            recurringBills: true,
+            recurringTransactions: true,
           },
         },
         transactions: {
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest) {
       accountCount: u._count.accounts,
       transactionCount: u._count.transactions,
       savingsGoalCount: u._count.savingsGoals,
-      recurringBillCount: u._count.recurringBills,
+      recurringBillCount: u._count.recurringTransactions,
       createdAt: u.createdAt.toISOString(),
       lastActivityAt: (u.transactions[0]?.createdAt ?? u.createdAt).toISOString(),
     })),

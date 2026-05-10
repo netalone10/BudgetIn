@@ -13,8 +13,8 @@ export type AccountDataActionResult = {
   storageMode: StorageMode;
   sheetsCleared: boolean;
   deletedCounts: {
-    billPayments: number;
-    recurringBills: number;
+    recurringOccurrences: number;
+    recurringTransactions: number;
     savingsContributions: number;
     savingsGoals: number;
     budgets: number;
@@ -58,8 +58,8 @@ async function clearSheetsDataIfNeeded(userId: string, sheetsId: string | null) 
 
 async function deleteFinancialData(userId: string): Promise<AccountDataActionResult["deletedCounts"]> {
   return prisma.$transaction(async (tx) => {
-    const billPayments = await tx.billPayment.deleteMany({ where: { bill: { userId } } });
-    const recurringBills = await tx.recurringBill.deleteMany({ where: { userId } });
+    const recurringOccurrences = await tx.recurringOccurrence.deleteMany({ where: { recurring: { userId } } });
+    const recurringTransactions = await tx.recurringTransaction.deleteMany({ where: { userId } });
     const savingsContributions = await tx.savingsContribution.deleteMany({ where: { userId } });
     const savingsGoals = await tx.savingsGoal.deleteMany({ where: { userId } });
     const budgets = await tx.budget.deleteMany({ where: { userId } });
@@ -69,8 +69,8 @@ async function deleteFinancialData(userId: string): Promise<AccountDataActionRes
     const categories = await tx.category.deleteMany({ where: { userId } });
 
     return {
-      billPayments: billPayments.count,
-      recurringBills: recurringBills.count,
+      recurringOccurrences: recurringOccurrences.count,
+      recurringTransactions: recurringTransactions.count,
       savingsContributions: savingsContributions.count,
       savingsGoals: savingsGoals.count,
       budgets: budgets.count,

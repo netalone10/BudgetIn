@@ -54,7 +54,7 @@ export async function GET() {
     prisma.budget.count(),
     prisma.account.count(),
     prisma.savingsGoal.count(),
-    prisma.recurringBill.count(),
+    prisma.recurringTransaction.count(),
   ]);
 
   return NextResponse.json({

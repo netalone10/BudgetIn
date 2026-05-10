@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { AlertTriangle, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type Summary = { accounts: number; transactions: number; budgets: number; categories: number; savingsGoals: number; savingsContributions: number; recurringBills: number; billPayments: number; totalRecords: number };
+type Summary = { accounts: number; transactions: number; budgets: number; categories: number; savingsGoals: number; savingsContributions: number; recurringTransactions: number; recurringOccurrences: number; totalRecords: number };
 type Preview = { summary: Summary; existing: Summary; warnings: string[]; canMigrate: boolean; canMarkComplete: boolean; migratedAt: string | null };
 
 const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
@@ -106,7 +106,7 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
                 <Info label="Budget" value={summary.budgets} />
                 <Info label="Kategori" value={summary.categories} />
                 <Info label="Savings" value={summary.savingsGoals + summary.savingsContributions} />
-                <Info label="Bills" value={summary.recurringBills + summary.billPayments} />
+                <Info label="Berulang" value={summary.recurringTransactions + summary.recurringOccurrences} />
               </div>
             )}
             {preview?.warnings.map((warning) => <p key={warning} className="rounded-xl bg-yellow-500/10 px-4 py-3 text-sm text-yellow-700 dark:text-yellow-400">{warning}</p>)}

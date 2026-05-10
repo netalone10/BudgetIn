@@ -62,6 +62,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  async redirects() {
+    return [
+      { source: "/dashboard/bills", destination: "/dashboard/recurring", permanent: false },
+      { source: "/dashboard/bills/:path*", destination: "/dashboard/recurring/:path*", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

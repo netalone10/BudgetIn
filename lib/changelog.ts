@@ -14,6 +14,28 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.10.0",
+    date: "2026-05-10",
+    title: "Recurring Transactions: gantikan Tagihan Rutin dengan transaksi berulang yang fleksibel",
+    description: "Fitur Tagihan Rutin diperluas menjadi sistem transaksi berulang yang lebih lengkap. Sekarang mendukung pengeluaran, pemasukan, dan transfer dengan frekuensi custom (harian/mingguan/bulanan/tahunan + interval N), plus integrasi opsional dengan goal tabungan.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.10.0`,
+    changes: [
+      "Mengganti model RecurringBill menjadi RecurringTransaction yang mendukung tipe expense, income, dan transfer dalam satu entitas.",
+      "Menambahkan frekuensi fleksibel (harian/mingguan/bulanan/tahunan) dengan interval N, sehingga bisa membuat item berulang seperti 'setiap 2 minggu' atau 'setiap 3 bulan'.",
+      "Mendukung tanggal mulai (start date) dan tanggal akhir (end date) opsional untuk membatasi periode aktif item berulang.",
+      "Mendukung integrasi opsional ke goal tabungan — kontribusi otomatis tercatat saat transaksi berulang dijalankan.",
+      "Auto-record transfer sekarang membuat pasangan transaction transfer_out dan transfer_in dalam satu prisma.$transaction agar atomic dengan transferId yang sama.",
+      "Idempotency key per occurrence diturunkan menjadi yyyy-MM-dd, sehingga frekuensi mingguan dan harian bisa memiliki banyak occurrence dalam satu bulan tanpa konflik.",
+      "Halaman Tagihan diganti menjadi halaman Berulang di /dashboard/recurring dengan filter per tipe (Pengeluaran/Pemasukan/Transfer) dan per status (Terlambat/Hari Ini/Segera/Sudah Catat/Mendatang).",
+      "Pengingat email digeneralisasi untuk semua tipe (sebelumnya hardcoded sebagai 'tagihan'), termasuk tautan kelola pengingat ke halaman Berulang.",
+      "Cron harian dipindah dari /api/cron/bills ke /api/cron/recurring dengan branching logic per tipe.",
+      "Bumping backup schema ke versi 2 dengan auto-migration dari v1 — file backup lama tetap bisa di-restore tanpa konversi manual.",
+      "Menambahkan SQL migration script idempotent (scripts/migrate-recurring-transactions.sql) yang me-rename tabel dan mentransform due_day menjadi start_date tanpa kehilangan data existing.",
+      "Menambahkan redirect otomatis dari /dashboard/bills ke /dashboard/recurring agar bookmark dan URL lama tetap berfungsi.",
+    ],
+  },
+  {
     version: "v1.9.2",
     date: "2026-05-09",
     title: "React Doctor fixes dan hardening input transaksi",

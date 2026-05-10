@@ -343,7 +343,7 @@ export default function AdminPage() {
           <StatCard icon={<Wallet className="size-4 text-emerald-500" />} label="Akun/Wallet" value={statsLoading ? "…" : fmt(stats?.totalAccounts ?? 0)} sub="Total account records" />
           <StatCard icon={<TrendingUp className="size-4 text-orange-500" />} label="Budget" value={statsLoading ? "…" : fmt(stats?.totalBudgets ?? 0)} sub="Budget aktif tersimpan" />
           <StatCard icon={<PiggyBank className="size-4 text-pink-500" />} label="Savings Goals" value={statsLoading ? "…" : fmt(stats?.totalSavingsGoals ?? 0)} sub="Target tabungan user" />
-          <StatCard icon={<Calendar className="size-4 text-primary" />} label="Recurring Bills" value={statsLoading ? "…" : fmt(stats?.totalRecurringBills ?? 0)} sub="Tagihan berulang" />
+          <StatCard icon={<Calendar className="size-4 text-primary" />} label="Recurring" value={statsLoading ? "…" : fmt(stats?.totalRecurringBills ?? 0)} sub="Transaksi berulang" />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[1fr_320px]">

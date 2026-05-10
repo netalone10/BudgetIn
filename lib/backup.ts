@@ -16,7 +16,8 @@ import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { normalizeTransactionTime } from "@/lib/transaction-time";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 
-export const BACKUP_SCHEMA_VERSION = 1;
+export const BACKUP_SCHEMA_VERSION = 2;
+const SUPPORTED_BACKUP_VERSIONS = [1, 2];
 export const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
 export const MAX_BACKUP_RECORDS = 20_000;
 
@@ -109,33 +110,48 @@ type CanonicalSavingsContribution = {
   createdAt: string;
 };
 
-type CanonicalRecurringBill = {
+type CanonicalRecurringTransaction = {
   id: string;
   name: string;
+  type: string;
   amount: number;
-  dueDay: number;
+  frequency: string;
+  interval: number;
+  startDate: string;
+  endDate: string | null;
   categoryId: string | null;
   categoryName: string | null;
   accountId: string | null;
   accountName: string | null;
+  toAccountId: string | null;
+  toAccountName: string | null;
+  savingsGoalId: string | null;
   autoRecord: boolean;
   reminderDays: number[];
-  lastPaidAt: string | null;
+  lastRunAt: string | null;
   nextDueDate: string;
   isActive: boolean;
   note: string | null;
   createdAt: string;
   updatedAt: string;
+  // legacy v1 fallback
+  dueDay?: number;
+  lastPaidAt?: string | null;
 };
 
-type CanonicalBillPayment = {
+type CanonicalRecurringOccurrence = {
   id: string;
-  billId: string;
+  recurringId: string;
   transactionId: string | null;
-  paidAt: string;
+  transferId: string | null;
+  occurredAt: string;
   amount: number;
   note: string | null;
-  paymentMonth: string;
+  occurrenceKey: string; // YYYY-MM-DD
+  // legacy v1 fallback
+  billId?: string;
+  paidAt?: string;
+  paymentMonth?: string;
 };
 
 export type BudgetInBackup = {
@@ -157,8 +173,8 @@ export type BudgetInBackup = {
     budgets: CanonicalBudget[];
     savingsGoals: CanonicalSavingsGoal[];
     savingsContributions: CanonicalSavingsContribution[];
-    recurringBills: CanonicalRecurringBill[];
-    billPayments: CanonicalBillPayment[];
+    recurringTransactions: CanonicalRecurringTransaction[];
+    recurringOccurrences: CanonicalRecurringOccurrence[];
   };
 };
 
@@ -170,8 +186,8 @@ export type BackupSummary = {
   budgets: number;
   savingsGoals: number;
   savingsContributions: number;
-  recurringBills: number;
-  billPayments: number;
+  recurringTransactions: number;
+  recurringOccurrences: number;
   totalRecords: number;
 };
 
@@ -245,8 +261,8 @@ function summaryOf(data: BudgetInBackup["data"]): BackupSummary {
     budgets: data.budgets.length,
     savingsGoals: data.savingsGoals.length,
     savingsContributions: data.savingsContributions.length,
-    recurringBills: data.recurringBills.length,
-    billPayments: data.billPayments.length,
+    recurringTransactions: data.recurringTransactions.length,
+    recurringOccurrences: data.recurringOccurrences.length,
     totalRecords: 0,
   };
   summary.totalRecords = Object.entries(summary)
@@ -284,19 +300,20 @@ export async function createBudgetInBackup(userId: string, options?: { forceData
       ? "google_setup_required_db_fallback"
       : "database";
 
-  const [categories, savingsGoals, savingsContributions, recurringBills, billPayments] = await Promise.all([
+  const [categories, savingsGoals, savingsContributions, recurringTransactions, recurringOccurrences] = await Promise.all([
     findCategoriesForBackup(userId),
     prisma.savingsGoal.findMany({ where: { userId } }),
     prisma.savingsContribution.findMany({ where: { userId } }),
-    prisma.recurringBill.findMany({
+    prisma.recurringTransaction.findMany({
       where: { userId },
       include: {
         category: { select: { name: true } },
         account: { select: { name: true } },
+        toAccount: { select: { name: true } },
       },
     }),
-    prisma.billPayment.findMany({
-      where: { bill: { userId } },
+    prisma.recurringOccurrence.findMany({
+      where: { recurring: { userId } },
     }),
   ]);
 
@@ -332,32 +349,40 @@ export async function createBudgetInBackup(userId: string, options?: { forceData
       note: contribution.note,
       createdAt: contribution.createdAt.toISOString(),
     })),
-    recurringBills: recurringBills.map((bill) => ({
-      id: bill.id,
-      name: bill.name,
-      amount: toNumber(bill.amount),
-      dueDay: bill.dueDay,
-      categoryId: bill.categoryId,
-      categoryName: bill.category?.name ?? null,
-      accountId: bill.accountId,
-      accountName: bill.account?.name ?? null,
-      autoRecord: bill.autoRecord,
-      reminderDays: bill.reminderDays,
-      lastPaidAt: bill.lastPaidAt?.toISOString() ?? null,
-      nextDueDate: bill.nextDueDate.toISOString(),
-      isActive: bill.isActive,
-      note: bill.note,
-      createdAt: bill.createdAt.toISOString(),
-      updatedAt: bill.updatedAt.toISOString(),
+    recurringTransactions: recurringTransactions.map((item) => ({
+      id: item.id,
+      name: item.name,
+      type: item.type,
+      amount: toNumber(item.amount),
+      frequency: item.frequency,
+      interval: item.interval,
+      startDate: item.startDate.toISOString(),
+      endDate: item.endDate?.toISOString() ?? null,
+      categoryId: item.categoryId,
+      categoryName: item.category?.name ?? null,
+      accountId: item.accountId,
+      accountName: item.account?.name ?? null,
+      toAccountId: item.toAccountId,
+      toAccountName: item.toAccount?.name ?? null,
+      savingsGoalId: item.savingsGoalId,
+      autoRecord: item.autoRecord,
+      reminderDays: item.reminderDays,
+      lastRunAt: item.lastRunAt?.toISOString() ?? null,
+      nextDueDate: item.nextDueDate.toISOString(),
+      isActive: item.isActive,
+      note: item.note,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
     })),
-    billPayments: billPayments.map((payment) => ({
-      id: payment.id,
-      billId: payment.billId,
-      transactionId: payment.transactionId,
-      paidAt: payment.paidAt.toISOString(),
-      amount: toNumber(payment.amount),
-      note: payment.note,
-      paymentMonth: payment.paymentMonth,
+    recurringOccurrences: recurringOccurrences.map((occ) => ({
+      id: occ.id,
+      recurringId: occ.recurringId,
+      transactionId: occ.transactionId,
+      transferId: occ.transferId,
+      occurredAt: occ.occurredAt.toISOString(),
+      amount: toNumber(occ.amount),
+      note: occ.note,
+      occurrenceKey: occ.occurrenceKey,
     })),
   };
 
@@ -573,12 +598,58 @@ async function exportSheetsData(userId: string, sheetsId: string, categories: Ca
 
 export function parseBackupPayload(payload: unknown): BudgetInBackup {
   if (!payload || typeof payload !== "object") throw new Error("File backup tidak valid");
-  const backup = payload as BudgetInBackup;
-  if (backup.appName !== "BudgetIn" || backup.schemaVersion !== BACKUP_SCHEMA_VERSION) {
+  const backup = payload as BudgetInBackup & { data: Record<string, unknown> };
+  if (backup.appName !== "BudgetIn" || !SUPPORTED_BACKUP_VERSIONS.includes(backup.schemaVersion)) {
     throw new Error("Versi backup tidak didukung");
   }
   if (!backup.data || !backup.source) throw new Error("Struktur backup tidak lengkap");
-  const data = backup.data;
+
+  // ── v1 → v2 migration: recurringBills/billPayments → recurringTransactions/recurringOccurrences
+  const dataAny = backup.data as Record<string, unknown>;
+  if (Array.isArray(dataAny.recurringBills) && !Array.isArray(dataAny.recurringTransactions)) {
+    dataAny.recurringTransactions = (dataAny.recurringBills as Array<Record<string, unknown>>).map((b) => ({
+      id: b.id,
+      name: b.name,
+      type: "expense",
+      amount: b.amount,
+      frequency: "monthly",
+      interval: 1,
+      startDate: (b.nextDueDate as string) ?? new Date().toISOString(),
+      endDate: null,
+      categoryId: b.categoryId ?? null,
+      categoryName: b.categoryName ?? null,
+      accountId: b.accountId ?? null,
+      accountName: b.accountName ?? null,
+      toAccountId: null,
+      toAccountName: null,
+      savingsGoalId: null,
+      autoRecord: Boolean(b.autoRecord),
+      reminderDays: Array.isArray(b.reminderDays) ? b.reminderDays : [1],
+      lastRunAt: (b.lastPaidAt as string) ?? null,
+      nextDueDate: (b.nextDueDate as string) ?? new Date().toISOString(),
+      isActive: Boolean(b.isActive),
+      note: (b.note as string | null) ?? null,
+      createdAt: (b.createdAt as string) ?? new Date().toISOString(),
+      updatedAt: (b.updatedAt as string) ?? new Date().toISOString(),
+      dueDay: b.dueDay as number | undefined,
+    }));
+    delete dataAny.recurringBills;
+  }
+  if (Array.isArray(dataAny.billPayments) && !Array.isArray(dataAny.recurringOccurrences)) {
+    dataAny.recurringOccurrences = (dataAny.billPayments as Array<Record<string, unknown>>).map((p) => ({
+      id: p.id,
+      recurringId: p.billId,
+      transactionId: (p.transactionId as string | null) ?? null,
+      transferId: null,
+      occurredAt: (p.paidAt as string) ?? new Date().toISOString(),
+      amount: p.amount,
+      note: (p.note as string | null) ?? null,
+      occurrenceKey: ((p.paymentMonth as string) ?? "") + "-01", // monthly key fallback
+    }));
+    delete dataAny.billPayments;
+  }
+
+  const data = backup.data as BudgetInBackup["data"];
   const arrays = [
     data.categories,
     data.accountTypes,
@@ -587,13 +658,13 @@ export function parseBackupPayload(payload: unknown): BudgetInBackup {
     data.budgets,
     data.savingsGoals,
     data.savingsContributions,
-    data.recurringBills,
-    data.billPayments,
+    data.recurringTransactions,
+    data.recurringOccurrences,
   ];
   if (arrays.some((item) => !Array.isArray(item))) throw new Error("Data backup tidak lengkap");
   const summary = summaryOf(data);
   if (summary.totalRecords > MAX_BACKUP_RECORDS) throw new Error("Backup terlalu besar");
-  return { ...backup, summary };
+  return { ...backup, schemaVersion: BACKUP_SCHEMA_VERSION, data, summary };
 }
 
 export async function createRestorePreview(userId: string, backup: BudgetInBackup): Promise<RestorePreview> {
@@ -666,13 +737,13 @@ export async function markGoogleSetupMigrationComplete(userId: string): Promise<
 }
 
 async function countExistingData(userId: string, sheetsId: string | null): Promise<BackupSummary> {
-  const [categories, accountTypes, savingsGoals, savingsContributions, recurringBills, billPayments] = await Promise.all([
+  const [categories, accountTypes, savingsGoals, savingsContributions, recurringTransactions, recurringOccurrences] = await Promise.all([
     prisma.category.count({ where: { userId } }),
     prisma.accountType.count({ where: { userId } }),
     prisma.savingsGoal.count({ where: { userId } }),
     prisma.savingsContribution.count({ where: { userId } }),
-    prisma.recurringBill.count({ where: { userId } }),
-    prisma.billPayment.count({ where: { bill: { userId } } }),
+    prisma.recurringTransaction.count({ where: { userId } }),
+    prisma.recurringOccurrence.count({ where: { recurring: { userId } } }),
   ]);
 
   let accounts = 0;
@@ -709,8 +780,8 @@ async function countExistingData(userId: string, sheetsId: string | null): Promi
     budgets: Array.from({ length: budgets }),
     savingsGoals: Array.from({ length: savingsGoals }),
     savingsContributions: Array.from({ length: savingsContributions }),
-    recurringBills: Array.from({ length: recurringBills }),
-    billPayments: Array.from({ length: billPayments }),
+    recurringTransactions: Array.from({ length: recurringTransactions }),
+    recurringOccurrences: Array.from({ length: recurringOccurrences }),
   } as BudgetInBackup["data"]);
 }
 
@@ -736,7 +807,7 @@ async function restoreCommonDbBackedData(userId: string, backup: BudgetInBackup,
   accountId: Map<string, string>;
   transactionId: Map<string, string>;
   savingsGoalId: Map<string, string>;
-  billId: Map<string, string>;
+  recurringId: Map<string, string>;
 }) {
   for (const goal of backup.data.savingsGoals) {
     const id = randomUUID();
@@ -771,42 +842,49 @@ async function restoreCommonDbBackedData(userId: string, backup: BudgetInBackup,
     }).catch(() => {});
   }
 
-  for (const bill of backup.data.recurringBills) {
+  for (const item of backup.data.recurringTransactions) {
     const id = randomUUID();
-    maps.billId.set(bill.id, id);
-    await prisma.recurringBill.create({
+    maps.recurringId.set(item.id, id);
+    await prisma.recurringTransaction.create({
       data: {
         id,
         userId,
-        name: bill.name,
-        amount: bill.amount,
-        dueDay: bill.dueDay,
-        categoryId: bill.categoryId ? maps.categoryId.get(bill.categoryId) ?? null : null,
-        accountId: bill.accountId ? maps.accountId.get(bill.accountId) ?? null : null,
-        autoRecord: bill.autoRecord,
-        reminderDays: bill.reminderDays,
-        lastPaidAt: bill.lastPaidAt ? new Date(bill.lastPaidAt) : null,
-        nextDueDate: new Date(bill.nextDueDate),
-        isActive: bill.isActive,
-        note: bill.note,
-        createdAt: new Date(bill.createdAt),
-        updatedAt: new Date(bill.updatedAt),
+        name: item.name,
+        type: item.type,
+        amount: item.amount,
+        frequency: item.frequency,
+        interval: item.interval,
+        startDate: new Date(item.startDate),
+        endDate: item.endDate ? new Date(item.endDate) : null,
+        categoryId: item.categoryId ? maps.categoryId.get(item.categoryId) ?? null : null,
+        accountId: item.accountId ? maps.accountId.get(item.accountId) ?? null : null,
+        toAccountId: item.toAccountId ? maps.accountId.get(item.toAccountId) ?? null : null,
+        savingsGoalId: item.savingsGoalId ? maps.savingsGoalId.get(item.savingsGoalId) ?? null : null,
+        autoRecord: item.autoRecord,
+        reminderDays: item.reminderDays,
+        lastRunAt: item.lastRunAt ? new Date(item.lastRunAt) : null,
+        nextDueDate: new Date(item.nextDueDate),
+        isActive: item.isActive,
+        note: item.note,
+        createdAt: new Date(item.createdAt),
+        updatedAt: new Date(item.updatedAt),
       },
     }).catch(() => {});
   }
 
-  for (const payment of backup.data.billPayments) {
-    const billId = maps.billId.get(payment.billId);
-    if (!billId) continue;
-    await prisma.billPayment.create({
+  for (const occ of backup.data.recurringOccurrences) {
+    const recurringId = maps.recurringId.get(occ.recurringId);
+    if (!recurringId) continue;
+    await prisma.recurringOccurrence.create({
       data: {
         id: randomUUID(),
-        billId,
-        transactionId: payment.transactionId ? maps.transactionId.get(payment.transactionId) ?? null : null,
-        paidAt: new Date(payment.paidAt),
-        amount: payment.amount,
-        note: payment.note,
-        paymentMonth: normalizeMonth(payment.paymentMonth),
+        recurringId,
+        transactionId: occ.transactionId ? maps.transactionId.get(occ.transactionId) ?? null : null,
+        transferId: occ.transferId,
+        occurredAt: new Date(occ.occurredAt),
+        amount: occ.amount,
+        note: occ.note,
+        occurrenceKey: occ.occurrenceKey,
       },
     }).catch(() => {});
   }
@@ -860,7 +938,7 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
     accountId: new Map<string, string>(),
     transactionId: new Map<string, string>(),
     savingsGoalId: new Map<string, string>(),
-    billId: new Map<string, string>(),
+    recurringId: new Map<string, string>(),
   };
 
   await prisma.$transaction(async (tx) => {
@@ -1053,7 +1131,7 @@ async function restoreToSheets(
     accountId: new Map<string, string>(),
     transactionId: new Map<string, string>(),
     savingsGoalId: new Map<string, string>(),
-    billId: new Map<string, string>(),
+    recurringId: new Map<string, string>(),
   };
 
   const auth = new OAuth2Client();

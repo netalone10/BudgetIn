@@ -12,8 +12,8 @@ interface BackupSummary {
   budgets: number;
   savingsGoals: number;
   savingsContributions: number;
-  recurringBills: number;
-  billPayments: number;
+  recurringTransactions: number;
+  recurringOccurrences: number;
   totalRecords: number;
 }
 
@@ -34,8 +34,8 @@ const summaryLabels: Array<[keyof BackupSummary, string]> = [
   ["budgets", "Budget"],
   ["savingsGoals", "Goal tabungan"],
   ["savingsContributions", "Kontribusi tabungan"],
-  ["recurringBills", "Tagihan rutin"],
-  ["billPayments", "Riwayat bayar tagihan"],
+  ["recurringTransactions", "Transaksi berulang"],
+  ["recurringOccurrences", "Riwayat eksekusi berulang"],
 ];
 
 function storageLabel(value: string) {
