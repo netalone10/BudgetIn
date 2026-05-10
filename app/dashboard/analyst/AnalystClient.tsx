@@ -21,8 +21,11 @@ interface AIReport {
   anomalies: string[];
   recommendations: string[];
   savingsRate: number;
+  allocatedSavingsRate: number;
+  netSurplusRate: number;
   totalIncome: number;
   totalSpent: number;
+  totalSavings: number;
   categoryPercentages: Record<string, number>;
   topExpenses: { date: string; description: string; category: string; amount: number }[];
   dailyAvgSpending: number;
@@ -427,12 +430,41 @@ export default function AIAnalystPage() {
               {report.totalIncome > 0 && (
                 <div className="rounded-[24px] border border-border bg-card p-6 shadow-sm space-y-4">
                   <span className="label-mono text-muted-foreground block">Savings Rate</span>
-                  <div className={cn(
-                    "text-3xl font-bold tabular-nums",
-                    report.savingsRate >= 20 ? "text-[#0fa76e]" : report.savingsRate >= 10 ? "text-yellow-600" : "text-destructive"
-                  )}>
-                    {report.savingsRate.toFixed(1)}%
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Alokasi Tabungan</span>
+                      <div
+                        className={cn(
+                          "text-2xl font-bold tabular-nums",
+                          report.allocatedSavingsRate >= 20
+                            ? "text-[#0fa76e]"
+                            : report.allocatedSavingsRate >= 10
+                            ? "text-yellow-600"
+                            : "text-destructive"
+                        )}
+                      >
+                        {report.allocatedSavingsRate.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Surplus Bersih</span>
+                      <div
+                        className={cn(
+                          "text-2xl font-bold tabular-nums",
+                          report.netSurplusRate >= 20
+                            ? "text-[#0fa76e]"
+                            : report.netSurplusRate >= 10
+                            ? "text-yellow-600"
+                            : "text-destructive"
+                        )}
+                      >
+                        {report.netSurplusRate.toFixed(1)}%
+                      </div>
+                    </div>
                   </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Tabungan ≠ pengeluaran. Alokasi tabungan adalah tambahan kekayaan; surplus bersih = sisa setelah pengeluaran rutin.
+                  </p>
                   <div className="space-y-1.5 text-sm">
                     <div className="flex justify-between text-muted-foreground">
                       <span>Pemasukan</span>
@@ -441,6 +473,10 @@ export default function AIAnalystPage() {
                     <div className="flex justify-between text-muted-foreground">
                       <span>Pengeluaran</span>
                       <span className="tabular-nums font-medium text-destructive">Rp {report.totalSpent.toLocaleString("id-ID")}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Tabungan</span>
+                      <span className="tabular-nums font-medium text-sky-600 dark:text-sky-400">Rp {report.totalSavings.toLocaleString("id-ID")}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground pt-1 border-t">
                       <span>Rata-rata/hari</span>

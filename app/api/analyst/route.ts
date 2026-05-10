@@ -8,7 +8,12 @@ import { getTransactions } from "@/utils/sheets";
 import { getTransactionsDB } from "@/utils/db-transactions";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isSavingsTransaction } from "@/lib/savings-utils";
+import {
+  computeAnalystMetrics,
+  computeCashflowScore,
+  computeSavingsRates,
+} from "@/lib/analyst-metrics";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -39,7 +44,7 @@ export async function GET(req: NextRequest) {
   const currentMonth = format(toZonedTime(new Date(), TIMEZONE), "yyyy-MM");
 
   try {
-    const [transactions, budgets] = await Promise.all([
+    const [transactions, budgets, savingsCategoriesRaw] = await Promise.all([
       useSheets
         ? getTransactions(user!.sheetsId!, accessToken, period)
         : getTransactionsDB(session.userId, period),
@@ -47,32 +52,31 @@ export async function GET(req: NextRequest) {
         where: { userId: session.userId, month: currentMonth },
         include: { category: { select: { name: true } } },
       }),
+      prisma.category.findMany({
+        where: { userId: session.userId, isSavings: true },
+        select: { name: true },
+      }),
     ]);
 
-    const spentByCategory: Record<string, number> = {};
-    let totalIncome = 0;
+    const savingsCategoryNames = new Set(
+      savingsCategoriesRaw.map((c) => c.name.toLowerCase())
+    );
 
-    for (const t of transactions) {
-      // Saldo Awal tidak masuk income maupun expense
-      if (t.category === "Saldo Awal") continue;
-      if (t.type === "income") {
-        totalIncome += t.amount;
-      } else if (isExpenseTransaction(t)) {
-        spentByCategory[t.category] = (spentByCategory[t.category] ?? 0) + t.amount;
-      }
-    }
+    const metrics = computeAnalystMetrics(transactions, savingsCategoryNames);
+    const { totalIncome, totalSpent, totalSavings, spentByCategory, expenseTxs: rawExpenseTxs, uniqueExpenseDays } = metrics;
 
-    const totalSpent = Object.values(spentByCategory).reduce((s, v) => s + v, 0);
-
-    if (transactions.filter((t) => t.category !== "Saldo Awal").length === 0) {
+    if (metrics.expenseTxCount === 0 && totalIncome === 0 && totalSavings === 0) {
       return NextResponse.json({
         summary: "Belum ada transaksi bulan ini.",
         healthScore: 100,
         anomalies: [],
         recommendations: ["Catat pengeluaran pertama Anda untuk mendapatkan pantauan cerdas."],
         savingsRate: 0,
+        allocatedSavingsRate: 0,
+        netSurplusRate: 0,
         totalIncome: 0,
         totalSpent: 0,
+        totalSavings: 0,
         categoryPercentages: {},
         topExpenses: [],
         dailyAvgSpending: 0,
@@ -80,11 +84,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const budgetContext = budgets.map((b) => ({
-      category: b.category.name,
-      budget: Number(b.amount),
-      spent: spentByCategory[b.category.name] ?? 0,
-    }));
+    // Budget context — kategori tabungan dipisahkan supaya tidak diflag sebagai over-budget expense.
+    // (Tabungan punya sasaran/target sendiri di /dashboard/savings, bukan ranah analyst expense.)
+    const budgetContext = budgets
+      .filter((b) => !isSavingsTransaction(b.category.name, savingsCategoryNames))
+      .map((b) => ({
+        category: b.category.name,
+        budget: Number(b.amount),
+        spent: spentByCategory[b.category.name] ?? 0,
+      }));
 
     // ── Health Score — dihitung deterministik, bukan oleh AI ──────────────────
 
@@ -102,17 +110,8 @@ export async function GET(req: NextRequest) {
       budgetScore = Math.round(avg * 50);
     }
 
-    // Cashflow Score (0–50)
-    let cashflowScore = 25; // netral kalau income = 0
-    if (totalIncome > 0) {
-      const ratio = totalSpent / totalIncome;
-      if (ratio <= 0.7) cashflowScore = 50;
-      else if (ratio <= 0.8) cashflowScore = 40;
-      else if (ratio <= 0.9) cashflowScore = 30;
-      else if (ratio <= 1.0) cashflowScore = 20;
-      else if (ratio <= 1.2) cashflowScore = 10;
-      else cashflowScore = 0;
-    }
+    // Cashflow Score (0–50): basis expense ratio + bonus alokasi tabungan ≥10%.
+    const cashflowScore = computeCashflowScore({ totalIncome, totalSpent, totalSavings });
 
     const healthScore = budgetScore + cashflowScore;
 
@@ -127,8 +126,11 @@ export async function GET(req: NextRequest) {
         overPct: Math.round(((b.spent - b.budget) / b.budget) * 100),
       }));
 
-    const savingsRateNum = totalIncome > 0 ? (1 - totalSpent / totalIncome) * 100 : 0;
-    const savingsRate = totalIncome > 0 ? savingsRateNum.toFixed(1) : null;
+    const { allocatedSavingsRate, netSurplusRate } = computeSavingsRates({
+      totalIncome,
+      totalSpent,
+      totalSavings,
+    });
 
     // ── Finance-manager: category %, top expenses, daily avg, rule-based recs ─
     const categoryPercentages: Record<string, number> = {};
@@ -136,30 +138,39 @@ export async function GET(req: NextRequest) {
       categoryPercentages[cat] = totalSpent > 0 ? Math.round((amt / totalSpent) * 1000) / 10 : 0;
     }
 
-    const expenseTxs = transactions
-      .filter((t) => isExpenseTransaction(t) && t.category !== "Saldo Awal")
+    const expenseTxs = [...rawExpenseTxs]
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5)
       .map((t) => ({
         date: t.date,
-        description: (t as { note?: string }).note || t.category,
+        description: t.note || t.category,
         category: t.category,
         amount: t.amount,
       }));
 
-    const txDates = transactions
-      .filter(isExpenseTransaction)
-      .map((t) => t.date.slice(0, 10));
-    const uniqueDays = new Set(txDates).size || 1;
-    const dailyAvgSpending = Math.round(totalSpent / uniqueDays);
+    const dailyAvgSpending = uniqueExpenseDays > 0
+      ? Math.round(totalSpent / uniqueExpenseDays)
+      : 0;
 
     const fmRecommendations: string[] = [];
-    if (savingsRateNum < 10) {
-      fmRecommendations.push("⚠️ Savings rate di bawah 10% — kurangi pengeluaran diskresioner segera.");
-    } else if (savingsRateNum < 20) {
-      fmRecommendations.push("💡 Savings rate masih bisa ditingkatkan ke 20% untuk keamanan finansial lebih baik.");
+    if (totalIncome <= 0) {
+      // tidak ada income → skip rekomendasi tabungan
+    } else if (allocatedSavingsRate <= 0) {
+      fmRecommendations.push(
+        "💡 Belum ada alokasi tabungan eksplisit bulan ini. Sisihkan minimal 10% dari pemasukan ke tabungan/investasi."
+      );
+    } else if (allocatedSavingsRate < 10) {
+      fmRecommendations.push(
+        `⚠️ Alokasi tabungan baru ${allocatedSavingsRate.toFixed(1)}% — naikkan ke minimal 10% untuk fondasi finansial yang aman.`
+      );
+    } else if (allocatedSavingsRate < 20) {
+      fmRecommendations.push(
+        `💡 Alokasi tabungan ${allocatedSavingsRate.toFixed(1)}% — sudah baik, target ke 20% untuk percepatan kekayaan.`
+      );
     } else {
-      fmRecommendations.push("✅ Savings rate sangat baik! Pertahankan tren positif ini.");
+      fmRecommendations.push(
+        `✅ Alokasi tabungan ${allocatedSavingsRate.toFixed(1)}% — sangat baik! Pertahankan tren positif ini.`
+      );
     }
     for (const [cat, amt] of Object.entries(spentByCategory)) {
       const pct = totalSpent > 0 ? (amt / totalSpent) * 100 : 0;
@@ -177,9 +188,15 @@ export async function GET(req: NextRequest) {
 
     const systemPrompt = `Kamu adalah AI Financial Analyst yang berbicara langsung dan jujur. Semua angka sudah disiapkan — JANGAN ubah atau karang angka sendiri.
 
+PENTING — Konsep akuntansi tabungan:
+- TABUNGAN/INVESTASI adalah pengurang kas yang menambah aset (mirip withdrawal/prive ke equity), BUKAN pengeluaran.
+- Naiknya tabungan = SINYAL POSITIF (kekayaan bersih bertambah). Semakin tinggi alokasi tabungan, semakin baik.
+- DILARANG menyarankan untuk "mengurangi tabungan" atau menyebut tabungan sebagai pengeluaran.
+- Field PENGELUARAN sudah TIDAK termasuk tabungan.
+
 Kembalikan HANYA JSON valid tanpa backtick atau markdown:
 {
-  "summary": "2-3 kalimat. Sebut kondisi cashflow nyata (surplus/defisit), sebutkan 1-2 kategori pengeluaran terbesar berdasarkan data.",
+  "summary": "2-3 kalimat. Sebut kondisi cashflow nyata (surplus/defisit), sebutkan 1-2 kategori pengeluaran terbesar berdasarkan data. Bila ada alokasi tabungan, apresiasi sebagai sinyal positif.",
   "anomalies": ["1 kalimat per item over-budget dari daftar ANOMALI. Jika kosong, kembalikan []."],
   "recommendations": ["Saran spesifik 1", "Saran spesifik 2", "Saran spesifik 3"]
 }
@@ -189,8 +206,9 @@ ATURAN recommendations — WAJIB DIIKUTI:
 - Saran harus ACTIONABLE: kata kerja konkret (kurangi, alokasikan, batasi, pindahkan, evaluasi)
 - DILARANG saran generik seperti "pantau pengeluaran", "perbaiki budget", "tingkatkan kesejahteraan"
 - DILARANG menyebut health score
+- DILARANG menyarankan mengurangi tabungan/investasi
 - Jika ada anomali over-budget: 1 saran harus address kategori tersebut
-- Jika savings rate rendah (<20%): 1 saran harus sebut nominal yang bisa dipotong
+- Jika alokasi tabungan < 10% dari pemasukan: 1 saran harus sebut nominal yang bisa dialokasikan ke tabungan
 - Bahasa Indonesia natural, tidak kaku`;
 
     const anomaliText = overBudget.length > 0
@@ -205,14 +223,23 @@ ATURAN recommendations — WAJIB DIIKUTI:
       .map(([cat, amt]) => `- ${cat}: Rp ${amt.toLocaleString("id-ID")} (${totalSpent > 0 ? ((amt / totalSpent) * 100).toFixed(1) : 0}% dari total)`)
       .join("\n");
 
+    const allocatedRateLabel = totalIncome > 0
+      ? `${allocatedSavingsRate.toFixed(1)}% (${allocatedSavingsRate >= 20 ? "sangat baik" : allocatedSavingsRate >= 10 ? "baik" : allocatedSavingsRate > 0 ? "perlu ditingkatkan" : "belum ada alokasi"})`
+      : "tidak bisa dihitung (tidak ada pemasukan)";
+    const netSurplusLabel = totalIncome > 0
+      ? `${netSurplusRate.toFixed(1)}%`
+      : "tidak bisa dihitung";
+
     const userPrompt = `PERIODE: ${period}
 PEMASUKAN: Rp ${totalIncome.toLocaleString("id-ID")}
-PENGELUARAN: Rp ${totalSpent.toLocaleString("id-ID")}
-SELISIH: Rp ${(totalIncome - totalSpent).toLocaleString("id-ID")} → ${totalIncome > totalSpent ? "SURPLUS" : "DEFISIT"}
-SAVINGS RATE: ${savingsRate ? `${savingsRate}% (${Number(savingsRate) >= 20 ? "baik" : Number(savingsRate) >= 10 ? "perlu ditingkatkan" : "kritis — di bawah 10%"})` : "tidak bisa dihitung (tidak ada data pemasukan)"}
+PENGELUARAN (di luar tabungan): Rp ${totalSpent.toLocaleString("id-ID")}
+TABUNGAN (alokasi eksplisit, positif): Rp ${totalSavings.toLocaleString("id-ID")}
+SURPLUS BERSIH: Rp ${(totalIncome - totalSpent).toLocaleString("id-ID")} → ${totalIncome > totalSpent ? "SURPLUS" : "DEFISIT"}
+ALOKASI TABUNGAN / PEMASUKAN: ${allocatedRateLabel}
+NET SURPLUS / PEMASUKAN: ${netSurplusLabel}
 
-5 KATEGORI PENGELUARAN TERBESAR:
-${topCategories}
+5 KATEGORI PENGELUARAN TERBESAR (tabungan TIDAK termasuk):
+${topCategories || "(belum ada pengeluaran non-tabungan)"}
 
 ANOMALI OVER-BUDGET (hanya ini yang boleh masuk field anomalies):
 ${anomaliText}`;
@@ -237,9 +264,13 @@ ${anomaliText}`;
       healthScore,
       anomalies: narrative.anomalies ?? [],
       recommendations: narrative.recommendations ?? [],
-      savingsRate: savingsRateNum,
+      // savingsRate dipertahankan sebagai alias netSurplusRate untuk back-compat consumer existing.
+      savingsRate: netSurplusRate,
+      allocatedSavingsRate,
+      netSurplusRate,
       totalIncome,
       totalSpent,
+      totalSavings,
       categoryPercentages,
       topExpenses: expenseTxs,
       dailyAvgSpending,
