@@ -15,9 +15,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  TrendingDown,
-  TrendingUp,
-  RefreshCw,
   MicVocal,
   LayoutGrid,
   Dices,
@@ -29,7 +26,14 @@ import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { formatSignedIDR, formatTanggalID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
+import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
+import KPICard from "@/components/dashboard/KPICard";
+import MiniCashflowCard from "@/components/dashboard/MiniCashflowCard";
+import BudgetMiniListCard from "@/components/dashboard/BudgetMiniListCard";
+import SavingsGoalMiniCard from "@/components/dashboard/SavingsGoalMiniCard";
+import { SectionCard } from "@/components/dashboard/SectionCard";
 
 const ManualTransactionForm = dynamic(
   () => import("@/components/ManualTransactionForm"),
@@ -39,11 +43,6 @@ const ManualTransactionForm = dynamic(
 const ReportView = dynamic(
   () => import("@/components/ReportView"),
   { ssr: false, loading: () => <div className="h-[320px] animate-pulse rounded-[28px] bg-muted" /> }
-);
-
-const DashboardTabs = dynamic(
-  () => import("@/components/DashboardTabs"),
-  { ssr: false, loading: () => <div className="h-[420px] animate-pulse rounded-[28px] bg-muted" /> }
 );
 
 type BudgetData = DashboardTabsBudgetData;
@@ -71,23 +70,6 @@ type ResponseData =
   | { intent: "unknown"; clarification: string; clarificationType?: string; pendingAction?: SavingsPendingAction; options?: SavingsGoalOption[] }
   | { error: string };
 
-const ID_SHORT_DATE_FORMAT = new Intl.DateTimeFormat("id-ID", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
-function formatTanggalID(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  if (isNaN(d.getTime())) return iso;
-  return ID_SHORT_DATE_FORMAT.format(d);
-}
-
-function formatSignedIDR(amount: number, positivePrefix = ""): string {
-  const sign = amount < 0 ? "-" : positivePrefix;
-  return `${sign}Rp ${Math.abs(amount).toLocaleString("id-ID")}`;
-}
-
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <>
@@ -107,52 +89,6 @@ function DetailsGrid({ children, tone }: { children: ReactNode; tone: "green" | 
     <dl className={cn("mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs", colorClass)}>
       {children}
     </dl>
-  );
-}
-
-function SectionCard({
-  eyebrow,
-  title,
-  description,
-  action,
-  className,
-  dense = false,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  description?: string;
-  action?: ReactNode;
-  className?: string;
-  dense?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      className={cn(
-        "rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm sm:rounded-[30px]",
-        dense ? "md:p-4" : "md:p-6",
-        className
-      )}
-    >
-      <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", dense ? "mb-3" : "mb-5")}>
-        <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            {eyebrow}
-          </p>
-          <h3 className={cn("font-semibold tracking-tight text-foreground", dense ? "text-base sm:text-lg" : "text-lg sm:text-xl")}>
-            {title}
-          </h3>
-          {description && (
-            <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              {description}
-            </p>
-          )}
-        </div>
-        {action && <div className="shrink-0 self-start">{action}</div>}
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -235,8 +171,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(() =>
     new Set(initialData.savingsCategoryNames)
   );
-  const [customTransactions, setCustomTransactions] = useState<Transaction[]>([]);
-  const [customLoading, setCustomLoading] = useState(false);
   const [accounts, setAccounts] = useState<
     { id: string; name: string; currency: string; accountType: { name: string; classification: string } }[]
   >(initialData.accounts);
@@ -244,6 +178,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
   const [page, setPage] = useState(1);
   const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
+  const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
 
   const visibleTransactions = useMemo(
     () => transactions.slice((page - 1) * pageSize, page * pageSize),
@@ -263,6 +198,37 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     const incomeCount = incomeTxs.length;
     return { expense, income, count, incomeCount };
   }, [transactions, todayStr]);
+
+  const currentMonth = todayStr.slice(0, 7);
+  const monthlyStats = useMemo(() => {
+    const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
+    const income = inMonth
+      .filter((t) => t.type === "income")
+      .reduce((s, t) => s + t.amount, 0);
+    const expense = inMonth
+      .filter(isExpenseTransaction)
+      .reduce((s, t) => s + t.amount, 0);
+    const surplus = income - expense;
+    const savingsRate = income > 0 ? (surplus / income) * 100 : 0;
+    return { income, expense, surplus, savingsRate };
+  }, [transactions, currentMonth]);
+
+  const incomeDelta = monthlyStats.income - initialData.lastMonthTotals.income;
+  const expenseDelta = monthlyStats.expense - initialData.lastMonthTotals.expense;
+
+  function focusAIWithIntent(kind: "expense" | "income" | "transfer") {
+    const presets: Record<typeof kind, string> = {
+      expense: "Pengeluaran ",
+      income: "Pemasukan ",
+      transfer: "Transfer ",
+    };
+    setPrompt(presets[kind]);
+    textareaRef.current?.focus();
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }
 
   useEffect(() => {
     const handleCategoryChange = () => fetchCategories();
@@ -468,19 +434,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     }
   }
 
-  async function handleFetchPeriod(from: string, to: string) {
-    setCustomLoading(true);
-    try {
-      const res = await fetch(`/api/record?period=custom&from=${from}&to=${to}`);
-      const data = await res.json();
-      setCustomTransactions(data.transactions ?? []);
-    } catch {
-      setCustomTransactions([]);
-    } finally {
-      setCustomLoading(false);
-    }
-  }
-
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -510,99 +463,84 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   return (
     <div className="flex flex-col gap-5 md:gap-6">
+      <DashboardGreeting
+        userName={initialData.user?.name}
+        todayStats={todayStats}
+        onQuickAction={focusAIWithIntent}
+        onRefresh={handleManualRefresh}
+        refreshing={dataLoading}
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
+        <KPICard
+          type="income"
+          label="Pemasukan Bulan Ini"
+          value={monthlyStats.income}
+          delta={incomeDelta}
+        />
+        <KPICard
+          type="expense"
+          label="Pengeluaran Bulan Ini"
+          value={monthlyStats.expense}
+          delta={expenseDelta}
+          expenseSemantics
+        />
+        <KPICard
+          type="savings"
+          label="Savings Rate"
+          value={monthlyStats.savingsRate}
+          suffix="%"
+          trendLabel={`${formatSignedIDR(monthlyStats.surplus, "+")} surplus bulan ini`}
+        />
+      </div>
+
+      <div className="grid items-start gap-5 lg:grid-cols-[1.62fr_1fr]">
+        <div className="flex flex-col gap-5 md:gap-6">
       <SectionCard
-        eyebrow="Overview"
-        title="Kontrol harian"
-        description="Ringkasan singkat setelah area input, supaya fokus utama tetap ke pencatatan transaksi."
-        className="order-2"
-        dense
-        action={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleManualRefresh}
-            disabled={dataLoading}
-            className="w-full rounded-lg sm:w-auto"
-          >
-            <RefreshCw className={cn("size-4", dataLoading && "animate-spin")} />
-            Refresh data
-          </Button>
-        }
-      >
-        <div className="grid gap-3 lg:grid-cols-[0.72fr_1.28fr] lg:items-stretch">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="min-w-0 rounded-[18px] border border-border/70 bg-background p-3">
-              <div className="mb-1.5 flex items-center gap-2">
-                <TrendingDown className="size-4 text-destructive" />
-                <span className="text-[13px] font-medium text-muted-foreground">
-                  Keluar hari ini
-                </span>
-              </div>
-              <p className="break-words text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-                {todayStats.expense !== 0 ? (
-                  formatSignedIDR(todayStats.expense)
-                ) : (
-                  <span className="text-base text-muted-foreground">Belum ada</span>
-                )}
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                {todayStats.count > 0 ? `${todayStats.count} transaksi tercatat` : "Masih sepi untuk hari ini"}
-              </p>
-            </div>
-
-            <div className="min-w-0 rounded-[18px] border border-border/70 bg-background p-3">
-              <div className="mb-1.5 flex items-center gap-2">
-                <TrendingUp
-                  className={cn(
-                    "size-4",
-                    todayStats.income >= 0 ? "text-emerald-500" : "text-destructive"
-                  )}
-                />
-                <span className="text-[13px] font-medium text-muted-foreground">
-                  Masuk hari ini
-                </span>
-              </div>
-              <p
-                className={cn(
-                  "break-words text-lg font-semibold tracking-tight sm:text-xl",
-                  todayStats.income >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-destructive"
-                )}
-              >
-                {todayStats.income !== 0 ? (
-                  formatSignedIDR(todayStats.income, "+")
-                ) : (
-                  <span className="text-base text-muted-foreground">Belum ada</span>
-                )}
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                {todayStats.incomeCount > 0
-                  ? `${todayStats.incomeCount} transaksi pemasukan tercatat`
-                  : "Belum ada pemasukan hari ini"}
-              </p>
-            </div>
-          </div>
-
-          <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        eyebrow="Input"
+        eyebrow="Input · AI Capture"
         title="Tulis seperti ngobrol"
-        description="Area ini didesain untuk jadi pintu masuk tercepat: satu kotak untuk transaksi, budget, transfer, dan laporan."
-        className="order-1"
       >
-        <div className="grid gap-4 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="mb-4 grid grid-cols-2 gap-1 rounded-[14px] bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => setInputMode("ai")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-all",
+              inputMode === "ai"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span aria-hidden>🤖</span>
+            AI Mode
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputMode("manual")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-all",
+              inputMode === "manual"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <span aria-hidden>📝</span>
+            Manual Form
+          </button>
+        </div>
+
+        {inputMode === "ai" ? (
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/70 bg-background p-4">
               <div className="mb-3 flex items-center gap-2">
                 <MicVocal className="size-4 text-primary" />
                 <p className="text-sm font-semibold text-foreground">
-                  AI capture box
+                  AI Capture
                 </p>
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  Enter untuk kirim
+                </span>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3">
@@ -823,8 +761,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               </div>
             )}
           </div>
-
-          <div className="rounded-[28px] border border-border/70 bg-background p-4">
+        ) : (
+          <div className="rounded-[22px] border border-border/70 bg-background p-4">
             <div className="mb-4 flex items-center gap-2">
               <LayoutGrid className="size-4 text-primary" />
               <p className="text-sm font-semibold text-foreground">
@@ -844,32 +782,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               }}
             />
           </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        eyebrow="Analytics"
-        title="Cashflow dan budget"
-        description="Area baca utama untuk melihat distribusi transaksi, progres budget, dan pola pengeluaran."
-        className="order-3"
-      >
-        <DashboardTabs
-          transactions={transactions}
-          budgetData={budgetData}
-          loading={dataLoading}
-          onFetchPeriod={handleFetchPeriod}
-          customTransactions={customTransactions}
-          customLoading={customLoading}
-          savingsCategoryNames={savingsCategoryNames}
-          onBudgetChange={fetchBudget}
-        />
+        )}
       </SectionCard>
 
       <SectionCard
         eyebrow="Ledger"
         title="Riwayat transaksi"
         description="Riwayat lengkap dengan table yang lebih bersih dan kontrol paging yang lebih mudah dipindai."
-        className="order-4"
       >
         {txLoading ? (
           <div className="rounded-[28px] border border-border/70 bg-background overflow-hidden">
@@ -978,6 +897,24 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           </div>
         )}
       </SectionCard>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <MiniCashflowCard
+            transactions={transactions}
+            monthlyIncome={monthlyStats.income}
+            monthlyExpense={monthlyStats.expense}
+            surplus={monthlyStats.surplus}
+            month={currentMonth}
+            today={todayStr}
+          />
+          <BudgetMiniListCard
+            budgets={budgetData?.budgets}
+            loading={budgetLoading}
+          />
+          <SavingsGoalMiniCard goal={initialData.activeSavingsGoal} />
+        </div>
+      </div>
     </div>
   );
 }

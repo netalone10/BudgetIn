@@ -154,6 +154,15 @@ export default function Sidebar() {
   const [showCalculator, setShowCalculator] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("budgetin.sidebar.pinned");
+    if (stored === "1") {
+      setIsPinned(true);
+      setIsCollapsed(false);
+    }
+  }, []);
+
+  useEffect(() => {
     const userId = session?.userId;
     if (userId) {
       const key = `budgetin_onboarding_${userId}`;
@@ -248,6 +257,9 @@ export default function Sidebar() {
                 setIsPinned((current) => {
                   const next = !current;
                   setIsCollapsed(!next);
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("budgetin.sidebar.pinned", next ? "1" : "0");
+                  }
                   return next;
                 });
               }}

@@ -131,20 +131,22 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
           </span>
         </div>
 
-        <div className={cn("mt-auto grid text-xs text-muted-foreground sm:grid-cols-3", compact ? "gap-2" : "gap-3")}>
-          <div className={cn("rounded-2xl bg-muted/50", compact ? "px-3 py-2" : "px-4 py-3")}>
-            <span className="font-medium text-emerald-600 dark:text-emerald-400">Aset</span>
-            <p className={cn("mt-1 font-semibold text-foreground", compact ? "text-sm" : "text-base")}>{formatIDR(assets)}</p>
+        {!compact && (
+          <div className="mt-auto grid gap-3 text-xs text-muted-foreground sm:grid-cols-3">
+            <div className="rounded-2xl bg-muted/50 px-4 py-3">
+              <span className="font-medium text-emerald-600 dark:text-emerald-400">Aset</span>
+              <p className="mt-1 text-base font-semibold text-foreground">{formatIDR(assets)}</p>
+            </div>
+            <div className="rounded-2xl bg-muted/50 px-4 py-3">
+              <span className="font-medium text-red-500">Liabilitas</span>
+              <p className="mt-1 text-base font-semibold text-foreground">{formatIDR(liabilities)}</p>
+            </div>
+            <div className="rounded-2xl bg-primary/10 px-4 py-3">
+              <span className="font-medium text-foreground">Net asset</span>
+              <p className="mt-1 text-base font-semibold text-foreground">{formatIDR(netWorth)}</p>
+            </div>
           </div>
-          <div className={cn("rounded-2xl bg-muted/50", compact ? "px-3 py-2" : "px-4 py-3")}>
-            <span className="font-medium text-red-500">Liabilitas</span>
-            <p className={cn("mt-1 font-semibold text-foreground", compact ? "text-sm" : "text-base")}>{formatIDR(liabilities)}</p>
-          </div>
-          <div className={cn("rounded-2xl bg-primary/10", compact ? "px-3 py-2" : "px-4 py-3")}>
-            <span className="font-medium text-foreground">Net asset</span>
-            <p className={cn("mt-1 font-semibold text-foreground", compact ? "text-sm" : "text-base")}>{formatIDR(netWorth)}</p>
-          </div>
-        </div>
+        )}
       </div>
     </Link>
   );

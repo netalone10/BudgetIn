@@ -53,12 +53,27 @@ async function findBudgetsWithCategory(
   }
 }
 
+export interface MonthlyTotals {
+  income: number;
+  expense: number;
+}
+
+export interface ActiveSavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  totalContributed: number;
+  deadline: string | null;
+}
+
 export interface DashboardInitialData {
   transactions: Transaction[];
   budgetData: BudgetData | null;
   accounts: Account[];
   categories: Category[];
   savingsCategoryNames: string[];
+  lastMonthTotals: MonthlyTotals;
+  activeSavingsGoal: ActiveSavingsGoal | null;
   user: {
     name: string | null;
     email: string | null;
@@ -150,6 +165,8 @@ export async function fetchDashboardData(
       accounts: [],
       categories: [],
       savingsCategoryNames: [],
+      lastMonthTotals: { income: 0, expense: 0 },
+      activeSavingsGoal: null,
       user: null,
     };
   }
@@ -242,18 +259,84 @@ export async function fetchDashboardData(
     .filter((c) => c.isSavings)
     .map((c) => c.name.toLowerCase());
 
+  const lastMonthTotals = computeMonthlyTotals(txLastMonthRaw);
+  const activeSavingsGoal = await fetchActiveSavingsGoal(resolvedUserId);
+
   return {
     transactions,
     budgetData,
     accounts,
     categories,
     savingsCategoryNames,
+    lastMonthTotals,
+    activeSavingsGoal,
     user: {
       name: user?.name ?? null,
       email: user?.email ?? null,
       image: user?.image ?? null,
     },
   };
+}
+
+function computeMonthlyTotals(raw: RawTxn[]): MonthlyTotals {
+  let income = 0;
+  let expense = 0;
+  for (const t of raw) {
+    if (t.type === "income") {
+      income += t.amount;
+    } else if (isExpenseTransaction(t)) {
+      expense += t.amount;
+    }
+  }
+  return { income, expense };
+}
+
+async function fetchActiveSavingsGoal(
+  userId: string
+): Promise<ActiveSavingsGoal | null> {
+  try {
+    const [goals, contributionAgg] = await Promise.all([
+      prisma.savingsGoal.findMany({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.savingsContribution.groupBy({
+        by: ["goalId"],
+        where: { userId },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    if (goals.length === 0) return null;
+
+    const totalsByGoalId = new Map<string, number>();
+    for (const c of contributionAgg) {
+      if (!c.goalId) continue;
+      totalsByGoalId.set(c.goalId, Number(c._sum.amount ?? 0));
+    }
+
+    const incomplete = goals
+      .map((g) => {
+        const target = Number(g.targetAmount);
+        const contributed = totalsByGoalId.get(g.id) ?? 0;
+        return { goal: g, target, contributed };
+      })
+      .filter((g) => g.target > 0 && g.contributed < g.target);
+
+    const pick = incomplete[0] ?? null;
+    if (!pick) return null;
+
+    return {
+      id: pick.goal.id,
+      name: pick.goal.name,
+      targetAmount: pick.target,
+      totalContributed: pick.contributed,
+      deadline: pick.goal.deadline ? pick.goal.deadline.toISOString() : null,
+    };
+  } catch (error) {
+    console.error("Failed to fetch active savings goal:", error);
+    return null;
+  }
 }
 
 function filterAndMapSheetsTxns(
