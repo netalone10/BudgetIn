@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import TransactionCard, { type TransactionCategory } from "@/components/TransactionCard";
-import ManualTransactionForm from "@/components/ManualTransactionForm";
+import ManualTransactionForm, { type ManualTransactionCreated } from "@/components/ManualTransactionForm";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import type { AccountDetailData, AccountTransaction } from "@/lib/account-detail-data";
 
@@ -64,6 +64,27 @@ function promptMentionsAccount(prompt: string, accounts: AccountOption[]): boole
   return accounts.some((a) => a.name && normalized.includes(a.name.toLocaleLowerCase("id-ID")));
 }
 
+function dateInPeriod(date: string, period: Period): boolean {
+  if (period === "semua") return true;
+  const [y, m] = date.split("-").map(Number);
+  if (!y || !m) return false;
+  const now = new Date();
+  const curY = now.getFullYear();
+  const curM = now.getMonth() + 1;
+  if (period === "bulan ini") return y === curY && m === curM;
+  if (period === "bulan lalu") {
+    const lastM = curM === 1 ? 12 : curM - 1;
+    const lastY = curM === 1 ? curY - 1 : curY;
+    return y === lastY && m === lastM;
+  }
+  if (period === "3 bulan") {
+    const txIdx = y * 12 + (m - 1);
+    const curIdx = curY * 12 + (curM - 1);
+    return txIdx <= curIdx && txIdx >= curIdx - 2;
+  }
+  return true;
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function AccountDetailClient({ initialData }: Props) {
@@ -96,8 +117,8 @@ export default function AccountDetailClient({ initialData }: Props) {
   // ── Fetch on period change ──────────────────────────────────────────────
 
   const fetchData = useCallback(
-    async (p: Period, opts?: { skipBalance?: boolean; skipAccount?: boolean }) => {
-      setLoading(true);
+    async (p: Period, opts?: { skipBalance?: boolean; skipAccount?: boolean; silent?: boolean }) => {
+      if (!opts?.silent) setLoading(true);
       try {
         const qs = new URLSearchParams();
         qs.set("period", p);
@@ -110,17 +131,16 @@ export default function AccountDetailClient({ initialData }: Props) {
           const json = await res.json();
           setData((prev) => ({
             ...prev,
-            // On period change balance/account don't change; on data refresh we want updated values.
             account: json.account ?? prev.account,
             transactions: json.transactions,
             summary: json.summary,
           }));
-          setPage(1);
+          if (!opts?.silent) setPage(1);
         }
       } catch {
         // keep current data
       } finally {
-        setLoading(false);
+        if (!opts?.silent) setLoading(false);
       }
     },
     [account.id]
@@ -161,9 +181,118 @@ export default function AccountDetailClient({ initialData }: Props) {
     emitDataChanged(["transactions", "budget", "accounts"]);
   }, []);
 
-  const handleManualTransactionCreated = useCallback(() => {
-    fetchData(period);
-  }, [fetchData, period]);
+  const handleManualTransactionCreated = useCallback(
+    (created?: ManualTransactionCreated) => {
+      if (!created) {
+        fetchData(period, { silent: true });
+        return;
+      }
+
+      const accId = account.id;
+      const nowIso = new Date().toISOString();
+      const newTxs: AccountTransaction[] = [];
+
+      if (created.type === "expense" || created.type === "income") {
+        if (created.accountId === accId) {
+          newTxs.push({
+            id: created.transactionId ?? `temp-${Date.now()}`,
+            date: created.date,
+            time: created.time,
+            amount: created.amount,
+            category: created.category,
+            note: created.note,
+            type: created.type,
+            created_at: nowIso,
+            accountId: accId,
+          });
+        }
+      } else if (created.type === "transfer") {
+        if (created.accountId === accId) {
+          newTxs.push({
+            id: created.transactionId ?? `temp-out-${Date.now()}`,
+            date: created.date,
+            time: created.time,
+            amount: created.amount,
+            category: "Transfer",
+            note: created.note,
+            type: "transfer_out",
+            created_at: nowIso,
+            accountId: accId,
+          });
+        }
+        if (created.toAccountId === accId) {
+          newTxs.push({
+            id: created.transactionId ?? `temp-in-${Date.now()}`,
+            date: created.date,
+            time: created.time,
+            amount: created.amount,
+            category: "Transfer",
+            note: created.note,
+            type: "transfer_in",
+            created_at: nowIso,
+            accountId: accId,
+          });
+        }
+        if (created.fee > 0 && created.accountId === accId) {
+          newTxs.push({
+            id: created.feeTransactionId ?? `temp-fee-${Date.now()}`,
+            date: created.date,
+            time: created.time,
+            amount: created.fee,
+            category: "Biaya Admin",
+            note: created.note ? `Fee transfer - ${created.note}` : "Fee transfer",
+            type: "expense",
+            created_at: nowIso,
+            accountId: accId,
+          });
+        }
+      }
+
+      const balanceDelta = newTxs.reduce((sum, t) => {
+        if (t.type === "income" || t.type === "transfer_in") return sum + t.amount;
+        return sum - t.amount;
+      }, 0);
+
+      if (newTxs.length === 0 && balanceDelta === 0) {
+        // Akun ini tidak terdampak — refresh latar belakang aja.
+        fetchData(period, { silent: true });
+        return;
+      }
+
+      const inPeriod = newTxs.length > 0 && dateInPeriod(created.date, period);
+
+      setData((prev) => {
+        const newBalance = (parseFloat(prev.account.currentBalance) + balanceDelta).toString();
+        const updatedAccount = { ...prev.account, currentBalance: newBalance };
+
+        if (!inPeriod) {
+          return { ...prev, account: updatedAccount };
+        }
+
+        let totalIn = prev.summary.totalIn;
+        let totalOut = prev.summary.totalOut;
+        for (const t of newTxs) {
+          if (t.type === "income" || t.type === "transfer_in") totalIn += t.amount;
+          else totalOut += t.amount;
+        }
+        return {
+          account: updatedAccount,
+          transactions: [...newTxs, ...prev.transactions],
+          summary: {
+            totalIn,
+            totalOut,
+            net: totalIn - totalOut,
+            count: prev.summary.count + newTxs.length,
+          },
+        };
+      });
+      setPage(1);
+
+      // Sync di latar belakang biar ID temp diganti ID asli dari server.
+      fetchData(period, { silent: true });
+    },
+    [account.id, fetchData, period]
+  );
 
   async function handlePromptSubmit(e?: FormEvent) {
     e?.preventDefault();
@@ -262,9 +391,11 @@ export default function AccountDetailClient({ initialData }: Props) {
     }
   }
 
-  // Refresh when other tabs emit data changes — fetch everything since balance may have changed.
+  // Refresh in background when data changes (same-tab or other tabs).
+  // Silent: keep current data visible while refetching to avoid the summary
+  // flashing to "…" on slow storage (Google Sheets).
   useDataEvent(["transactions", "accounts"], () => {
-    fetchData(period);
+    fetchData(period, { silent: true });
   });
 
   useDataEvent(["accounts", "categories"], () => {

@@ -14,10 +14,25 @@ interface Account {
   accountType: { name: string; classification: string };
 }
 
+export interface ManualTransactionCreated {
+  type: "expense" | "income" | "transfer";
+  amount: number;
+  fee: number;
+  date: string;
+  time: string;
+  note: string;
+  category: string;
+  accountId: string;
+  toAccountId: string;
+  transactionId?: string;
+  feeTransactionId?: string;
+  transferId?: string;
+}
+
 interface ManualTransactionFormProps {
   accounts: Account[];
   categories: CategoryOption[];
-  onSuccess: () => void;
+  onSuccess: (created?: ManualTransactionCreated) => void;
   defaultAccountId?: string;
 }
 
@@ -154,13 +169,29 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         return;
       }
       setSuccess(tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.");
+
+      const created: ManualTransactionCreated = {
+        type: tab,
+        amount: parsedAmount,
+        fee: parsedFee,
+        date,
+        time: submitTime,
+        note: note ?? "",
+        category: tab === "transfer" ? "Transfer" : category,
+        accountId,
+        toAccountId: tab === "transfer" ? toAccountId : "",
+        transactionId: data?.transaction?.id,
+        feeTransactionId: data?.feeTransaction?.id,
+        transferId: data?.transferId,
+      };
+
       setAmount("");
       setFee("");
       setNote("");
       setCategory("");
       setTime(currentLocalTime());
       setTimeManuallyEdited(false);
-      onSuccess();
+      onSuccess(created);
       emitDataChanged(["transactions", "budget", "accounts"]);
     } catch {
       setError("Terjadi kesalahan. Coba lagi.");
