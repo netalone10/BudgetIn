@@ -403,10 +403,6 @@ export default function AccountDetailClient({ initialData }: Props) {
   });
 
   useEffect(() => {
-    fetchModalData();
-  }, [fetchModalData]);
-
-  useEffect(() => {
     if (showAddModal) {
       fetchModalData();
       setPromptResult(null);

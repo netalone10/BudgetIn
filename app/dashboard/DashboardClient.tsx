@@ -21,6 +21,7 @@ import {
   MicVocal,
   LayoutGrid,
   Dices,
+  X,
 } from "lucide-react";
 import NetWorthSummaryCard from "@/components/NetWorthSummaryCard";
 import { cn } from "@/lib/utils";
@@ -250,7 +251,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
   const todayStats = useMemo(() => {
@@ -271,8 +271,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }, []);
 
   useDataEvent(["transactions", "budget", "accounts", "categories"], (topic) => {
-    if (topic === "transactions") fetchTransactions(true);
-    if (topic === "budget") fetchBudget(true);
+    if (topic === "transactions") fetchTransactions(true, true);
+    if (topic === "budget") fetchBudget(true, true);
     if (topic === "accounts") fetchAccounts(true);
     if (topic === "categories") fetchCategories();
   });
@@ -296,8 +296,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     }
   }
 
-  async function fetchTransactions(noStore = false) {
-    setTxLoading(true);
+  async function fetchTransactions(noStore = false, silent = false) {
+    if (!silent) setTxLoading(true);
     try {
       const res = await fetch(
         "/api/record?period=bulan+ini",
@@ -315,12 +315,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     } catch {
       // ignore
     } finally {
-      setTxLoading(false);
+      if (!silent) setTxLoading(false);
     }
   }
 
-  async function fetchBudget(noStore = false) {
-    setBudgetLoading(true);
+  async function fetchBudget(noStore = false, silent = false) {
+    if (!silent) setBudgetLoading(true);
     try {
       const res = await fetch("/api/budget", noStore ? { cache: "no-store" } : undefined);
       const data = await res.json();
@@ -328,7 +328,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     } catch {
       // ignore
     } finally {
-      setBudgetLoading(false);
+      if (!silent) setBudgetLoading(false);
     }
   }
 
@@ -369,7 +369,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     e?.preventDefault();
     if (!prompt.trim() || loading) return;
 
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     setLoading(true);
     setResponse(null);
 
@@ -390,16 +389,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
       const data = await res.json();
       setResponse(data);
-
-      if (
-        data.intent === "transaksi" ||
-        data.intent === "transaksi_bulk" ||
-        data.intent === "pemasukan" ||
-        data.intent === "transfer" ||
-        data.intent === "budget_setting"
-      ) {
-        dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
-      }
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
@@ -441,7 +430,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   async function handleSavingsGoalSelect(goalId: string) {
     if (!response || "error" in response || response.intent !== "unknown" || !response.pendingAction) return;
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     setLoading(true);
 
     try {
@@ -473,7 +461,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
       setPrompt("");
-      dismissTimerRef.current = setTimeout(() => setResponse(null), 4000);
     } catch {
       setResponse({ error: "Koneksi gagal. Coba lagi." });
     } finally {
@@ -683,7 +670,15 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
 
             {response && (
-              <div className="rounded-[22px] border border-border/70 bg-background p-3 sm:rounded-[28px] sm:p-4">
+              <div className="relative rounded-[22px] border border-border/70 bg-background p-3 sm:rounded-[28px] sm:p-4">
+                <button
+                  type="button"
+                  onClick={() => setResponse(null)}
+                  aria-label="Tutup pesan"
+                  className="absolute top-2 right-2 z-10 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
                 {"error" in response ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3">
                     <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />

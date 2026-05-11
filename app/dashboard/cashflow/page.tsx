@@ -83,30 +83,35 @@ export default function CashflowPage() {
     });
   }
 
-  const fetchData = useCallback(async (noStore = false) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/cashflow?month=${month}&year=${year}`,
-        noStore ? { cache: "no-store" } : undefined
-      );
-      if (!res.ok) throw new Error("Gagal memuat data");
-      const json = await res.json();
-      setData(json);
-    } catch (err) {
-      setError("Gagal memuat laporan arus kas.");
-    } finally {
-      setLoading(false);
-    }
-  }, [month, year]);
+  const fetchData = useCallback(
+    async (opts?: { noStore?: boolean; silent?: boolean }) => {
+      if (!opts?.silent) {
+        setLoading(true);
+        setError(null);
+      }
+      try {
+        const res = await fetch(
+          `/api/cashflow?month=${month}&year=${year}`,
+          opts?.noStore ? { cache: "no-store" } : undefined
+        );
+        if (!res.ok) throw new Error("Gagal memuat data");
+        const json = await res.json();
+        setData(json);
+      } catch {
+        if (!opts?.silent) setError("Gagal memuat laporan arus kas.");
+      } finally {
+        if (!opts?.silent) setLoading(false);
+      }
+    },
+    [month, year]
+  );
 
   useEffect(() => {
     if (status === "authenticated") fetchData();
   }, [status, fetchData]);
 
   useDataEvent(["transactions", "accounts"], () => {
-    if (status === "authenticated") fetchData(true);
+    if (status === "authenticated") fetchData({ noStore: true, silent: true });
   });
 
   function handlePrevMonth() {
@@ -217,7 +222,7 @@ export default function CashflowPage() {
           {/* Period Info */}
           {data.period && (
             <div className="rounded-lg bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
-              Perioda: {formatDate(data.period.start)} â€” {formatDate(data.period.end)} â€¢
+              Periode: {formatDate(data.period.start)} — {formatDate(data.period.end)} •
               Jatuh Tempo: {formatDate(data.period.dueDate)}
             </div>
           )}
@@ -308,7 +313,7 @@ export default function CashflowPage() {
                         <span className="text-muted-foreground sm:w-16 sm:shrink-0">
                           <span suppressHydrationWarning>{format(new Date(tx.date), "d MMM", { locale: id })}</span>
                         </span>
-                        <span className="break-words">{tx.note || "â€”"}</span>
+                        <span className="break-words">{tx.note || "—"}</span>
                         <span className="text-muted-foreground sm:shrink-0">{tx.category}</span>
                         <span className={cn(
                           "font-semibold tabular-nums sm:shrink-0",

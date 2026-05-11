@@ -623,71 +623,55 @@ export default function AccountsPage() {
 
   const isSheets = !!session?.sheetsId;
 
-  const fetchData = useCallback(async (noStore = false) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const opts = noStore ? { cache: "no-store" as const } : undefined;
-      const [accRes, typeRes] = await Promise.all([
-        fetch("/api/accounts", opts),
-        fetch("/api/account-types", opts),
-      ]);
-      if (!accRes.ok) {
-        const errData = await accRes.json().catch(() => ({}));
-        setError((errData as { error?: string }).error || "Gagal memuat data akun.");
-        setLoading(false);
-        return;
+  const fetchData = useCallback(
+    async (opts?: { noStore?: boolean; silent?: boolean }) => {
+      if (!opts?.silent) {
+        setLoading(true);
+        setError(null);
       }
-      if (!typeRes.ok) {
-        const errData = await typeRes.json().catch(() => ({}));
-        setError((errData as { error?: string }).error || "Gagal memuat tipe akun.");
-        setLoading(false);
-        return;
+      try {
+        const fetchOpts = opts?.noStore ? { cache: "no-store" as const } : undefined;
+        const [accRes, typeRes, recentRes] = await Promise.all([
+          fetch("/api/accounts", fetchOpts),
+          fetch("/api/account-types", fetchOpts),
+          fetch("/api/accounts/recent-transactions?limit=5", fetchOpts),
+        ]);
+        if (!accRes.ok) {
+          const errData = await accRes.json().catch(() => ({}));
+          if (!opts?.silent) setError((errData as { error?: string }).error || "Gagal memuat data akun.");
+          return;
+        }
+        if (!typeRes.ok) {
+          const errData = await typeRes.json().catch(() => ({}));
+          if (!opts?.silent) setError((errData as { error?: string }).error || "Gagal memuat tipe akun.");
+          return;
+        }
+        const accData = await accRes.json();
+        const typeData = await typeRes.json();
+        const recentData = recentRes.ok ? await recentRes.json() : { byAccount: {} };
+        const recentMap: Record<string, RecentTransaction[]> = recentData.byAccount ?? {};
+        const accs: AccountData[] = (accData.accounts ?? []).map((a: AccountData) => ({
+          ...a,
+          recentTransactions: recentMap[a.id] ?? [],
+        }));
+        setSummary(accData.summary ?? null);
+        setAccountTypes(typeData.accountTypes ?? []);
+        setAccounts(accs);
+      } catch {
+        if (!opts?.silent) setError("Gagal memuat data akun.");
+      } finally {
+        if (!opts?.silent) setLoading(false);
       }
-      const accData = await accRes.json();
-      const typeData = await typeRes.json();
-      const accs: AccountData[] = accData.accounts ?? [];
-      setSummary(accData.summary ?? null);
-      setAccountTypes(typeData.accountTypes ?? []);
-      setAccounts(accs);
-      // Defer recent transactions — render main content first
-      setLoading(false);
-
-      // Fetch recent 5 transactions per account (low-priority, non-blocking)
-      const recentPromises = accs.map((a) =>
-        fetch(`/api/accounts/${a.id}/transactions?period=semua&limit=5`)
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null)
-      );
-      const recentResults = await Promise.all(recentPromises);
-      setAccounts((prev) =>
-        prev.map((acc, i) => {
-          const result = recentResults[i];
-          if (!result?.transactions) return acc;
-          return {
-            ...acc,
-            recentTransactions: result.transactions.slice(0, 5).map((t: any) => ({
-              id: t.id,
-              date: t.date,
-              amount: t.amount,
-              note: t.note,
-              type: t.type,
-            })),
-          };
-        })
-      );
-    } catch {
-      setError("Gagal memuat data akun.");
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
     if (status === "authenticated") fetchData();
   }, [status, fetchData]);
 
   useDataEvent(["accounts", "transactions"], () => {
-    if (status === "authenticated") fetchData(true);
+    if (status === "authenticated") fetchData({ noStore: true, silent: true });
   });
 
   async function handleDelete(account: AccountData) {
