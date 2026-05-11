@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EditModal } from "@/components/TransactionCard";
@@ -109,11 +110,14 @@ export default function RecentTransactionsCard({
       title="Transaksi Terakhir"
       dense
       action={
-        transactions.length > limit ? (
-          <span className="text-[12px] font-semibold text-primary">
-            {transactions.length} total
-          </span>
-        ) : undefined
+        <Link
+          href="/dashboard/transactions"
+          className="text-[12px] font-semibold text-primary hover:underline"
+        >
+          {transactions.length > limit
+            ? `${transactions.length} total →`
+            : "Lihat semua →"}
+        </Link>
       }
     >
       {recent.length === 0 ? (

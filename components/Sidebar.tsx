@@ -30,6 +30,7 @@ import {
   Layers3,
   ArchiveRestore,
   UserCog,
+  Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -193,6 +194,7 @@ export default function Sidebar() {
 
   const primaryItems: NavItem[] = [
     { name: "Overview", href: "/dashboard", icon: LayoutGrid, badge: "Home" },
+    { name: "Transaksi", href: "/dashboard/transactions", icon: Receipt },
     { name: "Budget", href: "/dashboard/budget", icon: Banknote },
     { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
     { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
