@@ -11,8 +11,9 @@ import GoogleSetupRecovery from "./GoogleSetupRecovery";
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.userId) redirect("/");
+  const userId = session.userId;
 
-  const setupState = await getGoogleSetupState(session.userId);
+  const setupState = await getGoogleSetupState(userId);
   if (setupState === "reconnect") return <GoogleSetupRecovery mode="reconnect" />;
   if (setupState === "migrate") return <GoogleSetupRecovery mode="migrate" />;
 
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
           </div>
 
           <Suspense fallback={<DashboardSuspenseFallback />}>
-            <DashboardData />
+            <DashboardData userId={userId} />
           </Suspense>
         </div>
       </div>
@@ -55,8 +56,8 @@ export default async function DashboardPage() {
   );
 }
 
-async function DashboardData() {
-  const initialData = await fetchDashboardData();
+async function DashboardData({ userId }: { userId: string }) {
+  const initialData = await fetchDashboardData(userId);
   return <DashboardClient initialData={initialData} />;
 }
 

@@ -125,19 +125,54 @@ export async function fetchBudgetMonthData(
       where: { id: userId },
       select: { sheetsId: true },
     });
+    const sheetsId = user?.sheetsId ?? null;
 
-    const [txThisMonth, txPreviousMonth, budgets, previousMonthBudgets] = await Promise.all([
-      fetchRawTransactions(userId, user?.sheetsId ?? null, month),
-      fetchRawTransactions(userId, user?.sheetsId ?? null, previousMonth),
-      findBudgetsWithCategory({ userId, month }, { category: { name: "asc" } }),
-      findBudgetsWithCategory({ userId, month: previousMonth }),
-    ]);
+    let txThisMonth: RawTxn[];
+    let txPreviousMonth: RawTxn[];
+    let budgets: BudgetWithCategory[];
+    let previousMonthBudgets: BudgetWithCategory[];
+
+    if (sheetsId) {
+      // Single Sheets read — derive both month slices from the same dataset
+      // instead of firing 2 parallel reads that race the cache.
+      const accessToken = await getValidToken(userId);
+      const [allTransactions, b1, b2] = await Promise.all([
+        getTransactions(sheetsId, accessToken),
+        findBudgetsWithCategory({ userId, month }, { category: { name: "asc" } }),
+        findBudgetsWithCategory({ userId, month: previousMonth }),
+      ]);
+      txThisMonth = allTransactions
+        .filter((t) => t.date.startsWith(month))
+        .map(toRawTxn);
+      txPreviousMonth = allTransactions
+        .filter((t) => t.date.startsWith(previousMonth))
+        .map(toRawTxn);
+      budgets = b1;
+      previousMonthBudgets = b2;
+    } else {
+      [txThisMonth, txPreviousMonth, budgets, previousMonthBudgets] = await Promise.all([
+        fetchRawTransactions(userId, null, month),
+        fetchRawTransactions(userId, null, previousMonth),
+        findBudgetsWithCategory({ userId, month }, { category: { name: "asc" } }),
+        findBudgetsWithCategory({ userId, month: previousMonth }),
+      ]);
+    }
 
     return computeBudgetData(txThisMonth, txPreviousMonth, budgets, previousMonthBudgets, month);
   } catch (error) {
     console.error(`Failed to fetch budget month data (${month}):`, error);
     return emptyBudgetMonthData(month);
   }
+}
+
+function toRawTxn(t: Awaited<ReturnType<typeof getTransactions>>[number]): RawTxn {
+  return {
+    amount: t.amount,
+    category: t.category,
+    type: t.type,
+    fromAccountId: t.fromAccountId ?? null,
+    toAccountId: t.toAccountId ?? null,
+  };
 }
 
 export async function fetchBudgetCategories(userId: string): Promise<BudgetCategoryOption[]> {

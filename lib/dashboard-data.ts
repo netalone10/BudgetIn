@@ -130,11 +130,20 @@ interface Category {
 /**
  * Fetch all dashboard data server-side
  * This is called from the Server Component page.tsx
+ *
+ * Pass `userId` to avoid re-running `getServerSession` when the caller
+ * (page.tsx) already has a session in hand.
  */
-export async function fetchDashboardData(): Promise<DashboardInitialData> {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.userId) {
+export async function fetchDashboardData(
+  userId?: string
+): Promise<DashboardInitialData> {
+  let resolvedUserId = userId;
+  if (!resolvedUserId) {
+    const session = await getServerSession(authOptions);
+    resolvedUserId = session?.userId;
+  }
+
+  if (!resolvedUserId) {
     return {
       transactions: [],
       budgetData: null,
@@ -145,7 +154,6 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
     };
   }
 
-  const userId = session.userId;
   const now = toZonedTime(new Date(), TIMEZONE);
   const currentMonth = format(now, "yyyy-MM");
   const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -153,28 +161,73 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
 
   // Get user info first (needed to know sheetsId for downstream fetches)
   const user = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id: resolvedUserId },
     select: { sheetsId: true, name: true, email: true, image: true },
   });
   const sheetsId = user?.sheetsId ?? null;
 
-  // Fetch raw transactions ONCE for both list display and budget calculation.
-  // Run all independent fetches in parallel.
-  const [
-    txThisMonthRaw,
-    txLastMonthRaw,
-    accounts,
-    categories,
-    budgets,
-    lastMonthBudgets,
-  ] = await Promise.all([
-    fetchRawTransactions(userId, sheetsId, "bulan ini"),
-    fetchRawTransactions(userId, sheetsId, "bulan lalu"),
-    fetchAccounts(userId, sheetsId),
-    fetchCategories(userId),
-    findBudgetsWithCategory({ userId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
-    findBudgetsWithCategory({ userId, month: lastMonth }).catch(() => []),
-  ]);
+  let txThisMonthRaw: RawTxn[];
+  let txLastMonthRaw: RawTxn[];
+  let accounts: Account[];
+  let categories: Category[];
+  let budgets: BudgetWithCategory[];
+  let lastMonthBudgets: BudgetWithCategory[];
+
+  if (sheetsId) {
+    // For Sheets users, fetch the full ledger ONCE and derive both month slices
+    // plus account balances from the same dataset. Previously this triggered
+    // 3 separate Sheets API roundtrips that hammered the cache race.
+    try {
+      const accessToken = await getValidToken(resolvedUserId);
+
+      // Fetch transactions + categories + budgets in parallel.
+      // Transactions are needed before computing account balances, so accounts
+      // come in a second wave that reuses the preloaded transactions.
+      const [allTransactions, cats, b1, b2] = await Promise.all([
+        getTransactions(sheetsId, accessToken),
+        fetchCategories(resolvedUserId),
+        findBudgetsWithCategory({ userId: resolvedUserId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
+        findBudgetsWithCategory({ userId: resolvedUserId, month: lastMonth }).catch(() => []),
+      ]);
+
+      const sheetsAccounts = await getAccountsWithBalanceFromLedger(
+        sheetsId,
+        accessToken,
+        allTransactions
+      );
+
+      txThisMonthRaw = filterAndMapSheetsTxns(allTransactions, currentMonth);
+      txLastMonthRaw = filterAndMapSheetsTxns(allTransactions, lastMonth);
+      accounts = sheetsAccounts;
+      categories = cats;
+      budgets = b1;
+      lastMonthBudgets = b2;
+    } catch (error) {
+      console.error("Failed to load Sheets dashboard data:", error);
+      txThisMonthRaw = [];
+      txLastMonthRaw = [];
+      accounts = [];
+      categories = [];
+      budgets = [];
+      lastMonthBudgets = [];
+    }
+  } else {
+    [
+      txThisMonthRaw,
+      txLastMonthRaw,
+      accounts,
+      categories,
+      budgets,
+      lastMonthBudgets,
+    ] = await Promise.all([
+      fetchRawTransactions(resolvedUserId, null, "bulan ini"),
+      fetchRawTransactions(resolvedUserId, null, lastMonth),
+      fetchAccounts(resolvedUserId, null),
+      fetchCategories(resolvedUserId),
+      findBudgetsWithCategory({ userId: resolvedUserId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
+      findBudgetsWithCategory({ userId: resolvedUserId, month: lastMonth }).catch(() => []),
+    ]);
+  }
 
   const transactions = mapTxnsForDisplay(txThisMonthRaw);
   const budgetData = computeBudgetData(
@@ -185,7 +238,6 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
     currentMonth
   );
 
-  // Build savings category names set
   const savingsCategoryNames = categories
     .filter((c) => c.isSavings)
     .map((c) => c.name.toLowerCase());
@@ -202,6 +254,51 @@ export async function fetchDashboardData(): Promise<DashboardInitialData> {
       image: user?.image ?? null,
     },
   };
+}
+
+function filterAndMapSheetsTxns(
+  all: Awaited<ReturnType<typeof getTransactions>>,
+  yearMonth: string
+): RawTxn[] {
+  return all
+    .filter((t) => t.date.startsWith(yearMonth))
+    .map((t) => ({
+      id: t.id,
+      date: t.date,
+      time: normalizeTransactionTime(t.time),
+      amount: t.amount,
+      category: t.category,
+      note: t.note,
+      type: (t.type === "income" ? "income" : "expense") as RawTxn["type"],
+      accountId: t.fromAccountId ?? t.toAccountId ?? null,
+      fromAccountId: t.fromAccountId ?? null,
+      fromAccountName: t.fromAccountName ?? null,
+      toAccountId: t.toAccountId ?? null,
+      toAccountName: t.toAccountName ?? null,
+      created_at: t.created_at ?? new Date().toISOString(),
+    }));
+}
+
+async function getAccountsWithBalanceFromLedger(
+  sheetsId: string,
+  accessToken: string,
+  preloadedTransactions?: Awaited<ReturnType<typeof getTransactions>>
+): Promise<Account[]> {
+  try {
+    const sheetsAccounts = await getAccountsWithBalance(sheetsId, accessToken, { preloadedTransactions });
+    return sheetsAccounts.map((a) => ({
+      id: a.id,
+      name: a.name,
+      currency: a.currency,
+      accountType: { name: a.type, classification: a.classification },
+      currentBalance: a.balance.toString(),
+      color: a.color,
+      note: a.note,
+    }));
+  } catch (error) {
+    console.error("Failed to fetch Sheets accounts:", error);
+    return [];
+  }
 }
 
 // Common shape after normalization (works for both Sheets and DB sources).
@@ -224,7 +321,7 @@ interface RawTxn {
 async function fetchRawTransactions(
   userId: string,
   sheetsId: string | null,
-  period: "bulan ini" | "bulan lalu"
+  period: string
 ): Promise<RawTxn[]> {
   try {
     if (sheetsId) {
