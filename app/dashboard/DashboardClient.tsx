@@ -3,10 +3,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
-import TransactionCard, {
-  Transaction,
-  type TransactionCategory,
-} from "@/components/TransactionCard";
+import type { Transaction, TransactionCategory } from "@/components/TransactionCard";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -34,6 +31,7 @@ import MiniCashflowCard from "@/components/dashboard/MiniCashflowCard";
 import BudgetMiniListCard from "@/components/dashboard/BudgetMiniListCard";
 import SavingsGoalMiniCard from "@/components/dashboard/SavingsGoalMiniCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
+import RecentTransactionsCard from "@/components/dashboard/RecentTransactionsCard";
 
 const ManualTransactionForm = dynamic(
   () => import("@/components/ManualTransactionForm"),
@@ -175,15 +173,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     { id: string; name: string; currency: string; accountType: { name: string; classification: string } }[]
   >(initialData.accounts);
   const [accountVersion, setAccountVersion] = useState(0);
-  const [pageSize, setPageSize] = useState<10 | 20 | 50>(10);
-  const [page, setPage] = useState(1);
   const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
   const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
-
-  const visibleTransactions = useMemo(
-    () => transactions.slice((page - 1) * pageSize, page * pageSize),
-    [transactions, page, pageSize]
-  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -358,7 +349,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
-        setPage(1);
         fetchBudget();
         fetchAccounts();
         emitDataChanged(["transactions", "budget", "accounts"]);
@@ -366,7 +356,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
       if (data.intent === "transaksi_bulk" && data.transactions?.length) {
         setTransactions((prev) => [...data.transactions, ...prev]);
-        setPage(1);
         fetchBudget();
         fetchAccounts();
         emitDataChanged(["transactions", "budget", "accounts"]);
@@ -421,7 +410,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       setResponse(data);
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
         setTransactions((prev) => [data.transaction, ...prev]);
-        setPage(1);
         fetchBudget();
         fetchAccounts();
         emitDataChanged(["transactions", "budget", "accounts"]);
@@ -452,7 +440,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }, []);
 
   const dataLoading = txLoading || budgetLoading;
-  const totalPages = Math.max(1, Math.ceil(transactions.length / pageSize));
 
   function randomizePromptExamples() {
     const shuffled = [...PROMPT_EXAMPLES]
@@ -785,118 +772,13 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         )}
       </SectionCard>
 
-      <SectionCard
-        eyebrow="Ledger"
-        title="Riwayat transaksi"
-        description="Riwayat lengkap dengan table yang lebih bersih dan kontrol paging yang lebih mudah dipindai."
-      >
-        {txLoading ? (
-          <div className="rounded-[28px] border border-border/70 bg-background overflow-hidden">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="flex animate-pulse items-center gap-4 border-b border-border px-5 py-4 last:border-0"
-              >
-                <div className="h-4 w-12 rounded-md bg-muted" />
-                <div className="h-4 flex-1 rounded-md bg-muted" />
-                <div className="h-6 w-20 rounded-full bg-muted" />
-                <div className="h-4 w-20 rounded-md bg-muted" />
-              </div>
-            ))}
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="rounded-[28px] border border-border/70 bg-background px-5 py-12 text-center text-sm text-muted-foreground">
-            Belum ada transaksi bulan ini.
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-[24px] border border-border/70 bg-background sm:rounded-[28px]">
-            <div className="sm:overflow-x-auto sm:[scrollbar-width:thin]">
-              <table className="w-full sm:min-w-[760px] sm:table-fixed">
-                <thead className="hidden sm:table-header-group">
-                  <tr className="border-b border-border bg-muted/35">
-                    <th className="label-mono w-[88px] px-5 py-3 text-left text-muted-foreground">
-                      Tgl
-                    </th>
-                    <th className="label-mono w-[28%] py-3 pr-4 text-left text-muted-foreground">
-                      Deskripsi
-                    </th>
-                    <th className="label-mono w-[18%] py-3 pr-4 text-left text-muted-foreground">
-                      Kategori
-                    </th>
-                    <th className="label-mono hidden w-[18%] py-3 pr-4 text-left text-muted-foreground sm:table-cell">
-                      Akun
-                    </th>
-                    <th className="label-mono w-[156px] py-3 pr-4 text-right text-muted-foreground">
-                      Jumlah
-                    </th>
-                    <th className="w-[72px] py-3 pr-4" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleTransactions.map((t) => (
-                    <TransactionCard
-                      key={t.id}
-                      transaction={t}
-                      categories={transactionCategories}
-                      accounts={accounts}
-                      onDelete={handleDeleteTx}
-                      onUpdate={handleUpdateTx}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex flex-col gap-4 border-t border-border bg-muted/20 p-4 md:flex-row md:items-center md:justify-between md:px-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[13px] font-medium text-muted-foreground">
-                  Tampilkan
-                </span>
-                {([10, 20, 50] as const).map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => {
-                      setPageSize(n);
-                      setPage(1);
-                    }}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-[13px] font-medium transition-colors",
-                      pageSize === n
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between gap-3 md:justify-end">
-                <span className="text-[13px] font-medium text-muted-foreground">
-                  {Math.min((page - 1) * pageSize + 1, transactions.length)}-
-                  {Math.min(page * pageSize, transactions.length)} dari {transactions.length}
-                </span>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="rounded-full border border-border bg-background px-3 py-1 text-[15px] transition-colors hover:bg-muted disabled:opacity-40"
-                  >
-                    {"<"}
-                  </button>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages}
-                    className="rounded-full border border-border bg-background px-3 py-1 text-[15px] transition-colors hover:bg-muted disabled:opacity-40"
-                  >
-                    {">"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </SectionCard>
+      <RecentTransactionsCard
+        transactions={transactions}
+        categories={transactionCategories}
+        accounts={accounts}
+        onDelete={handleDeleteTx}
+        onUpdate={handleUpdateTx}
+      />
         </div>
 
         <div className="flex flex-col gap-4">

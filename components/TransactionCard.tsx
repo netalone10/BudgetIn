@@ -68,7 +68,7 @@ interface EditModalProps {
   onSaved: (updates: Partial<Transaction>) => void;
 }
 
-function EditModal({ transaction, categories, accounts, onClose, onSaved }: EditModalProps) {
+export function EditModal({ transaction, categories, accounts, onClose, onSaved }: EditModalProps) {
   const [editDate, setEditDate] = useState(transaction.date);
   const [editTime, setEditTime] = useState(() => formatTime(transaction.time));
   const [editNote, setEditNote] = useState(transaction.note);
