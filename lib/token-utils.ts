@@ -12,11 +12,11 @@ export function getTokenExpiry(): Date {
 
 /**
  * Rate limit resend: true kalau boleh kirim ulang.
- * Blokir jika token dibuat < 5 menit lalu
- * (verificationTokenExpiry > now + 23j55m)
+ * Blokir jika token dibuat < 1 menit lalu
+ * (verificationTokenExpiry > now + 23j59m)
  */
 export function canResendEmail(tokenExpiry: Date | null): boolean {
   if (!tokenExpiry) return true;
-  const fiveMinBuffer = 23 * 60 * 60 * 1000 + 55 * 60 * 1000; // 23h55m
-  return tokenExpiry.getTime() <= Date.now() + fiveMinBuffer;
+  const oneMinBuffer = 23 * 60 * 60 * 1000 + 59 * 60 * 1000; // 23h59m
+  return tokenExpiry.getTime() <= Date.now() + oneMinBuffer;
 }

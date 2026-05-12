@@ -34,10 +34,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "already_verified" });
     }
 
-    // Rate limit: blokir kalau token dibuat < 5 menit lalu
+    // Rate limit: blokir kalau token dibuat < 1 menit lalu
     if (!canResendEmail(user.verificationTokenExpiry)) {
       return NextResponse.json(
-        { error: "Tunggu 5 menit sebelum meminta kirim ulang." },
+        { error: "Tunggu 1 menit sebelum meminta kirim ulang." },
         { status: 429 }
       );
     }
