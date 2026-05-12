@@ -5,6 +5,7 @@ import { seedDefaultCategories } from "@/utils/seed-categories";
 import { generateVerificationToken, getTokenExpiry } from "@/lib/token-utils";
 import { sendVerificationEmail } from "@/lib/email";
 import { verifyTurnstile } from "@/lib/turnstile";
+import { evaluatePassword } from "@/lib/password-strength";
 
 // POST /api/auth/register — daftar dengan email + password
 export async function POST(req: NextRequest) {
@@ -27,9 +28,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (password.length < 8) {
+    const strength = evaluatePassword(password);
+    if (!strength.acceptable) {
+      const missing = strength.checks
+        .filter((c) => c.required && !c.passed)
+        .map((c) => c.label.toLowerCase())
+        .join(", ");
       return NextResponse.json(
-        { error: "Password minimal 8 karakter." },
+        { error: `Password belum memenuhi syarat: ${missing}.` },
         { status: 400 }
       );
     }

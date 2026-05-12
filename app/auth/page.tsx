@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense, useRef } from "react";
+import { useState, useEffect, Suspense, useRef, useMemo } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Eye, EyeOff, MailCheck, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader2, Eye, EyeOff, MailCheck, AlertCircle, CheckCircle2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { evaluatePassword } from "@/lib/password-strength";
 import { DEMO_ACCOUNT } from "@/lib/demo-account";
 import ThemeToggle from "@/components/ThemeToggle";
 import Link from "next/link";
@@ -40,6 +41,9 @@ function AuthForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Password strength (cuma relevan untuk register)
+  const passwordStrength = useMemo(() => evaluatePassword(password), [password]);
 
   // Turnstile CAPTCHA
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -495,6 +499,9 @@ function AuthForm() {
                 {showPass ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
+            {tab === "register" && password.length > 0 && (
+              <PasswordStrengthMeter strength={passwordStrength} />
+            )}
           </div>
 
           {/* Cloudflare Turnstile CAPTCHA */}
@@ -514,7 +521,12 @@ function AuthForm() {
           <Button
             type="submit"
             className="w-full"
-            disabled={loading || googleLoading || (captchaEnabled && !turnstileToken)}
+            disabled={
+              loading ||
+              googleLoading ||
+              (captchaEnabled && !turnstileToken) ||
+              (tab === "register" && !passwordStrength.acceptable)
+            }
           >
             {loading ? (
               <Loader2 className="size-4 animate-spin mr-2" />
@@ -530,6 +542,73 @@ function AuthForm() {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Password Strength Meter ──────────────────────────────────────────────────
+function PasswordStrengthMeter({
+  strength,
+}: {
+  strength: ReturnType<typeof evaluatePassword>;
+}) {
+  const barColor =
+    strength.label === "Lemah"
+      ? "bg-destructive"
+      : strength.label === "Sedang"
+      ? "bg-amber-500"
+      : "bg-green-500";
+  const labelColor =
+    strength.label === "Lemah"
+      ? "text-destructive"
+      : strength.label === "Sedang"
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-green-600 dark:text-green-400";
+  const segmentsFilled = Math.max(1, Math.ceil((strength.score / 4) * 4));
+
+  return (
+    <div className="space-y-1.5 pt-1">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-1 gap-1">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors",
+                i < segmentsFilled ? barColor : "bg-muted"
+              )}
+            />
+          ))}
+        </div>
+        <span className={cn("text-[11px] font-medium", labelColor)}>
+          {strength.label}
+        </span>
+      </div>
+      <ul className="space-y-0.5">
+        {strength.checks.map((c) => (
+          <li
+            key={c.id}
+            className={cn(
+              "flex items-center gap-1.5 text-[11px]",
+              c.passed
+                ? "text-muted-foreground"
+                : c.required
+                ? "text-destructive/80"
+                : "text-muted-foreground/60"
+            )}
+          >
+            {c.passed ? (
+              <Check className="size-3 shrink-0 text-green-600 dark:text-green-400" />
+            ) : (
+              <X className="size-3 shrink-0" />
+            )}
+            <span>
+              {c.label}
+              {!c.required && <span className="opacity-60"> (opsional)</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
