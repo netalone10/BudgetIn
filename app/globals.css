@@ -241,7 +241,14 @@
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Print styles untuk halaman Report (/dashboard/report)
- * ──────────────────────────────────────────────────────────────────────── */
+ *
+ * Strategi: saat <html> punya class `printing-report` (di-set oleh
+ * ReportClient via useEffect), kita sembunyikan SEMUA elemen di body
+ * lalu cuma tampilkan #report-content sebagai konten halaman cetak.
+ * Pendekatan visibility/positioning ini lebih aman daripada nge-list
+ * setiap chrome class satu per satu, dan otomatis bersih kalau layout
+ * dashboard berubah.
+ * ──────────────────────────────────────────────────────────────────── */
 @media print {
   /* Force light theme di print supaya hemat tinta dan kontras tinggi */
   :root,
@@ -261,35 +268,39 @@
     color: #000000 !important;
   }
 
-  /* Sembunyikan chrome aplikasi (sidebar, header, banner, dll.) saat print */
-  aside,
-  nav,
-  header,
-  footer,
-  [data-print-hide] {
-    display: none !important;
+  /* Halaman Report: sembunyikan seluruh chrome dengan visibility,
+   * lalu absolute-position konten ke kiri-atas halaman. */
+  html.printing-report body * {
+    visibility: hidden;
   }
-
-  /* Hilangkan padding/inset wrapper dashboard supaya konten print mulai dari kiri */
-  .pt-14,
-  .md\:pt-0,
-  .md\:p-8,
-  .md\:px-8 {
+  html.printing-report #report-content,
+  html.printing-report #report-content * {
+    visibility: visible;
+  }
+  html.printing-report #report-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
     padding: 0 !important;
-  }
-
-  main,
-  .max-w-6xl,
-  .max-w-5xl {
-    max-width: 100% !important;
     margin: 0 !important;
+    background: #ffffff !important;
   }
 
-  /* Section card: hilangkan shadow tebal & batas berat saat print */
+  /* Section card: hilangkan shadow tebal saat print, tapi JANGAN
+   * pakai page-break-inside: avoid pada wrapper besar — itu yang bikin
+   * whitespace gede. Avoid hanya di tabel & kotak NET. */
   .print-section {
     box-shadow: none !important;
+  }
+  .print-section table,
+  .print-section .rounded-2xl.border-2 {
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+  /* Header tabel ikut di setiap halaman cetak kalau ke-split */
+  .print-section thead {
+    display: table-header-group;
   }
 
   /* Halaman A4 dengan margin 12mm */
@@ -299,7 +310,7 @@
   }
 
   /* Yearly matrix terlalu lebar untuk portrait — landscape via container class */
-  .print-landscape {
+  html.print-landscape {
     page: landscape;
   }
   @page landscape {

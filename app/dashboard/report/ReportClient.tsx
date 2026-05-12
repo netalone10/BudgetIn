@@ -26,12 +26,19 @@ export default function ReportClient() {
   const [variant, setVariant] = useState<Variant>("monthly");
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
-  // Tandai <html> dengan class varian aktif supaya `@page landscape` di
-  // globals.css ikut aktif khusus saat varian Tahunan.
+  // Tandai <html> sebagai halaman report yang sedang aktif. Saat print,
+  // CSS akan menyembunyikan seluruh chrome aplikasi (sidebar, mobile
+  // topbar, banner) dan hanya menampilkan #report-content.
+  // Kelas `print-landscape` ikut diatur agar @page landscape aktif untuk
+  // varian Tahunan.
   useEffect(() => {
     const root = document.documentElement;
+    root.classList.add("printing-report");
     root.classList.toggle("print-landscape", variant === "yearly");
-    return () => root.classList.remove("print-landscape");
+    return () => {
+      root.classList.remove("printing-report");
+      root.classList.remove("print-landscape");
+    };
   }, [variant]);
 
   const handlePrint = () => {
