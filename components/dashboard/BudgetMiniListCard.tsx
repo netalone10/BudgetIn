@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { SectionCard } from "@/components/dashboard/SectionCard";
@@ -16,6 +16,15 @@ type BudgetItem = {
   rollover: number;
 };
 
+export type CategoryBreakdownEntry = { category: string; amount: number };
+
+export interface CategoryBreakdown {
+  expense: CategoryBreakdownEntry[];
+  income: CategoryBreakdownEntry[];
+  totalExpense: number;
+  totalIncome: number;
+}
+
 export interface BudgetMiniListCardProps {
   budgets: BudgetItem[] | undefined;
   loading?: boolean;
@@ -23,6 +32,8 @@ export interface BudgetMiniListCardProps {
   month?: string;
   /** Max rows to show. Default 5. */
   limit?: number;
+  /** Fallback breakdown shown when there is no budget but there are transactions. */
+  categoryBreakdown?: CategoryBreakdown;
 }
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -83,6 +94,7 @@ export default function BudgetMiniListCard({
   budgets,
   loading = false,
   limit = 5,
+  categoryBreakdown,
 }: BudgetMiniListCardProps) {
   const sorted = useMemo(() => {
     if (!budgets) return [];
@@ -96,10 +108,16 @@ export default function BudgetMiniListCard({
       .slice(0, limit);
   }, [budgets, limit]);
 
+  const hasBreakdown =
+    !!categoryBreakdown &&
+    (categoryBreakdown.expense.length > 0 || categoryBreakdown.income.length > 0);
+
+  const showBreakdownFallback = sorted.length === 0 && hasBreakdown;
+
   return (
     <SectionCard
       eyebrow="Budget"
-      title="Anggaran bulan ini"
+      title={showBreakdownFallback ? "Rincian bulan ini" : "Anggaran bulan ini"}
       dense
       action={
         <Link
@@ -116,6 +134,8 @@ export default function BudgetMiniListCard({
             <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
+      ) : showBreakdownFallback ? (
+        <NoBudgetBreakdown breakdown={categoryBreakdown!} limit={limit} />
       ) : sorted.length === 0 ? (
         <EmptyBudget />
       ) : (
@@ -170,6 +190,103 @@ function EmptyBudget() {
       >
         <Plus className="size-3.5" />
         Buat budget pertama
+      </Link>
+    </div>
+  );
+}
+
+function NoBudgetBreakdown({
+  breakdown,
+  limit,
+}: {
+  breakdown: CategoryBreakdown;
+  limit: number;
+}) {
+  const initialTab: "expense" | "income" =
+    breakdown.expense.length > 0 ? "expense" : "income";
+  const [tab, setTab] = useState<"expense" | "income">(initialTab);
+
+  const entries = tab === "expense" ? breakdown.expense : breakdown.income;
+  const total = tab === "expense" ? breakdown.totalExpense : breakdown.totalIncome;
+  const rows = entries.slice(0, limit);
+  const expenseDisabled = breakdown.expense.length === 0;
+  const incomeDisabled = breakdown.income.length === 0;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11.5px] text-muted-foreground">
+          Belum ada budget — ini rincian dari transaksi
+        </p>
+        <div className="inline-flex rounded-full border border-border/70 bg-background/60 p-0.5 text-[11px] font-semibold">
+          <button
+            type="button"
+            onClick={() => setTab("expense")}
+            disabled={expenseDisabled}
+            className={cn(
+              "rounded-full px-2.5 py-1 transition-colors",
+              tab === "expense"
+                ? "bg-primary/12 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+              expenseDisabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground"
+            )}
+          >
+            Pengeluaran
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("income")}
+            disabled={incomeDisabled}
+            className={cn(
+              "rounded-full px-2.5 py-1 transition-colors",
+              tab === "income"
+                ? "bg-primary/12 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+              incomeDisabled && "cursor-not-allowed opacity-40 hover:text-muted-foreground"
+            )}
+          >
+            Pemasukan
+          </button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border/70 bg-background/60 p-4 text-center text-[12px] text-muted-foreground">
+          {tab === "expense"
+            ? "Belum ada pengeluaran bulan ini."
+            : "Belum ada pemasukan bulan ini."}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {rows.map((row) => {
+            const pct = total > 0 ? (row.amount / total) * 100 : 0;
+            return (
+              <div key={`${tab}-${row.category}`} className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[13px] font-semibold text-foreground">
+                    <span className="mr-1">{emojiForCategory(row.category)}</span>
+                    {row.category}
+                  </span>
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {Math.round(pct)}%
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatCompactIDR(row.amount)}
+                </p>
+                <BudgetProgressBar fillPct={pct} isOver={false} isNear={false} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Link
+        href="/dashboard/budget"
+        className="inline-flex items-center justify-center gap-1 text-[12px] font-semibold text-primary hover:underline"
+      >
+        <Plus className="size-3.5" />
+        Atur budget biar lebih terkontrol
       </Link>
     </div>
   );

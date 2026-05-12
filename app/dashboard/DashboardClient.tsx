@@ -204,6 +204,28 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     return { income, expense, surplus, savingsRate };
   }, [transactions, currentMonth]);
 
+  const categoryBreakdown = useMemo(() => {
+    const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
+    const expenseByCat = new Map<string, number>();
+    const incomeByCat = new Map<string, number>();
+    for (const t of inMonth) {
+      if (isExpenseTransaction(t)) {
+        expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
+      } else if (t.type === "income") {
+        incomeByCat.set(t.category, (incomeByCat.get(t.category) ?? 0) + t.amount);
+      }
+    }
+    const toSorted = (m: Map<string, number>) =>
+      Array.from(m, ([category, amount]) => ({ category, amount }))
+        .sort((a, b) => b.amount - a.amount);
+    return {
+      expense: toSorted(expenseByCat),
+      income: toSorted(incomeByCat),
+      totalExpense: monthlyStats.expense,
+      totalIncome: monthlyStats.income,
+    };
+  }, [transactions, currentMonth, monthlyStats.expense, monthlyStats.income]);
+
   const incomeDelta = monthlyStats.income - initialData.lastMonthTotals.income;
   const expenseDelta = monthlyStats.expense - initialData.lastMonthTotals.expense;
 
@@ -793,6 +815,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           <BudgetMiniListCard
             budgets={budgetData?.budgets}
             loading={budgetLoading}
+            categoryBreakdown={categoryBreakdown}
           />
           <SavingsGoalMiniCard goal={initialData.activeSavingsGoal} />
         </div>
