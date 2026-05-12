@@ -137,10 +137,6 @@ export default function ReportClient() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-300 print:hidden">
-        <strong>Mode Mockup.</strong> Halaman ini menampilkan contoh laporan dengan data sampel. Belum tersambung ke transaksi real.
-      </div>
-
       <div id="report-content" className="bg-background p-2 rounded-3xl print:p-0 print:bg-white">
         {/* Print-only header — muncul di atas halaman cetak / PDF */}
         <div className="hidden print:block mb-4 pb-3 border-b border-black/30">

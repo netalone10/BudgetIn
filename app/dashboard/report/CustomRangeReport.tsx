@@ -1,54 +1,156 @@
 "use client";
 
-import { ArrowDownCircle, ArrowUpCircle, CalendarRange, Info, Wallet } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { customRangeMockReport, formatRupiah, sumRows } from "./mock-data";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  CalendarRange,
+  Info,
+  Wallet,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  CategoryTable,
+  KpiCard,
+  NetBanner,
+  ReportEmptyState,
+  ReportError,
+  ReportLoadingSkeleton,
+  formatRupiah,
+  sumRows,
+} from "./parts";
+import type { CategoryRow } from "@/lib/report-data";
+
+type CustomPayload = {
+  periodLabel: string;
+  ownerName: string;
+  generatedAt: string;
+  income: CategoryRow[];
+  expense: CategoryRow[];
+  startDate: string;
+  endDate: string;
+  daysInRange: number;
+};
+
+function defaultRange(): { from: string; to: string } {
+  const today = new Date();
+  const past = new Date(today);
+  past.setDate(today.getDate() - 29);
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return { from: fmt(past), to: fmt(today) };
+}
 
 export default function CustomRangeReport() {
-  const data = customRangeMockReport;
+  const initial = useMemo(defaultRange, []);
+  const [from, setFrom] = useState(initial.from);
+  const [to, setTo] = useState(initial.to);
+  const [appliedFrom, setAppliedFrom] = useState(initial.from);
+  const [appliedTo, setAppliedTo] = useState(initial.to);
+
+  const [data, setData] = useState<CustomPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useMemo(
+    () => async (f: string, t: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/report?mode=custom&from=${f}&to=${t}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Gagal memuat laporan.");
+        setData(json);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    fetchData(appliedFrom, appliedTo);
+  }, [appliedFrom, appliedTo, fetchData]);
+
+  const handleApply = () => {
+    if (!from || !to || from > to) return;
+    setAppliedFrom(from);
+    setAppliedTo(to);
+  };
+
+  const rangeInvalid = !from || !to || from > to;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm md:flex-row md:items-end md:justify-between print:hidden">
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Mulai</span>
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              max={to}
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm tabular-nums"
+            />
+          </label>
+          <label className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Selesai</span>
+            <input
+              type="date"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+              min={from}
+              className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm tabular-nums"
+            />
+          </label>
+          <Button size="sm" onClick={handleApply} disabled={rangeInvalid}>
+            Terapkan
+          </Button>
+        </div>
+        <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+          Custom range
+        </span>
+      </div>
+
+      {loading && <ReportLoadingSkeleton />}
+      {error && !loading && (
+        <ReportError message={error} onRetry={() => fetchData(appliedFrom, appliedTo)} />
+      )}
+
+      {!loading && !error && data && <CustomRangeContent data={data} />}
+    </div>
+  );
+}
+
+function CustomRangeContent({ data }: { data: CustomPayload }) {
   const totalIncome = sumRows(data.income);
   const totalExpense = sumRows(data.expense);
   const net = totalIncome - totalExpense;
   const savingsRate = totalIncome > 0 ? (net / totalIncome) * 100 : 0;
   const isPositive = net >= 0;
+  const hasAnyData = totalIncome > 0 || totalExpense > 0;
+
+  if (!hasAnyData) {
+    return <ReportEmptyState periodLabel={data.periodLabel} />;
+  }
 
   return (
-    <div className="space-y-6">
+    <>
       <header className="rounded-[24px] border border-border bg-card p-6 shadow-sm print-section print:rounded-lg print:border-black/30 print:p-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <span className="label-mono text-muted-foreground block">Laporan Custom Range</span>
-            <h3 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-              {data.periodLabel}
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-              <CalendarRange className="size-3.5" /> Periode {data.daysInRange} hari · {data.ownerName}
-            </p>
-          </div>
-          <div className="flex items-end gap-2 print:hidden">
-            <div className="flex flex-col">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                Mulai
-              </label>
-              <input
-                type="date"
-                disabled
-                value={data.startDate}
-                className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm tabular-nums"
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                Selesai
-              </label>
-              <input
-                type="date"
-                disabled
-                value={data.endDate}
-                className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm tabular-nums"
-              />
-            </div>
-          </div>
+        <div>
+          <span className="label-mono text-muted-foreground block">Laporan Custom Range</span>
+          <h3 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+            {data.periodLabel}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+            <CalendarRange className="size-3.5" /> Periode {data.daysInRange} hari · {data.ownerName}
+          </p>
         </div>
       </header>
 
@@ -63,14 +165,16 @@ export default function CustomRangeReport() {
         />
         <KpiCard
           label="Savings Rate"
-          value={`${savingsRate.toFixed(1)}%`}
+          value={totalIncome > 0 ? `${savingsRate.toFixed(1)}%` : "—"}
           tone={savingsRate >= 20 ? "positive" : savingsRate >= 10 ? "neutral" : "negative"}
         />
       </section>
 
       <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-2.5 text-xs text-blue-700 dark:text-blue-300 inline-flex items-start gap-2 print:hidden">
         <Info className="size-3.5 mt-0.5 shrink-0" />
-        <span>Custom range tidak terikat siklus bulanan. Kolom <strong>Avg/Hari</strong> = nominal ÷ {data.daysInRange} hari.</span>
+        <span>
+          Custom range tidak terikat siklus bulanan. Kolom <strong>Avg/Hari</strong> = nominal ÷ {data.daysInRange} hari.
+        </span>
       </div>
 
       <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm print-section print:rounded-lg print:border-black/30 print:p-4">
@@ -86,7 +190,6 @@ export default function CustomRangeReport() {
             tone="positive"
             days={data.daysInRange}
           />
-
           <CategoryTable
             heading="PENGELUARAN"
             rows={data.expense}
@@ -95,143 +198,12 @@ export default function CustomRangeReport() {
             days={data.daysInRange}
             showPercent
           />
-
-          <div
-            className={cn(
-              "flex items-center justify-between rounded-2xl border-2 px-5 py-4",
-              isPositive
-                ? "border-[#0fa76e]/30 bg-[#0fa76e]/5"
-                : "border-destructive/30 bg-destructive/5",
-            )}
-          >
-            <div className="flex flex-col">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                NET (Pemasukan – Pengeluaran)
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Rata-rata net per hari: {formatRupiah(Math.round(net / data.daysInRange))}
-              </span>
-            </div>
-            <span className={cn("text-2xl font-bold tabular-nums", isPositive ? "text-[#0fa76e]" : "text-destructive")}>
-              {formatRupiah(net)}
-            </span>
-          </div>
+          <NetBanner
+            net={net}
+            subtitle={`Rata-rata net per hari: ${formatRupiah(Math.round(net / data.daysInRange))}`}
+          />
         </div>
       </section>
-    </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string;
-  value: string;
-  tone: "positive" | "negative" | "neutral";
-  icon?: React.ReactNode;
-}) {
-  const toneClass =
-    tone === "positive"
-      ? "text-[#0fa76e]"
-      : tone === "negative"
-      ? "text-destructive"
-      : "text-foreground";
-  return (
-    <div className="rounded-[20px] border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className={cn("mt-2 text-lg font-bold tabular-nums md:text-xl", toneClass)}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function CategoryTable({
-  heading,
-  rows,
-  total,
-  tone,
-  days,
-  showPercent,
-}: {
-  heading: string;
-  rows: { category: string; amount: number }[];
-  total: number;
-  tone: "positive" | "negative";
-  days: number;
-  showPercent?: boolean;
-}) {
-  const toneText = tone === "positive" ? "text-[#0fa76e]" : "text-destructive";
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between">
-        <span className={cn("text-[11px] font-bold uppercase tracking-widest", toneText)}>
-          {heading}
-        </span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          {rows.length} kategori
-        </span>
-      </div>
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[420px]">
-          <thead className="bg-muted/30">
-            <tr className="border-b border-border">
-              <th className="px-4 py-2 text-left text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Kategori
-              </th>
-              {showPercent && (
-                <th className="px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                  %
-                </th>
-              )}
-              <th className="px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Avg/Hari
-              </th>
-              <th className="px-4 py-2 text-right text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Nominal
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.category} className="border-b border-border last:border-0 hover:bg-muted/10">
-                <td className="px-4 py-2.5 text-sm font-medium text-foreground">{row.category}</td>
-                {showPercent && (
-                  <td className="px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground">
-                    {total > 0 ? `${((row.amount / total) * 100).toFixed(1)}%` : "—"}
-                  </td>
-                )}
-                <td className="px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground">
-                  {formatRupiah(Math.round(row.amount / days))}
-                </td>
-                <td className="px-4 py-2.5 text-right text-sm tabular-nums text-foreground">
-                  {formatRupiah(row.amount)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="bg-muted/20">
-            <tr>
-              <td className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground">
-                Total {heading}
-              </td>
-              {showPercent && <td className="px-3 py-2.5" />}
-              <td className="px-3 py-2.5 text-right text-xs tabular-nums text-muted-foreground">
-                {formatRupiah(Math.round(total / days))}
-              </td>
-              <td className={cn("px-4 py-2.5 text-right text-sm font-bold tabular-nums", toneText)}>
-                {formatRupiah(total)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
+    </>
   );
 }

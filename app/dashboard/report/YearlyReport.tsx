@@ -1,17 +1,98 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, Calendar, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  MONTH_LABELS_ID,
+  KpiCard,
+  ReportEmptyState,
+  ReportError,
+  ReportLoadingSkeleton,
+  compactRupiah,
   formatRupiah,
-  sumMonthly,
-  yearlyMockReport,
-} from "./mock-data";
+} from "./parts";
+import type { YearlyCategoryRow } from "@/lib/report-data";
+
+const MONTH_LABELS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+type YearlyPayload = {
+  year: number;
+  ownerName: string;
+  generatedAt: string;
+  income: YearlyCategoryRow[];
+  expense: YearlyCategoryRow[];
+};
+
+function sumMonthly(rows: YearlyCategoryRow[]): number[] {
+  const totals = new Array(12).fill(0);
+  for (const row of rows) {
+    for (let i = 0; i < 12; i++) totals[i] += row.monthly[i] ?? 0;
+  }
+  return totals;
+}
 
 export default function YearlyReport() {
-  const data = yearlyMockReport;
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState<number>(currentYear);
+  const [data, setData] = useState<YearlyPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const fetchData = useMemo(
+    () => async (y: number) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/report?mode=yearly&year=${y}`, { cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Gagal memuat laporan.");
+        setData(json);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    fetchData(year);
+  }, [year, fetchData]);
+
+  const yearOptions = useMemo(() => {
+    const years: number[] = [];
+    for (let y = currentYear; y >= currentYear - 5; y--) years.push(y);
+    return years;
+  }, [currentYear]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm print:hidden">
+        <label className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tahun</span>
+          <select
+            value={year}
+            onChange={(e) => setYear(parseInt(e.target.value, 10))}
+            className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm tabular-nums"
+          >
+            {yearOptions.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </label>
+        <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Periode laporan tahunan</span>
+      </div>
+
+      {loading && <ReportLoadingSkeleton />}
+      {error && !loading && <ReportError message={error} onRetry={() => fetchData(year)} />}
+      {!loading && !error && data && <YearlyReportContent data={data} />}
+    </div>
+  );
+}
+
+function YearlyReportContent({ data }: { data: YearlyPayload }) {
   const incomeMonthlyTotals = sumMonthly(data.income);
   const expenseMonthlyTotals = sumMonthly(data.expense);
   const netMonthly = incomeMonthlyTotals.map((v, i) => v - expenseMonthlyTotals[i]);
@@ -21,34 +102,23 @@ export default function YearlyReport() {
   const netYear = totalIncomeYear - totalExpenseYear;
   const monthsWithActivity = expenseMonthlyTotals.filter((v) => v > 0).length || 1;
   const avgMonthlyExpense = totalExpenseYear / monthsWithActivity;
+  const hasAnyData = totalIncomeYear > 0 || totalExpenseYear > 0;
+
+  if (!hasAnyData) {
+    return <ReportEmptyState periodLabel={`Tahun ${data.year}`} />;
+  }
 
   return (
-    <div className="space-y-6">
+    <>
       <header className="rounded-[24px] border border-border bg-card p-6 shadow-sm print-section print:rounded-lg print:border-black/30 print:p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <span className="label-mono text-muted-foreground block">Laporan Tahunan</span>
-            <h3 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-              Tahun {data.year}
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1.5">
-              <Calendar className="size-3.5" /> {data.ownerName} · Dibuat {data.generatedAt}
-            </p>
-          </div>
-          <div className="flex items-end gap-2 print:hidden">
-            <label className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                Tahun
-              </span>
-              <select
-                disabled
-                value={data.year}
-                className="rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm tabular-nums"
-              >
-                <option>{data.year}</option>
-              </select>
-            </label>
-          </div>
+        <div>
+          <span className="label-mono text-muted-foreground block">Laporan Tahunan</span>
+          <h3 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+            Tahun {data.year}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground inline-flex items-center gap-1.5">
+            <Calendar className="size-3.5" /> {data.ownerName} · Dibuat {data.generatedAt}
+          </p>
         </div>
       </header>
 
@@ -83,49 +153,57 @@ export default function YearlyReport() {
             </thead>
 
             <tbody>
-              <tr className="bg-[#0fa76e]/5 border-b border-border">
-                <td colSpan={14} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0fa76e]">
-                  PEMASUKAN
-                </td>
-              </tr>
-              {data.income.map((row) => (
-                <MatrixRow key={row.category} label={row.category} values={row.monthly} />
-              ))}
-              <tr className="bg-[#0fa76e]/5 border-y border-border">
-                <td className="sticky left-0 z-10 bg-[#0fa76e]/5 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#0fa76e]">
-                  Total Pemasukan
-                </td>
-                {incomeMonthlyTotals.map((v, i) => (
-                  <td key={i} className="px-2 py-2 text-right text-[11px] font-bold tabular-nums text-[#0fa76e]">
-                    {compactRupiah(v)}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right text-xs font-bold tabular-nums text-[#0fa76e]">
-                  {formatRupiah(totalIncomeYear)}
-                </td>
-              </tr>
+              {data.income.length > 0 && (
+                <>
+                  <tr className="bg-[#0fa76e]/5 border-b border-border">
+                    <td colSpan={14} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-[#0fa76e]">
+                      PEMASUKAN
+                    </td>
+                  </tr>
+                  {data.income.map((row) => (
+                    <MatrixRow key={row.category} label={row.category} values={row.monthly} />
+                  ))}
+                  <tr className="bg-[#0fa76e]/5 border-y border-border">
+                    <td className="sticky left-0 z-10 bg-[#0fa76e]/5 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#0fa76e]">
+                      Total Pemasukan
+                    </td>
+                    {incomeMonthlyTotals.map((v, i) => (
+                      <td key={i} className="px-2 py-2 text-right text-[11px] font-bold tabular-nums text-[#0fa76e]">
+                        {compactRupiah(v)}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2 text-right text-xs font-bold tabular-nums text-[#0fa76e]">
+                      {formatRupiah(totalIncomeYear)}
+                    </td>
+                  </tr>
+                </>
+              )}
 
-              <tr className="bg-destructive/5 border-b border-border">
-                <td colSpan={14} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-destructive">
-                  PENGELUARAN
-                </td>
-              </tr>
-              {data.expense.map((row) => (
-                <MatrixRow key={row.category} label={row.category} values={row.monthly} />
-              ))}
-              <tr className="bg-destructive/5 border-y border-border">
-                <td className="sticky left-0 z-10 bg-destructive/5 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-destructive">
-                  Total Pengeluaran
-                </td>
-                {expenseMonthlyTotals.map((v, i) => (
-                  <td key={i} className="px-2 py-2 text-right text-[11px] font-bold tabular-nums text-destructive">
-                    {compactRupiah(v)}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right text-xs font-bold tabular-nums text-destructive">
-                  {formatRupiah(totalExpenseYear)}
-                </td>
-              </tr>
+              {data.expense.length > 0 && (
+                <>
+                  <tr className="bg-destructive/5 border-b border-border">
+                    <td colSpan={14} className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-destructive">
+                      PENGELUARAN
+                    </td>
+                  </tr>
+                  {data.expense.map((row) => (
+                    <MatrixRow key={row.category} label={row.category} values={row.monthly} />
+                  ))}
+                  <tr className="bg-destructive/5 border-y border-border">
+                    <td className="sticky left-0 z-10 bg-destructive/5 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-destructive">
+                      Total Pengeluaran
+                    </td>
+                    {expenseMonthlyTotals.map((v, i) => (
+                      <td key={i} className="px-2 py-2 text-right text-[11px] font-bold tabular-nums text-destructive">
+                        {compactRupiah(v)}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2 text-right text-xs font-bold tabular-nums text-destructive">
+                      {formatRupiah(totalExpenseYear)}
+                    </td>
+                  </tr>
+                </>
+              )}
             </tbody>
 
             <tfoot>
@@ -162,7 +240,7 @@ export default function YearlyReport() {
           Nominal per bulan ditampilkan dalam format ringkas (rb / jt). Total kolom paling kanan menampilkan nilai penuh dalam Rupiah.
         </p>
       </section>
-    </div>
+    </>
   );
 }
 
@@ -184,43 +262,3 @@ function MatrixRow({ label, values }: { label: string; values: number[] }) {
     </tr>
   );
 }
-
-function KpiCard({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string;
-  value: string;
-  tone: "positive" | "negative" | "neutral";
-  icon?: React.ReactNode;
-}) {
-  const toneClass =
-    tone === "positive"
-      ? "text-[#0fa76e]"
-      : tone === "negative"
-      ? "text-destructive"
-      : "text-foreground";
-  return (
-    <div className="rounded-[20px] border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <div className={cn("mt-2 text-lg font-bold tabular-nums md:text-xl", toneClass)}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function compactRupiah(value: number): string {
-  if (value === 0) return "—";
-  const abs = Math.abs(value);
-  const sign = value < 0 ? "-" : "";
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}jt`;
-  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(0)}rb`;
-  return `${sign}${abs}`;
-}
-
