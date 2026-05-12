@@ -238,3 +238,91 @@
 .landing-reveal {
   animation: landingRise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Print styles untuk halaman Report (/dashboard/report)
+ * ──────────────────────────────────────────────────────────────────────── */
+@media print {
+  /* Force light theme di print supaya hemat tinta dan kontras tinggi */
+  :root,
+  .dark {
+    --background: #ffffff;
+    --foreground: #000000;
+    --card: #ffffff;
+    --card-foreground: #000000;
+    --muted: #f4f4f5;
+    --muted-foreground: #4b5563;
+    --border: #d4d4d8;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Sembunyikan chrome aplikasi (sidebar, header, banner, dll.) saat print */
+  aside,
+  nav,
+  header,
+  footer,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Hilangkan padding/inset wrapper dashboard supaya konten print mulai dari kiri */
+  .pt-14,
+  .md\:pt-0,
+  .md\:p-8,
+  .md\:px-8 {
+    padding: 0 !important;
+  }
+
+  main,
+  .max-w-6xl,
+  .max-w-5xl {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Section card: hilangkan shadow tebal & batas berat saat print */
+  .print-section {
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Halaman A4 dengan margin 12mm */
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  /* Yearly matrix terlalu lebar untuk portrait — landscape via container class */
+  .print-landscape {
+    page: landscape;
+  }
+  @page landscape {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  /* Hindari overflow horizontal terpotong di print */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
+  /* Sticky col tidak relevan di print, matikan supaya tidak overlap */
+  .sticky {
+    position: static !important;
+  }
+}
+
+/* Helper class untuk html2canvas — force light kontras saat capture PDF */
+.pdf-capture {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+.pdf-capture * {
+  box-shadow: none !important;
+}

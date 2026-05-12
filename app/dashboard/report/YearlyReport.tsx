@@ -24,7 +24,7 @@ export default function YearlyReport() {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+      <header className="rounded-[24px] border border-border bg-card p-6 shadow-sm print-section print:rounded-lg print:border-black/30 print:p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
             <span className="label-mono text-muted-foreground block">Laporan Tahunan</span>
@@ -59,7 +59,7 @@ export default function YearlyReport() {
         <KpiCard label="Avg Pengeluaran/Bulan" value={formatRupiah(Math.round(avgMonthlyExpense))} tone="neutral" />
       </section>
 
-      <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+      <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm print-section print:rounded-lg print:border-black/30 print:p-4">
         <span className="label-mono text-muted-foreground mb-4 block">
           01 / Income Statement Matrix — {data.year}
         </span>
