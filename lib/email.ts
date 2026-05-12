@@ -5,6 +5,23 @@ import { id as idLocale } from "date-fns/locale";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+/**
+ * Resend SDK v3+ tidak throw error pada API failure — return { data, error }.
+ * Wrapper ini ngubah error response jadi throw biar caller bisa pakai try/catch
+ * dan fire-and-forget .catch() bisa fungsi seperti yg diharapkan.
+ */
+async function sendOrThrow(payload: Parameters<typeof resend.emails.send>[0]): Promise<string> {
+  const { data, error } = await resend.emails.send(payload);
+  if (error) {
+    const err = new Error(
+      `[resend] ${error.name ?? "error"}: ${error.message ?? "unknown"}`
+    );
+    (err as Error & { resendError?: unknown }).resendError = error;
+    throw err;
+  }
+  return data?.id ?? "";
+}
+
 /** Generate password baru: 12 char, huruf + angka */
 export function generateRandomPassword(): string {
   const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -27,7 +44,7 @@ export async function sendVerificationEmail(
 ): Promise<void> {
   const link = `${APP_URL}/api/verify-email?token=${token}`;
 
-  await resend.emails.send({
+  await sendOrThrow({
     from: FROM,
     to,
     subject: "Verifikasi Email BudgetIn",
@@ -99,7 +116,7 @@ export async function sendRecurringReminderEmail(params: {
   const subject = `[BudgetIn] ${name} jatuh tempo ${daysUntil === 1 ? "besok" : `dalam ${daysUntil} hari`}`;
   const billName = name; // backwards-compat for inline template below
 
-  await resend.emails.send({
+  await sendOrThrow({
     from: FROM,
     to,
     subject,
@@ -185,7 +202,7 @@ export async function sendAutoRecordConfirmation(params: {
   const typeLabel = type === "income" ? "Pemasukan" : type === "transfer" ? "Transfer" : "Pengeluaran";
   const headerLabel = type === "income" ? "Pemasukan Otomatis" : type === "transfer" ? "Transfer Otomatis" : "Pengeluaran Otomatis";
 
-  await resend.emails.send({
+  await sendOrThrow({
     from: FROM,
     to,
     subject: `[BudgetIn] ${name} (${typeLabel}) otomatis tercatat`,
@@ -237,7 +254,7 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://budget.amuharr.com"}/auth`;
 
-  await resend.emails.send({
+  await sendOrThrow({
     from: FROM,
     to,
     subject: "Password BudgetIn Kamu Direset",

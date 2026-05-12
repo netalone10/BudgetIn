@@ -63,9 +63,16 @@ export async function POST(req: NextRequest) {
     await seedDefaultCategories(user.id);
 
     // Kirim email verifikasi (fire and forget — jangan block response)
-    sendVerificationEmail(email, name.trim(), verificationToken).catch((err) =>
-      console.error("[register] sendVerificationEmail error:", err)
-    );
+    sendVerificationEmail(email, name.trim(), verificationToken).catch((err) => {
+      const e = err as Error & { resendError?: unknown };
+      console.error("[register] sendVerificationEmail FAILED", {
+        to: email,
+        userId: user.id,
+        message: e?.message,
+        name: e?.name,
+        resendError: e?.resendError,
+      });
+    });
 
     return NextResponse.json({ message: "verification_sent" });
   } catch (error) {

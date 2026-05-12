@@ -52,9 +52,16 @@ export async function POST(req: NextRequest) {
     });
 
     // Kirim email (fire and forget)
-    sendVerificationEmail(user.email, user.name, verificationToken).catch((err) =>
-      console.error("[resend-verification]", err)
-    );
+    sendVerificationEmail(user.email, user.name, verificationToken).catch((err) => {
+      const e = err as Error & { resendError?: unknown };
+      console.error("[resend-verification] FAILED", {
+        to: user.email,
+        userId: user.id,
+        message: e?.message,
+        name: e?.name,
+        resendError: e?.resendError,
+      });
+    });
 
     return NextResponse.json({ message: "sent" });
   } catch (error) {
