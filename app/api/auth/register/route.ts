@@ -62,8 +62,11 @@ export async function POST(req: NextRequest) {
     // Seed kategori default (income + expense)
     await seedDefaultCategories(user.id);
 
-    // Kirim email verifikasi (fire and forget — jangan block response)
-    sendVerificationEmail(email, name.trim(), verificationToken).catch((err) => {
+    // Kirim email verifikasi — tunggu hasilnya, kalau gagal rollback user
+    // biar pendaftar bisa retry tanpa stuck di 409 conflict.
+    try {
+      await sendVerificationEmail(email, name.trim(), verificationToken);
+    } catch (err) {
       const e = err as Error & { resendError?: unknown };
       console.error("[register] sendVerificationEmail FAILED", {
         to: email,
@@ -72,7 +75,16 @@ export async function POST(req: NextRequest) {
         name: e?.name,
         resendError: e?.resendError,
       });
-    });
+      // Rollback: hapus user supaya bisa daftar ulang
+      await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+      return NextResponse.json(
+        {
+          error:
+            "Akun belum bisa dibuat karena email verifikasi gagal terkirim. Coba lagi beberapa menit lagi atau hubungi admin.",
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ message: "verification_sent" });
   } catch (error) {

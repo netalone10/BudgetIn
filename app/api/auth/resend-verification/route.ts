@@ -51,8 +51,10 @@ export async function POST(req: NextRequest) {
       data: { verificationToken, verificationTokenExpiry },
     });
 
-    // Kirim email (fire and forget)
-    sendVerificationEmail(user.email, user.name, verificationToken).catch((err) => {
+    // Kirim email — tunggu hasilnya supaya UI bisa kasih feedback akurat
+    try {
+      await sendVerificationEmail(user.email, user.name, verificationToken);
+    } catch (err) {
       const e = err as Error & { resendError?: unknown };
       console.error("[resend-verification] FAILED", {
         to: user.email,
@@ -61,7 +63,11 @@ export async function POST(req: NextRequest) {
         name: e?.name,
         resendError: e?.resendError,
       });
-    });
+      return NextResponse.json(
+        { error: "Email verifikasi gagal terkirim. Coba lagi beberapa menit lagi." },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ message: "sent" });
   } catch (error) {
