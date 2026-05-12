@@ -124,14 +124,14 @@ export default function BudgetMiniListCard({
             const status = classifyBudget(b.spent, b.totalBudget);
             return (
               <div key={b.id} className="flex flex-col gap-1">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                   <span className="truncate text-[13px] font-semibold text-foreground">
                     <span className="mr-1">{emojiForCategory(b.category)}</span>
                     {b.category}
                   </span>
                   <span
                     className={cn(
-                      "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                      "w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                       BADGE_CLASS[status]
                     )}
                   >

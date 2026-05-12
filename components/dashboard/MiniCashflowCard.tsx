@@ -127,7 +127,7 @@ export default function MiniCashflowCard({
 
       <div
         className={cn(
-          "mt-3 flex items-center justify-between gap-2 rounded-xl border px-3 py-2",
+          "mt-3 flex flex-col gap-1 rounded-xl border px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2",
           surplus >= 0
             ? "border-emerald-500/25 bg-emerald-500/8"
             : "border-destructive/25 bg-destructive/8"

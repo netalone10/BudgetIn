@@ -14,6 +14,19 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.10.1",
+    date: "2026-05-12",
+    title: "Perbaikan layout mobile dashboard",
+    description: "Rilis patch untuk memperbaiki elemen UI yang terpotong di mobile — badge budget, surplus cashflow, dan tombol aksi cepat.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.10.1`,
+    changes: [
+      "Memperbaiki badge status budget (Over Budget, Hampir Limit, Aman) yang terpotong di mobile dengan mengubah layout menjadi vertikal pada layar kecil.",
+      "Memperbaiki bar surplus/defisit cashflow yang overflow di mobile dengan menata label dan nominal secara vertikal.",
+      "Memperbaiki tombol aksi cepat (Pengeluaran, Pemasukan, Transfer, Refresh) yang terpotong di mobile dengan mengurangi padding dan ukuran teks pada layar kecil.",
+    ],
+  },
+  {
     version: "v1.10.0",
     date: "2026-05-10",
     title: "Recurring Transactions: gantikan Tagihan Rutin dengan transaksi berulang yang fleksibel",
