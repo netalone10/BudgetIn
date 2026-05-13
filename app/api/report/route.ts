@@ -79,9 +79,19 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const transactions = useSheets
-      ? await getTransactions(user!.sheetsId!, accessToken, periodArg)
-      : await getTransactionsDB(session.userId, periodArg);
+    const [transactions, savingsCategoriesRaw] = await Promise.all([
+      useSheets
+        ? getTransactions(user!.sheetsId!, accessToken, periodArg)
+        : getTransactionsDB(session.userId, periodArg),
+      prisma.category.findMany({
+        where: { userId: session.userId, isSavings: true },
+        select: { name: true },
+      }),
+    ]);
+
+    const savingsCategoryNames = new Set(
+      savingsCategoriesRaw.map((c) => c.name.toLowerCase()),
+    );
 
     const ownerName = user?.name || user?.email || "Pengguna";
     const generatedAt = formatDateLabelId(now.toISOString().slice(0, 10));
@@ -89,14 +99,14 @@ export async function GET(req: NextRequest) {
     const headers = { "Cache-Control": "private, max-age=60, stale-while-revalidate=30" };
 
     if (mode === "yearly") {
-      const { income, expense } = aggregateYearlyReport(transactions, yearOut);
+      const { income, expense } = aggregateYearlyReport(transactions, yearOut, savingsCategoryNames);
       return NextResponse.json(
         { year: yearOut, ownerName, generatedAt, income, expense },
         { headers },
       );
     }
 
-    const { income, expense } = aggregatePeriodReport(transactions);
+    const { income, expense } = aggregatePeriodReport(transactions, savingsCategoryNames);
     const base = { periodLabel, ownerName, generatedAt, income, expense };
 
     if (mode === "custom" && startDate && endDate) {

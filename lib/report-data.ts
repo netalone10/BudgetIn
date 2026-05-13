@@ -1,12 +1,17 @@
 /**
  * Pure helpers untuk Income Statement-style report.
  *
- * Beda dengan analyst-metrics: di sini Tabungan/Investasi tetap masuk sebagai
- * baris di PENGELUARAN, bukan dipisah. Income Statement personal finance
- * memperlakukan alokasi tabungan sebagai cash outflow (line item), sehingga
- * Total Pengeluaran + Net Surplus = Pemasukan secara akuntansi.
+ * Konsep akuntansi yang dipakai (sejajar dengan analyst-metrics):
+ *   - Tabungan / Investasi BUKAN expense — itu withdrawal ke equity
+ *     (mirip prive di perusahaan). Wajib di-skip dari kolom PENGELUARAN.
+ *   - Saldo Awal juga di-skip (transaksi seeding, bukan aktivitas periode).
+ *   - Transfer principal di-skip via isExpenseTransaction.
+ *
+ * Net surplus = totalIncome - totalExpense (tanpa tabungan), yang merupakan
+ * sisa cash yang bisa dialokasikan ke tabungan / investasi / surplus bebas.
  */
 import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isSavingsTransaction } from "@/lib/savings-utils";
 
 export interface ReportTransactionLike {
   date: string;
@@ -38,10 +43,11 @@ const yearlyTotalDesc = (a: YearlyCategoryRow, b: YearlyCategoryRow) =>
 
 /**
  * Agregat transaksi periode tunggal jadi income/expense per kategori.
- * Transfer principal & Saldo Awal di-skip; tabungan tetap masuk expense.
+ * Transfer principal, Saldo Awal, dan tabungan/investasi di-skip dari expense.
  */
 export function aggregatePeriodReport(
   transactions: ReportTransactionLike[],
+  savingsCategoryNames: Set<string>,
 ): PeriodReportData {
   const income = new Map<string, number>();
   const expense = new Map<string, number>();
@@ -56,6 +62,7 @@ export function aggregatePeriodReport(
       continue;
     }
     if (!isExpenseTransaction(tx)) continue;
+    if (isSavingsTransaction(tx.category, savingsCategoryNames)) continue;
     expense.set(tx.category, (expense.get(tx.category) ?? 0) + amt);
   }
 
@@ -72,6 +79,7 @@ export function aggregatePeriodReport(
 export function aggregateYearlyReport(
   transactions: ReportTransactionLike[],
   year: number,
+  savingsCategoryNames: Set<string>,
 ): YearlyReportData {
   const income = new Map<string, number[]>();
   const expense = new Map<string, number[]>();
@@ -99,6 +107,7 @@ export function aggregateYearlyReport(
       continue;
     }
     if (!isExpenseTransaction(tx)) continue;
+    if (isSavingsTransaction(tx.category, savingsCategoryNames)) continue;
     ensure(expense, tx.category)[month] += amt;
   }
 
