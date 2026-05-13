@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, CalendarRange, Download, Loader2, Printer, Sparkles } from "lucide-react";
+import { Calendar, CalendarRange, Printer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import MonthlyReport from "./MonthlyReport";
@@ -16,15 +16,8 @@ const TABS: { id: Variant; label: string; icon: React.ComponentType<{ className?
   { id: "yearly", label: "Tahunan", icon: Sparkles },
 ];
 
-const PERIOD_LABEL: Record<Variant, string> = {
-  monthly: "April-2026",
-  custom: "01Mar-30Apr-2026",
-  yearly: "Tahun-2026",
-};
-
 export default function ReportClient() {
   const [variant, setVariant] = useState<Variant>("monthly");
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // Tandai <html> sebagai halaman report yang sedang aktif. Saat print,
   // CSS akan menyembunyikan seluruh chrome aplikasi (sidebar, mobile
@@ -43,60 +36,6 @@ export default function ReportClient() {
 
   const handlePrint = () => {
     if (typeof window !== "undefined") window.print();
-  };
-
-  const handleDownloadPdf = async () => {
-    setDownloadingPdf(true);
-    try {
-      const element = document.getElementById("report-content");
-      if (!element) return;
-
-      // Toggle class capture-only supaya html2canvas merender background putih
-      // dan menghilangkan shadow walaupun user sedang dark mode.
-      element.classList.add("pdf-capture");
-
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-      });
-
-      element.classList.remove("pdf-capture");
-
-      const isLandscape = variant === "yearly";
-      const pdf = new jsPDF(isLandscape ? "l" : "p", "pt", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      // Skala lebar canvas ke lebar halaman; tinggi total dihitung proporsional.
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      // Multi-page split: kalau imgHeight lebih panjang dari satu halaman,
-      // potong jadi beberapa halaman dengan offset Y negatif pada addImage.
-      const imgData = canvas.toDataURL("image/png");
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`Report_${variant}_${PERIOD_LABEL[variant]}.pdf`);
-    } catch {
-      alert("Gagal membuat PDF. Coba lagi.");
-    } finally {
-      setDownloadingPdf(false);
-    }
   };
 
   return (
@@ -126,15 +65,9 @@ export default function ReportClient() {
           })}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handlePrint} className="h-9">
-            <Printer className="size-4 mr-2" /> Print
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={downloadingPdf} className="h-9">
-            {downloadingPdf ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Download className="size-4 mr-2" />}
-            Unduh PDF
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={handlePrint} className="h-9">
+          <Printer className="size-4 mr-2" /> Print / Simpan PDF
+        </Button>
       </div>
 
       <div id="report-content" className="bg-background p-2 rounded-3xl print:p-0 print:bg-white">
