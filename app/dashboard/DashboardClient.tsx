@@ -29,6 +29,7 @@ import { measureTiming, checkThresholdBreach } from "@/lib/performance";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import KPICard from "@/components/dashboard/KPICard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
+import RunwayKasCard from "@/components/dashboard/RunwayKasCard";
 
 // ---------------------------------------------------------------------------
 // SWR (Stale-While-Revalidate) utilities for client-side fetching
@@ -362,7 +363,13 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     new Set(initialData.savingsCategoryNames)
   );
   const [accounts, setAccounts] = useState<
-    { id: string; name: string; currency: string; accountType: { name: string; classification: string } }[]
+    {
+      id: string;
+      name: string;
+      currency: string;
+      accountType: { name: string; classification: string };
+      currentBalance?: string | null;
+    }[]
   >(initialData.accounts);
   const [accountVersion, setAccountVersion] = useState(0);
   const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
@@ -420,6 +427,25 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       totalIncome: monthlyStats.income,
     };
   }, [transactions, currentMonth, monthlyStats.expense, monthlyStats.income]);
+
+  const runway = useMemo(() => {
+    const liquid = accounts.reduce((sum, acc) => {
+      if (acc.accountType?.classification !== "asset") return sum;
+      const raw = acc.currentBalance;
+      if (raw == null) return sum;
+      const n = typeof raw === "number" ? raw : parseFloat(raw);
+      if (!Number.isFinite(n)) return sum;
+      return sum + n;
+    }, 0);
+
+    const currentExpense = monthlyStats.expense;
+    const lastExpense = initialData.lastMonthTotals.expense;
+    const avgBurn = (currentExpense + lastExpense) / 2;
+    const months =
+      avgBurn > 0 ? liquid / avgBurn : Number.POSITIVE_INFINITY;
+
+    return { liquid, avgBurn, months };
+  }, [accounts, monthlyStats.expense, initialData.lastMonthTotals.expense]);
 
   const incomeDelta = monthlyStats.income - initialData.lastMonthTotals.income;
   const expenseDelta = monthlyStats.expense - initialData.lastMonthTotals.expense;
@@ -1078,6 +1104,11 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             surplus={monthlyStats.surplus}
             month={currentMonth}
             today={todayStr}
+          />
+          <RunwayKasCard
+            months={runway.months}
+            liquid={runway.liquid}
+            avgBurn={runway.avgBurn}
           />
           <BudgetMiniListCard
             budgets={budgetData?.budgets}
