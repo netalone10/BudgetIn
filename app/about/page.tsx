@@ -24,17 +24,17 @@ export default function AboutPage() {
       <a href="#main-content" className="skip-link">
         Lewati ke konten utama
       </a>
-      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
+      <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/80 px-4 sm:px-6 backdrop-blur-sm">
         <Link href="/" className="text-lg font-bold tracking-tight transition-opacity hover:opacity-80">
           BudgetIn
         </Link>
         <ThemeToggle />
       </header>
 
-      <main id="main-content" className="mx-auto flex-1 w-full max-w-3xl px-6 py-16">
+      <main id="main-content" className="mx-auto flex-1 w-full max-w-3xl px-4 sm:px-6 py-16">
         <div className="mb-12 space-y-4">
           <p className="label-mono text-primary">Tentang BudgetIn</p>
-          <h1 className="text-4xl font-semibold tracking-tight-h2 text-foreground">
+          <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight-h2 text-foreground">
             Budget tracker yang dibuat untuk cara orang Indonesia mencatat uang sehari-hari.
           </h1>
           <p className="text-base leading-relaxed text-muted-foreground">

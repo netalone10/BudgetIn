@@ -1,6 +1,10 @@
 import { Sparkles } from "lucide-react";
 import AnalystClient from "./AnalystClient";
 
+// User-specific mutable data — always fetch fresh
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Server shell merender heading instan (LCP element).
 // Konten interaktif (laporan, tombol predict/CSV/PDF) di-render oleh
 // `AnalystClient` setelah hydrate.

@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { seedDefaultCategories, ALL_DEFAULT_CATEGORIES } from "@/utils/seed-categories";
 import { blockDemoResponse } from "@/lib/demo-account";
 import { resolveBudgetType } from "@/utils/budget-type";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
+import { normalizePaginationParams } from "@/lib/pagination";
 
 type CategoryResponseRow = {
   id: string;
@@ -49,7 +53,7 @@ async function findCategories(userId: string, includeBudgetType = true): Promise
 }
 
 // GET /api/categories — semua kategori milik user + default jika belum ada
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.userId) {
@@ -67,15 +71,52 @@ export async function GET() {
       categories = await findCategories(session.userId);
     }
 
-    return NextResponse.json({
+    const responseData = {
       categories: categories.map((category) => ({
         ...category,
         budgetType: resolveBudgetType(category.name, category.budgetType),
       })),
-    });
+    };
+
+    // Parse pagination params
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const { page: normalizedPage, limit: normalizedLimit, skip } = normalizePaginationParams({ page, limit });
+
+    const allCategories = responseData.categories;
+    const total = allCategories.length;
+    const totalPages = Math.ceil(total / normalizedLimit);
+    const paginatedCategories = allCategories.slice(skip, skip + normalizedLimit);
+
+    const paginatedData = {
+      categories: paginatedCategories,
+      pagination: {
+        page: normalizedPage,
+        limit: normalizedLimit,
+        total,
+        totalPages,
+      },
+    };
+
+    // Handle conditional request (ETag / 304)
+    const conditionalResponse = handleConditionalRequest(req, paginatedData);
+    if (conditionalResponse) return conditionalResponse;
+
+    // Build response with cache headers and ETag
+    const profile = ROUTE_CACHE_PROFILES["/api/categories"];
+    let response = NextResponse.json(paginatedData);
+    response = withCacheHeaders(response, profile);
+    response = withETag(response, paginatedData);
+
+    return response;
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Terjadi kesalahan" }, { status: 500 });
+    const apiError = sanitizeErrorForProduction(error, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
   }
 }
 
@@ -138,6 +179,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ category });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Terjadi kesalahan" }, { status: 500 });
+    const apiError = sanitizeErrorForProduction(error, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
   }
 }

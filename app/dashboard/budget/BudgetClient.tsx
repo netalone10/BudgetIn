@@ -324,7 +324,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <Metric label="Bulan" value={formatMonthLabel(month)} />
           <Metric label="Budget" value={`Rp ${fmt(totals.budget)}`} />
           <Metric label="Realisasi" value={`Rp ${fmt(totals.spent)} · ${totalProgress.totalDisplayPct}%`} valueClass="text-destructive" />
@@ -414,9 +414,9 @@ export default function BudgetClient({ initialData, categories }: Props) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="break-words text-sm font-medium">{item.category}</span>
+                        <span className="truncate text-sm font-medium">{item.category}</span>
                         <span className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                          "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
                           fixed ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-muted text-muted-foreground"
                         )}>
                           {fixed ? "Fixed" : "Variable"}
@@ -550,13 +550,13 @@ export default function BudgetClient({ initialData, categories }: Props) {
             })}
             <div className="grid grid-cols-2 gap-3 bg-muted/20 p-4 text-xs font-semibold">
               <span className="text-muted-foreground">Total Budget</span>
-              <span className="text-right tabular-nums text-muted-foreground">{fmt(totals.budget)}</span>
+              <span className="whitespace-nowrap text-right tabular-nums text-muted-foreground">{fmt(totals.budget)}</span>
               <span className="text-muted-foreground">Total Terpakai</span>
-              <span className="text-right tabular-nums text-destructive">{fmt(totals.spent)} · {totalProgress.totalDisplayPct}%</span>
+              <span className="whitespace-nowrap text-right tabular-nums text-destructive">{fmt(totals.spent)} · {totalProgress.totalDisplayPct}%</span>
               <span className="text-muted-foreground">Total Prorata</span>
-              <span className="text-right tabular-nums text-muted-foreground">{fmtCompact(totals.prorated)} · {totalProgress.prorataDisplayPct}%</span>
+              <span className="whitespace-nowrap text-right tabular-nums text-muted-foreground">{fmtCompact(totals.prorated)} · {totalProgress.prorataDisplayPct}%</span>
               <span className="text-muted-foreground">Total Sisa</span>
-              <span className={cn("text-right tabular-nums", totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive")}>
+              <span className={cn("whitespace-nowrap text-right tabular-nums", totalRemaining >= 0 ? "text-green-600 dark:text-green-400" : "text-destructive")}>
                 {totalRemaining >= 0 ? "+" : "-"}{fmtCompact(Math.abs(totalRemaining))}
               </span>
             </div>
@@ -589,11 +589,11 @@ export default function BudgetClient({ initialData, categories }: Props) {
 
                   return (
                     <tr key={item.id} className="group border-b last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="py-3 pl-4 pr-2">
+                      <td className="py-3 pl-4 pr-2 max-w-[200px]">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-medium">{item.category}</span>
+                          <span className="truncate text-sm font-medium">{item.category}</span>
                           <span className={cn(
-                            "text-[10px] px-1.5 py-0.5 rounded-full font-medium leading-none",
+                            "shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium leading-none",
                             fixed ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-muted text-muted-foreground"
                           )}>
                             {fixed ? "Fixed" : "Variable"}
@@ -746,8 +746,8 @@ export default function BudgetClient({ initialData, categories }: Props) {
           <div className="divide-y">
             {data.unbudgeted.map((item) => (
               <div key={item.category} className="flex items-start justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/20">
-                <span className="min-w-0 break-words text-sm font-medium">{item.category}</span>
-                <span className="shrink-0 text-right text-sm font-medium tabular-nums text-muted-foreground">{fmt(item.spent)}</span>
+                <span className="min-w-0 truncate text-sm font-medium">{item.category}</span>
+                <span className="shrink-0 whitespace-nowrap text-right text-sm font-medium tabular-nums text-muted-foreground">{fmt(item.spent)}</span>
               </div>
             ))}
           </div>
@@ -759,9 +759,9 @@ export default function BudgetClient({ initialData, categories }: Props) {
 
 function Metric({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
   return (
-    <div className="rounded-xl border bg-background/60 p-3">
+    <div className="min-w-0 rounded-xl border bg-background/60 p-3">
       <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={cn("mt-1 text-sm font-semibold tabular-nums", valueClass)}>{value}</p>
+      <p className={cn("mt-1 truncate text-sm font-semibold tabular-nums", valueClass)}>{value}</p>
     </div>
   );
 }

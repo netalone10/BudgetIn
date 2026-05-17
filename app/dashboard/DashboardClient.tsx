@@ -25,14 +25,45 @@ import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { formatSignedIDR, formatTanggalID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
+import { measureTiming, checkThresholdBreach } from "@/lib/performance";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import KPICard from "@/components/dashboard/KPICard";
-import MiniCashflowCard from "@/components/dashboard/MiniCashflowCard";
-import BudgetMiniListCard from "@/components/dashboard/BudgetMiniListCard";
-import SavingsGoalMiniCard from "@/components/dashboard/SavingsGoalMiniCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
-import RecentTransactionsCard from "@/components/dashboard/RecentTransactionsCard";
 
+// Below-the-fold components: lazy loaded with skeleton placeholders to reduce initial bundle
+const RecentTransactionsCard = dynamic(
+  () => import("@/components/dashboard/RecentTransactionsCard"),
+  {
+    ssr: false,
+    loading: () => <RecentTransactionsSkeleton />,
+  }
+);
+
+const MiniCashflowCard = dynamic(
+  () => import("@/components/dashboard/MiniCashflowCard"),
+  {
+    ssr: false,
+    loading: () => <MiniCashflowSkeleton />,
+  }
+);
+
+const BudgetMiniListCard = dynamic(
+  () => import("@/components/dashboard/BudgetMiniListCard"),
+  {
+    ssr: false,
+    loading: () => <BudgetMiniListSkeleton />,
+  }
+);
+
+const SavingsGoalMiniCard = dynamic(
+  () => import("@/components/dashboard/SavingsGoalMiniCard"),
+  {
+    ssr: false,
+    loading: () => <SavingsGoalSkeleton />,
+  }
+);
+
+// Modal/dialog components: dynamically imported only when user triggers the action
 const ManualTransactionForm = dynamic(
   () => import("@/components/ManualTransactionForm"),
   { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-[28px] bg-muted" /> }
@@ -42,6 +73,104 @@ const ReportView = dynamic(
   () => import("@/components/ReportView"),
   { ssr: false, loading: () => <div className="h-[320px] animate-pulse rounded-[28px] bg-muted" /> }
 );
+
+// Skeleton placeholders matching expected component dimensions to prevent layout shift
+
+function RecentTransactionsSkeleton() {
+  return (
+    <div className="rounded-[22px] border border-border/60 bg-card p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+        <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 py-2">
+            <div className="size-9 shrink-0 animate-pulse rounded-[10px] bg-muted" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3.5 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-2.5 w-16 animate-pulse rounded bg-muted" />
+            </div>
+            <div className="space-y-1.5 text-right">
+              <div className="ml-auto h-3.5 w-20 animate-pulse rounded bg-muted" />
+              <div className="ml-auto h-2.5 w-12 animate-pulse rounded bg-muted" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniCashflowSkeleton() {
+  return (
+    <div className="rounded-[22px] border border-border/60 bg-card p-4">
+      <div className="mb-2 space-y-1">
+        <div className="h-2.5 w-14 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="mb-3.5 grid grid-cols-2 gap-2">
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+        <div className="h-16 animate-pulse rounded-xl bg-muted" />
+      </div>
+      <div className="flex h-[72px] items-end gap-2 px-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div className="flex w-full items-end justify-center gap-1 h-[58px]">
+              <div className="w-[44%] animate-pulse rounded-t-md bg-muted" style={{ height: `${20 + i * 8}px` }} />
+              <div className="w-[44%] animate-pulse rounded-t-md bg-muted" style={{ height: `${15 + i * 6}px` }} />
+            </div>
+            <div className="h-2 w-5 animate-pulse rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 h-10 animate-pulse rounded-xl bg-muted" />
+    </div>
+  );
+}
+
+function BudgetMiniListSkeleton() {
+  return (
+    <div className="rounded-[22px] border border-border/60 bg-card p-4">
+      <div className="mb-2 space-y-1">
+        <div className="h-2.5 w-12 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <div className="h-3.5 w-24 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-14 animate-pulse rounded-full bg-muted" />
+            </div>
+            <div className="h-2.5 w-20 animate-pulse rounded bg-muted" />
+            <div className="h-2 w-full animate-pulse rounded-full bg-muted" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SavingsGoalSkeleton() {
+  return (
+    <div className="rounded-[22px] border border-border/60 bg-card p-4">
+      <div className="mb-2 space-y-1">
+        <div className="h-2.5 w-20 animate-pulse rounded bg-muted" />
+        <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="size-[86px] shrink-0 animate-pulse rounded-full bg-muted" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-28 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-32 animate-pulse rounded bg-muted" />
+          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+      <div className="mt-3 h-9 animate-pulse rounded-xl border border-dashed border-border/70 bg-muted/40" />
+    </div>
+  );
+}
 
 type BudgetData = DashboardTabsBudgetData;
 
@@ -244,6 +373,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }
 
   useEffect(() => {
+    // Measure Dashboard Time to Interactive (TTI)
+    // The component has mounted with initialData already rendered
+    const stopTiming = measureTiming("dashboard-tti");
+    // Use requestAnimationFrame to ensure the browser has painted
+    requestAnimationFrame(() => {
+      const duration = stopTiming();
+      const breach = checkThresholdBreach("dashboard-tti", duration);
+      if (breach) {
+        console.warn(breach.message);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     const handleCategoryChange = () => fetchCategories();
     window.addEventListener("categoriesChanged", handleCategoryChange);
     return () => window.removeEventListener("categoriesChanged", handleCategoryChange);
@@ -350,6 +493,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
     setLoading(true);
     setResponse(null);
+    const stopTiming = measureTiming("transaction-create");
 
     try {
       const res = await submitRecord({ prompt: prompt.trim() });
@@ -401,6 +545,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     } catch {
       setResponse({ error: "Koneksi gagal. Coba lagi." });
     } finally {
+      const duration = stopTiming();
+      const breach = checkThresholdBreach("transaction-create", duration);
+      if (breach) {
+        console.warn(breach.message);
+      }
       setLoading(false);
     }
   }
@@ -480,7 +629,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         refreshing={dataLoading}
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
         <KPICard
           type="income"

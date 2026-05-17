@@ -1,6 +1,10 @@
 import { CalendarDays } from "lucide-react";
 import CalendarClient from "./CalendarClient";
 
+// User-specific mutable data — always fetch fresh
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default function CalendarPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">

@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchBudgetMonthData, getCurrentMonth, isValidMonth } from "@/lib/budget-data";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
 
 // GET /api/budget — ambil semua budget bulan ini + spent + rollover per kategori
 export async function GET(req: NextRequest) {
@@ -18,7 +21,18 @@ export async function GET(req: NextRequest) {
   }
 
   const budgetData = await fetchBudgetMonthData(session.userId, requestedMonth ?? getCurrentMonth());
-  return NextResponse.json(budgetData, { headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=30" } });
+
+  // Handle conditional request (ETag / 304)
+  const conditionalResponse = handleConditionalRequest(req, budgetData);
+  if (conditionalResponse) return conditionalResponse;
+
+  // Build response with cache headers and ETag
+  const profile = ROUTE_CACHE_PROFILES["/api/budget"];
+  let response = NextResponse.json(budgetData);
+  response = withCacheHeaders(response, profile);
+  response = withETag(response, budgetData);
+
+  return response;
 }
 
 // POST /api/budget — set/update budget kategori
@@ -67,10 +81,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, budget });
-  } catch {
+  } catch (error) {
+    const apiError = sanitizeErrorForProduction(error, "internal");
     return NextResponse.json(
-      { error: "Gagal simpan budget. Coba lagi." },
-      { status: 500 }
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
     );
   }
 }

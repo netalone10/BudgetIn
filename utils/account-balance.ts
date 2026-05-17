@@ -24,21 +24,51 @@ export type NetWorthSummary = {
 };
 
 export async function getAccountBalances(userId: string): Promise<AccountWithBalance[]> {
-  const accounts = await prisma.account.findMany({
-    where: { userId, isActive: true },
-    include: { accountType: true },
-    orderBy: [
-      { accountType: { sortOrder: "asc" } },
-      { createdAt: "asc" },
-    ],
-  });
-
-  const aggregates = await prisma.transaction.groupBy({
-    by: ["accountId", "type"],
-    where: { userId, accountId: { not: null } },
-    _sum: { amount: true },
-    _count: true,
-  });
+  const [accounts, aggregates] = await Promise.all([
+    prisma.account.findMany({
+      where: { userId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        currency: true,
+        color: true,
+        note: true,
+        icon: true,
+        isActive: true,
+        initialBalance: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true,
+        accountTypeId: true,
+        tanggalSettlement: true,
+        tanggalJatuhTempo: true,
+        accountType: {
+          select: {
+            id: true,
+            name: true,
+            classification: true,
+            icon: true,
+            color: true,
+            sortOrder: true,
+            isActive: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+      orderBy: [
+        { accountType: { sortOrder: "asc" } },
+        { createdAt: "asc" },
+      ],
+    }),
+    prisma.transaction.groupBy({
+      by: ["accountId", "type"],
+      where: { userId, accountId: { not: null } },
+      _sum: { amount: true },
+      _count: true,
+    }),
+  ]);
 
   return accounts.map((acc) => {
     let balance = new Decimal(0);

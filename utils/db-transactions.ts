@@ -128,6 +128,17 @@ export async function getTransactionsDB(
       userId,
       date: dateFilter,
     },
+    select: {
+      id: true,
+      date: true,
+      time: true,
+      amount: true,
+      category: true,
+      note: true,
+      createdAt: true,
+      type: true,
+      accountId: true,
+    },
     orderBy: [{ date: "desc" }, { time: "desc" }],
   });
 

@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { fetchDashboardData } from "@/lib/dashboard-data";
+import { getCachedDashboardData } from "@/lib/cache";
 import { prisma } from "@/lib/prisma";
 import DashboardClient from "./DashboardClient";
 import DashboardSuspenseFallback from "./DashboardSuspenseFallback";
@@ -29,7 +29,7 @@ export default async function DashboardPage() {
 }
 
 async function DashboardData({ userId }: { userId: string }) {
-  const initialData = await fetchDashboardData(userId);
+  const initialData = await getCachedDashboardData(userId);
   return <DashboardClient initialData={initialData} />;
 }
 

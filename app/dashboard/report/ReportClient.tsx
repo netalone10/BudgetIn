@@ -1,12 +1,45 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Calendar, CalendarRange, Printer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import MonthlyReport from "./MonthlyReport";
-import CustomRangeReport from "./CustomRangeReport";
-import YearlyReport from "./YearlyReport";
+
+// Report generators: dynamically imported — only the active variant loads
+const MonthlyReport = dynamic(() => import("./MonthlyReport"), {
+  ssr: false,
+  loading: () => <ReportSkeleton />,
+});
+
+const CustomRangeReport = dynamic(() => import("./CustomRangeReport"), {
+  ssr: false,
+  loading: () => <ReportSkeleton />,
+});
+
+const YearlyReport = dynamic(() => import("./YearlyReport"), {
+  ssr: false,
+  loading: () => <ReportSkeleton />,
+});
+
+function ReportSkeleton() {
+  return (
+    <div className="space-y-4 p-4">
+      <div className="h-6 w-48 animate-pulse rounded bg-muted" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
+        ))}
+      </div>
+      <div className="h-48 animate-pulse rounded-xl bg-muted" />
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-8 animate-pulse rounded bg-muted" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type Variant = "monthly" | "custom" | "yearly";
 

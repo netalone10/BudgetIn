@@ -14,6 +14,10 @@ import {
   type RecurringFrequency,
   type RecurringType,
 } from "@/utils/recurring-utils";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
+import { normalizePaginationParams } from "@/lib/pagination";
 
 async function resolveAccountId(userId: string, accountId: unknown): Promise<string | null | undefined> {
   if (!accountId || typeof accountId !== "string") return null;
@@ -185,9 +189,15 @@ async function validateAndBuildData(userId: string, body: Payload, existingNextD
   } as const;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Parse pagination params
+  const { searchParams } = new URL(request.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "50", 10);
+  const { page: normalizedPage, limit: normalizedLimit, skip } = normalizePaginationParams({ page, limit });
 
   const items = await prisma.recurringTransaction.findMany({
     where: { userId: session.userId, isActive: true },
@@ -195,7 +205,32 @@ export async function GET() {
     orderBy: { nextDueDate: "asc" },
   });
 
-  return NextResponse.json(items);
+  // Apply pagination
+  const total = items.length;
+  const totalPages = Math.ceil(total / normalizedLimit);
+  const paginatedItems = items.slice(skip, skip + normalizedLimit);
+
+  const responseData = {
+    data: paginatedItems,
+    pagination: {
+      page: normalizedPage,
+      limit: normalizedLimit,
+      total,
+      totalPages,
+    },
+  };
+
+  // Handle conditional request (ETag / 304)
+  const conditionalResponse = handleConditionalRequest(request, responseData);
+  if (conditionalResponse) return conditionalResponse;
+
+  // Build response with cache headers and ETag
+  const profile = ROUTE_CACHE_PROFILES["/api/recurring"];
+  let response = NextResponse.json(responseData);
+  response = withCacheHeaders(response, profile);
+  response = withETag(response, responseData);
+
+  return response;
 }
 
 export async function POST(request: NextRequest) {
@@ -216,7 +251,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error("[recurring:POST]", error);
-    return NextResponse.json({ error: "Gagal menyimpan." }, { status: 500 });
+    const apiError = sanitizeErrorForProduction(error, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
   }
 }
 
@@ -246,7 +285,11 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(updated);
   } catch (error) {
     console.error("[recurring:PUT]", error);
-    return NextResponse.json({ error: "Gagal menyimpan." }, { status: 500 });
+    const apiError = sanitizeErrorForProduction(error, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
   }
 }
 

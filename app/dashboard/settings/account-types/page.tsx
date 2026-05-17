@@ -193,9 +193,9 @@ function TypeCard({
           {type.name.slice(0, 1).toUpperCase()}
         </div>
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="break-words text-sm font-medium">{type.name}</span>
-            {!type.isActive && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Arsip</span>}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="truncate text-sm font-medium">{type.name}</span>
+            {!type.isActive && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">Arsip</span>}
           </div>
           <span className={cn(
             "text-[10px] font-medium",
@@ -207,7 +207,7 @@ function TypeCard({
       </div>
 
       {!isDemo && (
-      <div className="flex items-center justify-end gap-1">
+      <div className="flex shrink-0 items-center justify-end gap-1">
         <button
           onClick={() => onEdit(type)}
           title="Edit"

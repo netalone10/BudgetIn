@@ -77,7 +77,7 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="break-words">{goal.name}</CardTitle>
+        <CardTitle className="min-w-0 truncate">{goal.name}</CardTitle>
         <CardAction className="col-start-1 row-start-auto justify-self-start sm:col-start-2 sm:row-start-1 sm:justify-self-end">
           <div className="flex flex-wrap items-center gap-1">
             {achieved && (
@@ -144,9 +144,9 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
                     key={c.id}
                     className="flex flex-col gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="text-muted-foreground">{formatDate(c.date)}</span>
-                      {c.note && <span className="text-foreground">{c.note}</span>}
+                      {c.note && <span className="truncate text-foreground">{c.note}</span>}
                     </div>
                     <span className="break-words font-medium tabular-nums text-green-600 dark:text-green-400">
                       +Rp {formatRupiah(c.amount)}

@@ -1,6 +1,10 @@
 import { Wallet } from "lucide-react";
 import AccountsClient from "./AccountsClient";
 
+// User-specific mutable data — always fetch fresh
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Server shell merender heading instan sebagai LCP element.
 // Konten interaktif (list akun, modal, dsb.) di-render oleh `AccountsClient`
 // setelah hydrate.

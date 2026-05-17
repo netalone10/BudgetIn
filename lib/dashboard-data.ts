@@ -7,9 +7,11 @@ import "server-only";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCachedCategories } from "@/lib/cache";
 import { getTransactionsDB } from "@/utils/db-transactions";
-import { getValidToken } from "@/utils/token";
-import { getTransactions, getAccountsWithBalance } from "@/utils/sheets";
+import { type Transaction as SheetsTransaction } from "@/utils/sheets";
+import { getFullSheetsLedger, getAccountsWithComputedBalance } from "@/lib/sheets-data";
+import { computeAccountBalancesFromTx } from "@/utils/sheets-ledger";
 import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
@@ -40,14 +42,24 @@ async function findBudgetsWithCategory(
   try {
     return await prisma.budget.findMany({
       where,
-      include: { category: { select: BUDGET_CATEGORY_SELECT_WITH_BUDGET_TYPE } },
+      select: {
+        id: true,
+        categoryId: true,
+        amount: true,
+        category: { select: BUDGET_CATEGORY_SELECT_WITH_BUDGET_TYPE },
+      },
       ...(orderBy ? { orderBy } : {}),
     });
   } catch (error) {
     if (!isMissingBudgetTypeColumnError(error)) throw error;
     return prisma.budget.findMany({
       where,
-      include: { category: { select: BUDGET_CATEGORY_SELECT_FALLBACK } },
+      select: {
+        id: true,
+        categoryId: true,
+        amount: true,
+        category: { select: BUDGET_CATEGORY_SELECT_FALLBACK },
+      },
       ...(orderBy ? { orderBy } : {}),
     });
   }
@@ -140,6 +152,8 @@ interface Category {
   name: string;
   type: string;
   isSavings: boolean;
+  rolloverEnabled?: boolean;
+  budgetType?: string | null;
 }
 
 /**
@@ -189,36 +203,44 @@ export async function fetchDashboardData(
   let categories: Category[];
   let budgets: BudgetWithCategory[];
   let lastMonthBudgets: BudgetWithCategory[];
+  let activeSavingsGoal: ActiveSavingsGoal | null;
 
   if (sheetsId) {
-    // For Sheets users, fetch the full ledger ONCE and derive both month slices
-    // plus account balances from the same dataset. Previously this triggered
-    // 3 separate Sheets API roundtrips that hammered the cache race.
+    // For Sheets users, fetch the full ledger ONCE via the cached single-call
+    // layer and derive both month slices + account balances in memory.
+    // getFullSheetsLedger is wrapped with React cache() so duplicate calls
+    // within the same server request are deduplicated automatically.
     try {
-      const accessToken = await getValidToken(resolvedUserId);
-
-      // Fetch transactions + categories + budgets in parallel.
-      // Transactions are needed before computing account balances, so accounts
-      // come in a second wave that reuses the preloaded transactions.
-      const [allTransactions, cats, b1, b2] = await Promise.all([
-        getTransactions(sheetsId, accessToken),
-        fetchCategories(resolvedUserId),
+      const [ledgerData, cats, b1, b2, savings] = await Promise.all([
+        getFullSheetsLedger(resolvedUserId, sheetsId),
+        getCachedCategories(resolvedUserId),
         findBudgetsWithCategory({ userId: resolvedUserId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
         findBudgetsWithCategory({ userId: resolvedUserId, month: lastMonth }).catch(() => []),
+        fetchActiveSavingsGoal(resolvedUserId),
       ]);
 
-      const sheetsAccounts = await getAccountsWithBalanceFromLedger(
-        sheetsId,
-        accessToken,
-        allTransactions
-      );
+      const { transactions: allTransactions, accounts: sheetsAccountsRaw } = ledgerData;
 
+      // Derive month slices in memory (Requirement 8.1)
       txThisMonthRaw = filterAndMapSheetsTxns(allTransactions, currentMonth);
       txLastMonthRaw = filterAndMapSheetsTxns(allTransactions, lastMonth);
-      accounts = sheetsAccounts;
+
+      // Compute balances from preloaded data — no separate API call (Requirement 8.2)
+      const balances = computeAccountBalancesFromTx(sheetsAccountsRaw, allTransactions);
+      accounts = sheetsAccountsRaw.map((a) => ({
+        id: a.id,
+        name: a.name,
+        currency: a.currency,
+        accountType: { name: a.type, classification: a.classification },
+        currentBalance: (balances.get(a.id) ?? 0).toString(),
+        color: a.color,
+        note: a.note,
+      }));
+
       categories = cats;
       budgets = b1;
       lastMonthBudgets = b2;
+      activeSavingsGoal = savings;
     } catch (error) {
       console.error("Failed to load Sheets dashboard data:", error);
       txThisMonthRaw = [];
@@ -227,23 +249,33 @@ export async function fetchDashboardData(
       categories = [];
       budgets = [];
       lastMonthBudgets = [];
+      activeSavingsGoal = null;
     }
   } else {
-    [
-      txThisMonthRaw,
-      txLastMonthRaw,
-      accounts,
-      categories,
-      budgets,
-      lastMonthBudgets,
+    const [
+      txThis,
+      txLast,
+      accts,
+      cats,
+      b1,
+      b2,
+      savings,
     ] = await Promise.all([
       fetchRawTransactions(resolvedUserId, null, "bulan ini"),
       fetchRawTransactions(resolvedUserId, null, lastMonth),
       fetchAccounts(resolvedUserId, null),
-      fetchCategories(resolvedUserId),
+      getCachedCategories(resolvedUserId),
       findBudgetsWithCategory({ userId: resolvedUserId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
       findBudgetsWithCategory({ userId: resolvedUserId, month: lastMonth }).catch(() => []),
+      fetchActiveSavingsGoal(resolvedUserId),
     ]);
+    txThisMonthRaw = txThis;
+    txLastMonthRaw = txLast;
+    accounts = accts;
+    categories = cats;
+    budgets = b1;
+    lastMonthBudgets = b2;
+    activeSavingsGoal = savings;
   }
 
   const transactions = mapTxnsForDisplay(txThisMonthRaw);
@@ -260,7 +292,6 @@ export async function fetchDashboardData(
     .map((c) => c.name.toLowerCase());
 
   const lastMonthTotals = computeMonthlyTotals(txLastMonthRaw);
-  const activeSavingsGoal = await fetchActiveSavingsGoal(resolvedUserId);
 
   return {
     transactions,
@@ -298,6 +329,13 @@ async function fetchActiveSavingsGoal(
     const [goals, contributionAgg] = await Promise.all([
       prisma.savingsGoal.findMany({
         where: { userId },
+        select: {
+          id: true,
+          name: true,
+          targetAmount: true,
+          deadline: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: "asc" },
       }),
       prisma.savingsContribution.groupBy({
@@ -340,7 +378,7 @@ async function fetchActiveSavingsGoal(
 }
 
 function filterAndMapSheetsTxns(
-  all: Awaited<ReturnType<typeof getTransactions>>,
+  all: SheetsTransaction[],
   yearMonth: string
 ): RawTxn[] {
   return all
@@ -362,27 +400,9 @@ function filterAndMapSheetsTxns(
     }));
 }
 
-async function getAccountsWithBalanceFromLedger(
-  sheetsId: string,
-  accessToken: string,
-  preloadedTransactions?: Awaited<ReturnType<typeof getTransactions>>
-): Promise<Account[]> {
-  try {
-    const sheetsAccounts = await getAccountsWithBalance(sheetsId, accessToken, { preloadedTransactions });
-    return sheetsAccounts.map((a) => ({
-      id: a.id,
-      name: a.name,
-      currency: a.currency,
-      accountType: { name: a.type, classification: a.classification },
-      currentBalance: a.balance.toString(),
-      color: a.color,
-      note: a.note,
-    }));
-  } catch (error) {
-    console.error("Failed to fetch Sheets accounts:", error);
-    return [];
-  }
-}
+// getAccountsWithBalanceFromLedger is no longer needed — replaced by
+// getAccountsWithComputedBalance from lib/sheets-data.ts which reuses
+// the React cache()-wrapped single-call ledger fetch.
 
 // Common shape after normalization (works for both Sheets and DB sources).
 interface RawTxn {
@@ -408,9 +428,23 @@ async function fetchRawTransactions(
 ): Promise<RawTxn[]> {
   try {
     if (sheetsId) {
-      const accessToken = await getValidToken(userId);
-      const txs = await getTransactions(sheetsId, accessToken, period);
-      return txs.map((t) => ({
+      // Use the cached single-call ledger — getFullSheetsLedger is React cache()-wrapped
+      // so this reuses the same data already fetched in the current request.
+      const { transactions: allTxs } = await getFullSheetsLedger(userId, sheetsId);
+
+      // Filter by period in memory
+      let filtered: SheetsTransaction[];
+      if (/^\d{4}-\d{2}$/.test(period)) {
+        filtered = allTxs.filter((t) => t.date.startsWith(period));
+      } else if (period === "bulan ini") {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+        filtered = allTxs.filter((t) => t.date.startsWith(currentMonth));
+      } else {
+        filtered = allTxs;
+      }
+
+      return filtered.map((t) => ({
         id: t.id,
         date: t.date,
         time: normalizeTransactionTime(t.time),
@@ -549,9 +583,8 @@ async function fetchAccounts(
 ): Promise<Account[]> {
   try {
     if (sheetsId) {
-      // Google Sheets user
-      const accessToken = await getValidToken(userId);
-      const sheetsAccounts = await getAccountsWithBalance(sheetsId, accessToken);
+      // Google Sheets user — reuses cached ledger data (no extra API call)
+      const sheetsAccounts = await getAccountsWithComputedBalance(userId, sheetsId);
       return sheetsAccounts.map((a) => ({
         id: a.id,
         name: a.name,
@@ -584,16 +617,6 @@ async function fetchAccounts(
   }
 }
 
-async function fetchCategories(userId: string): Promise<Category[]> {
-  try {
-    const cats = await prisma.category.findMany({
-      where: { userId },
-      select: { id: true, name: true, type: true, isSavings: true },
-      orderBy: { name: "asc" },
-    });
-    return cats;
-  } catch (error) {
-    console.error("Failed to fetch categories:", error);
-    return [];
-  }
-}
+// fetchCategories replaced by getCachedCategories from lib/cache.ts
+// which provides per-request deduplication via React cache() and uses
+// Prisma select-only fields (Requirement 6.2).

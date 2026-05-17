@@ -8,6 +8,7 @@ import { getValidToken } from "@/utils/token";
 import { appendTransaction, getAccounts } from "@/utils/sheets";
 import { currentJakartaTime, isValidTransactionTime } from "@/lib/transaction-time";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
 
 function isValidTransactionAmount(amount: number): boolean {
   return Number.isFinite(amount) && amount !== 0 && Math.abs(amount) <= 1_000_000_000;
@@ -26,6 +27,7 @@ function isValidDateString(date: unknown): date is string {
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   const demoBlock = await blockDemoResponse(session);
   if (demoBlock) return demoBlock;
@@ -332,4 +334,12 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ error: "Tipe transaksi tidak valid." }, { status: 400 });
+  } catch (error) {
+    console.error(error);
+    const apiError = sanitizeErrorForProduction(error, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
+  }
 }

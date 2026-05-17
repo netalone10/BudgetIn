@@ -6,6 +6,9 @@ import { authOptions } from "@/lib/auth";
 import { changelogItems, getLatestChangelogItem, githubRepositoryUrl, type ChangelogType } from "@/lib/changelog";
 import { cn } from "@/lib/utils";
 
+// Semi-static content — changelog updates only on new releases
+export const revalidate = 60;
+
 const typeLabel: Record<ChangelogType, string> = {
   release: "Release",
   improvement: "Improvement",

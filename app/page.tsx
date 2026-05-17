@@ -113,8 +113,8 @@ export default function LandingPage() {
               </span>
             </div>
 
-            <div className="max-w-3xl space-y-6">
-              <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight-hero text-foreground sm:text-[64px]">
+            <div className="max-w-3xl space-y-6 break-words">
+              <h1 className="text-3xl font-semibold leading-[1.05] tracking-tight-hero text-foreground sm:text-5xl lg:text-[64px]">
                 Budget tracker yang terasa
                 <span className="text-primary"> seperti ngobrol</span>, bukan isi
                 spreadsheet.
@@ -129,10 +129,10 @@ export default function LandingPage() {
 
             <div className="mt-8 flex flex-col items-center gap-4 lg:items-start">
               <div className="flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
-                <ButtonColorful href="/auth" label="Mulai Gratis" />
+                <ButtonColorful href="/auth" label="Mulai Gratis" className="w-full sm:w-auto" />
                 <a
                   href="#cara-kerja"
-                  className="inline-flex min-w-44 items-center justify-center rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-border bg-card px-6 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted sm:w-auto sm:min-w-44"
                 >
                   Lihat Cara Kerja
                 </a>
@@ -140,7 +140,7 @@ export default function LandingPage() {
                   href="/auth?demo=1"
                   className={cn(
                     buttonVariants({ variant: "outline", size: "lg" }),
-                    "min-w-44 border-primary/20 bg-primary/5 font-medium text-primary hover:bg-primary/10"
+                    "w-full min-w-44 border-primary/20 bg-primary/5 font-medium text-primary hover:bg-primary/10 sm:w-auto"
                   )}
                 >
                   Akses Akun Demo
@@ -279,7 +279,7 @@ export default function LandingPage() {
         >
           <div className="mb-12 flex flex-col items-center gap-3 text-center">
             <span className="label-mono text-primary">Cara Kerja</span>
-            <h2 className="text-[40px] font-semibold tracking-tight-h2 text-foreground">
+            <h2 className="text-2xl font-semibold tracking-tight-h2 text-foreground sm:text-[40px]">
               Dari catatan singkat jadi sistem keuangan yang rapi
             </h2>
             <p className="max-w-2xl text-base leading-relaxed text-muted-foreground">
@@ -341,7 +341,7 @@ export default function LandingPage() {
         <section className="px-4 pb-32 pt-4 lg:px-6">
           <div className="mx-auto max-w-5xl rounded-[32px] border border-border bg-card px-6 py-14 text-center shadow-sm sm:px-10">
             <span className="label-mono text-primary">Siap mulai</span>
-            <h2 className="mt-4 text-[40px] font-semibold leading-tight tracking-tight-h2 text-foreground">
+            <h2 className="mt-4 text-2xl font-semibold leading-tight tracking-tight-h2 text-foreground sm:text-[40px]">
               Jadikan keuanganmu
               <span className="text-primary"> lebih tenang</span>, satu chat
               pada satu waktu.
@@ -353,12 +353,12 @@ export default function LandingPage() {
             <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
               Dari pengeluaran harian, transfer antar akun, biaya admin, sampai target tabungan, semua dicatat dalam alur yang mudah dipahami dan siap dianalisis kapan saja.
             </p>
-            <ButtonColorful href="/auth" label="Mulai Sekarang Gratis" className="mt-8" />
+            <ButtonColorful href="/auth" label="Mulai Sekarang Gratis" className="mt-8 w-full sm:w-auto" />
             <Link
               href="/auth?demo=1"
               className={cn(
                 buttonVariants({ variant: "ghost", size: "lg" }),
-                "mt-3 font-medium text-primary hover:text-primary"
+                "mt-3 w-full font-medium text-primary hover:text-primary sm:w-auto"
               )}
             >
               Masuk ke akun demo

@@ -24,7 +24,7 @@ export default function PrivacyPage() {
       <a href="#main-content" className="skip-link">
         Lewati ke konten utama
       </a>
-      <header className="flex h-14 items-center justify-between border-b px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
+      <header className="flex h-14 items-center justify-between border-b px-4 sm:px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
         <Link href="/" className="font-bold tracking-tight text-lg hover:opacity-80 transition-opacity">
           BudgetIn
         </Link>
@@ -41,14 +41,14 @@ export default function PrivacyPage() {
         </div>
       </header>
 
-      <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
+      <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-4 sm:px-6 py-10 sm:py-16">
         <div className="space-y-2 mb-10">
           <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Legal</p>
           <h1 className="text-3xl font-semibold tracking-tight">Kebijakan Privasi</h1>
           <p className="text-sm text-muted-foreground">Terakhir diperbarui: 13 Mei 2026</p>
         </div>
 
-        <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
+        <div className="space-y-8 text-sm leading-relaxed text-muted-foreground break-words">
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">1. Tentang BudgetIn</h2>
             <p>
@@ -128,7 +128,7 @@ export default function PrivacyPage() {
             <p>
               <span className="text-foreground font-medium">Penghapusan:</span> kamu dapat menghapus data Google dari BudgetIn dengan cara berikut:
             </p>
-            <ul className="list-disc list-inside space-y-2 pl-2 pl-2">
+            <ul className="list-disc list-inside space-y-2 pl-2">
               <li>Melalui pengaturan akun di aplikasi BudgetIn (fitur hapus akun).</li>
               <li>Mencabut akses Google OAuth melalui{" "}
                 <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline underline-offset-4">

@@ -1,6 +1,9 @@
 import { FileText } from "lucide-react";
 import ReportClient from "./ReportClient";
 
+// Semi-static content — reports change less frequently
+export const revalidate = 60;
+
 export default function ReportPage() {
   return (
     <div className="flex flex-col w-full print:bg-white print:text-black">

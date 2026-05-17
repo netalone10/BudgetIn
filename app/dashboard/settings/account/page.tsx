@@ -69,7 +69,7 @@ function ActionCard({ action, onOpen }: { action: ActionConfig; onOpen: (type: A
             </ul>
           </div>
         </div>
-        <Button variant={action.destructive ? "destructive" : "outline"} onClick={() => onOpen(action.type)} className="rounded-2xl md:shrink-0">
+        <Button variant={action.destructive ? "destructive" : "outline"} onClick={() => onOpen(action.type)} className="w-full rounded-2xl sm:w-auto md:shrink-0">
           {action.label}
         </Button>
       </div>

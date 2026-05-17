@@ -212,7 +212,7 @@ export default function TransactionsClient() {
           </div>
 
           {period === "custom" && (
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[12.5px]">
+            <div className="mt-3 flex flex-col gap-2 text-[12.5px] sm:flex-row sm:flex-wrap sm:items-center">
               <label className="flex items-center gap-1.5">
                 <span className="text-muted-foreground">Dari</span>
                 <input
@@ -311,7 +311,7 @@ export default function TransactionsClient() {
             </div>
           ) : (
             <div className="overflow-hidden rounded-[20px] border border-border/70 bg-background">
-              <div className="sm:overflow-x-auto sm:[scrollbar-width:thin]">
+              <div className="overflow-x-auto [scrollbar-width:thin]">
                 <table className="w-full sm:min-w-[760px] sm:table-fixed">
                   <thead className="hidden sm:table-header-group">
                     <tr className="border-b border-border bg-muted/35">

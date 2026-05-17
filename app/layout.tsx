@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -91,6 +92,7 @@ export default function RootLayout({
           {children}
           <Analytics />
           <SpeedInsights />
+          <WebVitalsReporter />
         </Providers>
       </body>
     </html>

@@ -23,10 +23,20 @@ import {
   ensureAccountHeader,
 } from "@/utils/sheets";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
+import { normalizePaginationParams } from "@/lib/pagination";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Parse pagination params
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "50", 10);
+  const { page: normalizedPage, limit: normalizedLimit, skip } = normalizePaginationParams({ page, limit });
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -108,17 +118,44 @@ export async function GET() {
 
       const netWorth = assets - liabilities;
 
-      return NextResponse.json({
-        accounts,
+      // Apply pagination
+      const total = accounts.length;
+      const totalPages = Math.ceil(total / normalizedLimit);
+      const paginatedAccounts = accounts.slice(skip, skip + normalizedLimit);
+
+      const responseData = {
+        accounts: paginatedAccounts,
         summary: {
           assets: assets.toString(),
           liabilities: liabilities.toString(),
           netWorth: netWorth.toString(),
         },
-      });
+        pagination: {
+          page: normalizedPage,
+          limit: normalizedLimit,
+          total,
+          totalPages,
+        },
+      };
+
+      // Handle conditional request (ETag / 304)
+      const conditionalResponse = handleConditionalRequest(req, responseData);
+      if (conditionalResponse) return conditionalResponse;
+
+      // Build response with cache headers and ETag
+      const profile = ROUTE_CACHE_PROFILES["/api/accounts"];
+      let response = NextResponse.json(responseData);
+      response = withCacheHeaders(response, profile);
+      response = withETag(response, responseData);
+
+      return response;
     } catch (e) {
       console.error("Failed to read accounts from Sheets:", e);
-      return NextResponse.json({ error: "Gagal mengambil data dari Google Sheets" }, { status: 500 });
+      const apiError = sanitizeErrorForProduction(e, "internal");
+      return NextResponse.json(
+        { error: apiError.error, code: apiError.code },
+        { status: apiError.statusCode }
+      );
     }
   }
 
@@ -127,10 +164,33 @@ export async function GET() {
   const accounts = await getAccountBalances(session.userId);
   const summary = calculateNetWorth(accounts);
 
-  return NextResponse.json({
-    accounts: accounts.map(serializeAccountWithBalance),
+  const serializedAccounts = accounts.map(serializeAccountWithBalance);
+  const total = serializedAccounts.length;
+  const totalPages = Math.ceil(total / normalizedLimit);
+  const paginatedAccounts = serializedAccounts.slice(skip, skip + normalizedLimit);
+
+  const responseData = {
+    accounts: paginatedAccounts,
     summary: serializeNetWorth(summary),
-  });
+    pagination: {
+      page: normalizedPage,
+      limit: normalizedLimit,
+      total,
+      totalPages,
+    },
+  };
+
+  // Handle conditional request (ETag / 304)
+  const conditionalResponse = handleConditionalRequest(req, responseData);
+  if (conditionalResponse) return conditionalResponse;
+
+  // Build response with cache headers and ETag
+  const profile = ROUTE_CACHE_PROFILES["/api/accounts"];
+  let response = NextResponse.json(responseData);
+  response = withCacheHeaders(response, profile);
+  response = withETag(response, responseData);
+
+  return response;
 }
 
 export async function POST(req: NextRequest) {
@@ -239,7 +299,11 @@ export async function POST(req: NextRequest) {
       }, { status: 201 });
     } catch (e) {
       console.error("Failed to create account in Sheets:", e);
-      return NextResponse.json({ error: "Gagal membuat akun di Google Sheets" }, { status: 500 });
+      const apiError = sanitizeErrorForProduction(e, "internal");
+      return NextResponse.json(
+        { error: apiError.error, code: apiError.code },
+        { status: apiError.statusCode }
+      );
     }
   }
 
@@ -399,6 +463,10 @@ export async function PUT(req: NextRequest) {
     });
   } catch (e) {
     console.error("Migration failed:", e);
-    return NextResponse.json({ error: "Gagal melakukan migrasi" }, { status: 500 });
+    const apiError = sanitizeErrorForProduction(e, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
   }
 }

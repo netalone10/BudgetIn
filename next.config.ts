@@ -44,7 +44,7 @@ const nextConfig: NextConfig = {
 
   // Tree-shake heavy icon/date packages on the client.
   experimental: {
-    optimizePackageImports: ["lucide-react", "date-fns", "date-fns-tz"],
+    optimizePackageImports: ["lucide-react", "date-fns", "date-fns-tz", "framer-motion"],
   },
 
   // Strip console.* (except errors/warnings) in production builds.

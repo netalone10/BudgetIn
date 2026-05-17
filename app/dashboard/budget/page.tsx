@@ -14,6 +14,10 @@ import {
 import { seedDefaultCategories } from "@/utils/seed-categories";
 import BudgetClient from "./BudgetClient";
 
+// User-specific mutable data — always fetch fresh
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type Props = {
   searchParams?: Promise<{ month?: string }>;
 };

@@ -139,15 +139,13 @@ export default function CashflowPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-9 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
-            <TrendingDown className="size-5 text-red-600 dark:text-red-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Laporan Arus Kas</h1>
-            <p className="text-xs text-muted-foreground">Pantau pengeluaran Kartu Kredit</p>
-          </div>
+      <div className="flex items-center gap-3">
+        <div className="size-9 shrink-0 rounded-xl bg-red-100 dark:bg-red-950/40 flex items-center justify-center">
+          <TrendingDown className="size-5 text-red-600 dark:text-red-400" />
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-foreground sm:text-xl">Laporan Arus Kas</h1>
+          <p className="text-xs text-muted-foreground">Pantau pengeluaran Kartu Kredit</p>
         </div>
       </div>
 
@@ -221,9 +219,10 @@ export default function CashflowPage() {
 
           {/* Period Info */}
           {data.period && (
-            <div className="rounded-lg bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground">
-              Periode: {formatDate(data.period.start)} — {formatDate(data.period.end)} •
-              Jatuh Tempo: {formatDate(data.period.dueDate)}
+            <div className="rounded-lg bg-muted/50 px-4 py-2 text-center text-sm text-muted-foreground break-words">
+              <span className="block sm:inline">Periode: {formatDate(data.period.start)} — {formatDate(data.period.end)}</span>
+              <span className="hidden sm:inline"> • </span>
+              <span className="block sm:inline">Jatuh Tempo: {formatDate(data.period.dueDate)}</span>
             </div>
           )}
 
@@ -238,7 +237,7 @@ export default function CashflowPage() {
                 <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b border-border gap-2">
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <CreditCard className="size-4 text-red-500 shrink-0" />
-                    <span className="break-words text-sm font-medium">{cc.accountName}</span>
+                    <span className="truncate text-sm font-medium">{cc.accountName}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {cc.isOverdue ? (
@@ -304,7 +303,8 @@ export default function CashflowPage() {
 
                 {/* Daftar transaksi */}
                 {expandedCards.has(cc.accountId) && cc.transactions.length > 0 && (
-                  <div className="border-t border-border">
+                  <div className="overflow-x-auto border-t border-border">
+                    <div className="min-w-0">
                     {cc.transactions.map((tx) => (
                       <div
                         key={tx.id}
@@ -313,10 +313,10 @@ export default function CashflowPage() {
                         <span className="text-muted-foreground sm:w-16 sm:shrink-0">
                           <span suppressHydrationWarning>{format(new Date(tx.date), "d MMM", { locale: id })}</span>
                         </span>
-                        <span className="break-words">{tx.note || "—"}</span>
-                        <span className="text-muted-foreground sm:shrink-0">{tx.category}</span>
+                        <span className="truncate">{tx.note || "—"}</span>
+                        <span className="truncate text-muted-foreground sm:shrink-0">{tx.category}</span>
                         <span className={cn(
-                          "font-semibold tabular-nums sm:shrink-0",
+                          "font-semibold tabular-nums whitespace-nowrap sm:shrink-0",
                           tx.type === "payment" ? "text-emerald-500" : "text-red-500"
                         )}>
                           {tx.type === "payment" ? "+" : "-"}
@@ -324,6 +324,7 @@ export default function CashflowPage() {
                         </span>
                       </div>
                     ))}
+                    </div>
                   </div>
                 )}
               </div>

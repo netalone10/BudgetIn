@@ -4,8 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
+import { normalizePaginationParams } from "@/lib/pagination";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -16,7 +19,37 @@ export async function GET() {
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
 
-  return NextResponse.json({ accountTypes });
+  // Parse pagination params
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "50", 10);
+  const { page: normalizedPage, limit: normalizedLimit, skip } = normalizePaginationParams({ page, limit });
+
+  const total = accountTypes.length;
+  const totalPages = Math.ceil(total / normalizedLimit);
+  const paginatedAccountTypes = accountTypes.slice(skip, skip + normalizedLimit);
+
+  const responseData = {
+    accountTypes: paginatedAccountTypes,
+    pagination: {
+      page: normalizedPage,
+      limit: normalizedLimit,
+      total,
+      totalPages,
+    },
+  };
+
+  // Handle conditional request (ETag / 304)
+  const conditionalResponse = handleConditionalRequest(req, responseData);
+  if (conditionalResponse) return conditionalResponse;
+
+  // Build response with cache headers and ETag
+  const profile = ROUTE_CACHE_PROFILES["/api/account-types"];
+  let response = NextResponse.json(responseData);
+  response = withCacheHeaders(response, profile);
+  response = withETag(response, responseData);
+
+  return response;
 }
 
 export async function POST(req: NextRequest) {

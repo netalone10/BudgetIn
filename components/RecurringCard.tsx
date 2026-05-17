@@ -109,40 +109,42 @@ export default function RecurringCard({ item, onRun, onSkip, onEdit, onDelete }:
 
   return (
     <div className={cn(
-      "bg-card border border-border rounded-xl p-4 border-l-4 transition-shadow hover:shadow-md",
+      "bg-card border border-border rounded-xl p-4 border-l-4 transition-shadow hover:shadow-md overflow-hidden",
       cfg.border,
     )}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3 min-w-0">
           <div className="mt-0.5 shrink-0">{cfg.icon}</div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="break-words font-semibold text-foreground">{item.name}</p>
-              <span className={cn("inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium", typeMeta.color)}>
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <p className="truncate font-semibold text-foreground max-w-full">{item.name}</p>
+              <span className={cn("inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium shrink-0", typeMeta.color)}>
                 <TypeIcon className="size-3" />
                 {typeMeta.label}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate">
               Rp {amount.toLocaleString("id-ID")}
               {item.category && (
-                <span className="ml-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-xs">{item.category.name}</span>
+                <span className="ml-1 inline-block rounded-full bg-muted px-1.5 py-0.5 text-xs truncate max-w-[120px] align-middle">{item.category.name}</span>
               )}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
               {describeFrequency(item.frequency, item.interval)}
             </p>
             {item.account && (
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                <CreditCard className="size-3" />
-                {item.type === "transfer" && item.toAccount
-                  ? <>{item.account.name} <ArrowLeftRight className="size-3" /> {item.toAccount.name}</>
-                  : item.account.name}
+              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 min-w-0">
+                <CreditCard className="size-3 shrink-0" />
+                <span className="truncate">
+                  {item.type === "transfer" && item.toAccount
+                    ? <>{item.account.name} → {item.toAccount.name}</>
+                    : item.account.name}
+                </span>
               </p>
             )}
             {item.savingsGoal && (
-              <p className="text-xs text-pink-500 mt-0.5 flex items-center gap-1">
-                <PiggyBank className="size-3" /> {item.savingsGoal.name}
+              <p className="text-xs text-pink-500 mt-0.5 flex items-center gap-1 min-w-0">
+                <PiggyBank className="size-3 shrink-0" /> <span className="truncate">{item.savingsGoal.name}</span>
               </p>
             )}
           </div>
@@ -198,7 +200,7 @@ export default function RecurringCard({ item, onRun, onSkip, onEdit, onDelete }:
       </div>
 
       {item.note && (
-        <p className="mt-2 text-xs text-muted-foreground pl-7 border-t border-border/50 pt-2">{item.note}</p>
+        <p className="mt-2 text-xs text-muted-foreground pl-7 border-t border-border/50 pt-2 truncate">{item.note}</p>
       )}
     </div>
   );

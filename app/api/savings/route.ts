@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
+import { normalizePaginationParams } from "@/lib/pagination";
 
 // ── Exported for testability ──────────────────────────────────────────────────
 
@@ -22,13 +26,19 @@ export function validateGoal({
 
 // ── GET — list all savings goals with contributions ───────────────────────────
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const userId = session.userId;
+
+  // Parse pagination params
+  const { searchParams } = new URL(req.url);
+  const page = parseInt(searchParams.get("page") || "1", 10);
+  const limit = parseInt(searchParams.get("limit") || "50", 10);
+  const { page: normalizedPage, limit: normalizedLimit, skip } = normalizePaginationParams({ page, limit });
 
   // Fetch goals and contributions in parallel
   const [goals, contributions] = await Promise.all([
@@ -63,7 +73,32 @@ export async function GET(_req: NextRequest) {
     };
   });
 
-  return NextResponse.json({ goals: goalsWithProgress });
+  // Apply pagination
+  const total = goalsWithProgress.length;
+  const totalPages = Math.ceil(total / normalizedLimit);
+  const paginatedGoals = goalsWithProgress.slice(skip, skip + normalizedLimit);
+
+  const responseData = {
+    goals: paginatedGoals,
+    pagination: {
+      page: normalizedPage,
+      limit: normalizedLimit,
+      total,
+      totalPages,
+    },
+  };
+
+  // Handle conditional request (ETag / 304)
+  const conditionalResponse = handleConditionalRequest(req, responseData);
+  if (conditionalResponse) return conditionalResponse;
+
+  // Build response with cache headers and ETag
+  const profile = ROUTE_CACHE_PROFILES["/api/savings"];
+  let response = NextResponse.json(responseData);
+  response = withCacheHeaders(response, profile);
+  response = withETag(response, responseData);
+
+  return response;
 }
 
 // ── POST — create a new savings goal ─────────────────────────────────────────
@@ -108,10 +143,11 @@ export async function POST(req: NextRequest) {
         createdAt: goal.createdAt.toISOString(),
       },
     });
-  } catch {
+  } catch (error) {
+    const apiError = sanitizeErrorForProduction(error, "internal");
     return NextResponse.json(
-      { error: "Gagal menyimpan. Coba lagi." },
-      { status: 500 }
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
     );
   }
 }

@@ -11,6 +11,9 @@ import {
   type AccountData,
   type Transaction,
 } from "@/utils/sheets";
+import { sanitizeErrorForProduction } from "@/lib/api-error";
+import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
+import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
 
 /**
  * Perioda bulan ini: dari (tanggalSettlement - 1) bulan sebelumnya
@@ -125,6 +128,7 @@ function buildCashflowCard(
 }
 
 export async function GET(req: NextRequest) {
+  try {
   const session = await getServerSession(authOptions);
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -274,7 +278,7 @@ export async function GET(req: NextRequest) {
 
   const firstCard = creditCards[0];
 
-  return NextResponse.json({
+  const responseData = {
     period: firstCard
       ? {
           start: firstCard.period.start,
@@ -290,5 +294,25 @@ export async function GET(req: NextRequest) {
       totalOutstanding: totalOutstandingSum.toString(),
       overdueCount,
     },
-  }, { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=60" } });
+  };
+
+  // Handle conditional request (ETag / 304)
+  const conditionalResponse = handleConditionalRequest(req, responseData);
+  if (conditionalResponse) return conditionalResponse;
+
+  // Build response with cache headers and ETag
+  const profile = ROUTE_CACHE_PROFILES["/api/cashflow"];
+  let response = NextResponse.json(responseData);
+  response = withCacheHeaders(response, profile);
+  response = withETag(response, responseData);
+
+  return response;
+  } catch (error) {
+    console.error(error);
+    const apiError = sanitizeErrorForProduction(error, "internal");
+    return NextResponse.json(
+      { error: apiError.error, code: apiError.code },
+      { status: apiError.statusCode }
+    );
+  }
 }

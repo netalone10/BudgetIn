@@ -24,7 +24,7 @@ export default function TermsPage() {
       <a href="#main-content" className="skip-link">
         Lewati ke konten utama
       </a>
-      <header className="flex h-14 items-center justify-between border-b px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
+      <header className="flex h-14 items-center justify-between border-b px-4 sm:px-6 backdrop-blur-sm sticky top-0 bg-background/80 z-10">
         <Link href="/" className="font-bold tracking-tight text-lg hover:opacity-80 transition-opacity">
           BudgetIn
         </Link>
@@ -41,14 +41,14 @@ export default function TermsPage() {
         </div>
       </header>
 
-      <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-6 py-16">
+      <main id="main-content" className="flex-1 mx-auto w-full max-w-2xl px-4 sm:px-6 py-10 sm:py-16">
         <div className="space-y-2 mb-10">
           <p className="text-xs text-muted-foreground uppercase tracking-widest font-medium">Legal</p>
           <h1 className="text-3xl font-semibold tracking-tight">Syarat &amp; Ketentuan</h1>
           <p className="text-sm text-muted-foreground">Terakhir diperbarui: 12 April 2026</p>
         </div>
 
-        <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
+        <div className="space-y-8 text-sm leading-relaxed text-muted-foreground break-words">
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">1. Penerimaan Syarat</h2>
             <p>

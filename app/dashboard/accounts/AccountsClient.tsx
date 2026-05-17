@@ -512,21 +512,21 @@ const AccountCard = memo(function AccountCard({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="break-words text-sm font-medium leading-snug">{account.name}</span>
+              <span className="truncate text-sm font-medium leading-snug">{account.name}</span>
               {isLiability && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 font-medium shrink-0">
                   Hutang
                 </span>
               )}
             </div>
-            <span className="block text-xs text-muted-foreground">{account.accountType.name}</span>
+            <span className="block text-xs text-muted-foreground truncate">{account.accountType.name}</span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 sm:shrink-0 sm:justify-end sm:gap-3">
           <span
             className={cn(
-              "text-base font-semibold tabular-nums sm:text-sm",
+              "text-base font-semibold tabular-nums whitespace-nowrap sm:text-sm",
               isLiability ? "text-red-500" : balance < 0 ? "text-amber-500" : "text-foreground"
             )}
           >
@@ -815,7 +815,7 @@ export default function AccountsPage() {
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
                   Aset
                 </h2>
-                <span className="min-w-0 text-right text-xs font-semibold text-emerald-600 tabular-nums dark:text-emerald-400">
+                <span className="shrink-0 text-right text-xs font-semibold text-emerald-600 tabular-nums whitespace-nowrap dark:text-emerald-400">
                   {formatIDR(assetTotal)}
                 </span>
               </div>
@@ -823,8 +823,8 @@ export default function AccountsPage() {
                 {assetGroups.map((g) => (
                   <div key={g.typeName}>
                     <div className="mb-2 flex items-start justify-between gap-3 px-1">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.typeName}</h3>
-                      <span className="min-w-0 text-right text-xs text-muted-foreground">
+                      <h3 className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.typeName}</h3>
+                      <span className="shrink-0 text-right text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                         {formatIDR(g.accounts.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
                       </span>
                     </div>
@@ -851,7 +851,7 @@ export default function AccountsPage() {
                 <h2 className="text-xs font-semibold uppercase tracking-widest text-red-500">
                   Liabilitas
                 </h2>
-                <span className="min-w-0 text-right text-xs font-semibold text-red-500 tabular-nums">
+                <span className="shrink-0 text-right text-xs font-semibold text-red-500 tabular-nums whitespace-nowrap">
                   {formatIDR(liabTotal)}
                 </span>
               </div>
@@ -859,8 +859,8 @@ export default function AccountsPage() {
                 {liabilityGroups.map((g) => (
                   <div key={g.typeName}>
                     <div className="mb-2 flex items-start justify-between gap-3 px-1">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.typeName}</h3>
-                      <span className="min-w-0 text-right text-xs text-muted-foreground">
+                      <h3 className="min-w-0 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.typeName}</h3>
+                      <span className="shrink-0 text-right text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                         {formatIDR(g.accounts.reduce((s, a) => s + parseFloat(a.currentBalance), 0))}
                       </span>
                     </div>

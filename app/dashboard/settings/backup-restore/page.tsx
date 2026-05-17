@@ -49,8 +49,8 @@ function SummaryGrid({ summary }: { summary: BackupSummary }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {summaryLabels.map(([key, label]) => (
-        <div key={key} className="rounded-2xl border border-border bg-background px-4 py-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <div key={key} className="min-w-0 rounded-2xl border border-border bg-background px-4 py-3">
+          <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
           <p className="mt-1 text-2xl font-semibold text-foreground">{summary[key].toLocaleString("id-ID")}</p>
         </div>
       ))}
@@ -178,7 +178,7 @@ export default function BackupRestorePage() {
               File backup berisi data keuangan BudgetIn, tapi tidak menyertakan password, token Google, atau session.
             </p>
           </div>
-          <Button onClick={handleDownload} className="rounded-2xl">
+          <Button onClick={handleDownload} className="w-full rounded-2xl sm:w-auto">
             <Download className="mr-2 size-4" /> Download backup JSON
           </Button>
         </div>
@@ -211,7 +211,7 @@ export default function BackupRestorePage() {
           <div className="mt-6 space-y-5">
             <div className="rounded-2xl border border-border bg-background p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Restore path</p>
-              <p className="mt-2 text-lg font-semibold text-foreground">
+              <p className="mt-2 break-words text-lg font-semibold text-foreground">
                 {storageLabel(preview.sourceStorageMode)} → {storageLabel(preview.targetStorageMode)}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">Total {preview.summary.totalRecords.toLocaleString("id-ID")} record di file backup.</p>
@@ -222,20 +222,22 @@ export default function BackupRestorePage() {
                 <div className="flex items-center gap-2 font-semibold">
                   <AlertTriangle className="size-4" /> Perhatian
                 </div>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
+                <ul className="mt-2 list-disc space-y-1 break-words pl-5">
                   {preview.warnings.map((warning) => <li key={warning}>{warning}</li>)}
                 </ul>
               </div>
             )}
 
-            <SummaryGrid summary={preview.summary} />
+            <div className="overflow-x-auto">
+              <SummaryGrid summary={preview.summary} />
+            </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button disabled={!canRestore} onClick={handleRestore} className="rounded-2xl">
+              <Button disabled={!canRestore} onClick={handleRestore} className="w-full rounded-2xl sm:w-auto">
                 {restoring ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Upload className="mr-2 size-4" />}
                 Konfirmasi restore
               </Button>
-              <Button variant="outline" className="rounded-2xl" onClick={() => window.location.reload()}>
+              <Button variant="outline" className="w-full rounded-2xl sm:w-auto" onClick={() => window.location.reload()}>
                 <RefreshCw className="mr-2 size-4" /> Refresh halaman
               </Button>
             </div>

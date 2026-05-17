@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { LazyMotion, domAnimation, m } from "framer-motion";
+import * as m from "framer-motion/m";
+import { LazyMotion, domAnimation } from "framer-motion";
 import {
   LayoutGrid,
   Menu,
@@ -34,7 +35,8 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ProfileImage } from "@/components/ui/profile-image";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import ManageCategoriesModal from "@/components/ManageCategoriesModal";
@@ -382,7 +384,7 @@ export default function Sidebar() {
             >
               <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2")}>
                 <Avatar className="size-8 shrink-0 border border-sidebar-border">
-                  <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} />
+                  <ProfileImage src={session.user.image} alt={session.user.name ?? ""} size={32} />
                   <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                 </Avatar>
 
@@ -587,7 +589,7 @@ export default function Sidebar() {
                 <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="size-10 shrink-0 border border-sidebar-border">
-                      <AvatarImage src={session.user.image ?? ""} alt={session.user.name ?? ""} />
+                      <ProfileImage src={session.user.image} alt={session.user.name ?? ""} size={40} />
                       <AvatarFallback className="text-xs">{initials}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">

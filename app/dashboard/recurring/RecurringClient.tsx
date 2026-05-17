@@ -119,21 +119,21 @@ export default function RecurringClient() {
 
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Total Item</p>
-            <p className="text-xl font-bold text-foreground">{summary.totalRecurring}</p>
+          <div className="bg-card border border-border rounded-xl p-4 min-w-0">
+            <p className="text-xs text-muted-foreground mb-1 truncate">Total Item</p>
+            <p className="text-xl font-bold text-foreground truncate">{summary.totalRecurring}</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Sudah Tercatat</p>
-            <p className="text-xl font-bold text-emerald-600">{(summary.paidAmount / 1000).toFixed(0)}k</p>
+          <div className="bg-card border border-border rounded-xl p-4 min-w-0">
+            <p className="text-xs text-muted-foreground mb-1 truncate">Sudah Tercatat</p>
+            <p className="text-xl font-bold text-emerald-600 truncate">{(summary.paidAmount / 1000).toFixed(0)}k</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Belum Dicatat</p>
-            <p className="text-xl font-bold text-foreground">{(summary.pendingAmount / 1000).toFixed(0)}k</p>
+          <div className="bg-card border border-border rounded-xl p-4 min-w-0">
+            <p className="text-xs text-muted-foreground mb-1 truncate">Belum Dicatat</p>
+            <p className="text-xl font-bold text-foreground truncate">{(summary.pendingAmount / 1000).toFixed(0)}k</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-1">Terlambat</p>
-            <p className={`text-xl font-bold ${summary.overdueCount > 0 ? "text-red-600" : "text-foreground"}`}>
+          <div className="bg-card border border-border rounded-xl p-4 min-w-0">
+            <p className="text-xs text-muted-foreground mb-1 truncate">Terlambat</p>
+            <p className={`text-xl font-bold truncate ${summary.overdueCount > 0 ? "text-red-600" : "text-foreground"}`}>
               {summary.overdueCount}
             </p>
           </div>

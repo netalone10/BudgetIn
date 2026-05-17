@@ -130,7 +130,7 @@ export default function SavingsPage() {
   }
 
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex min-w-0 flex-col w-full">
       <div className="mx-auto w-full max-w-5xl px-4 md:p-8 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3 pb-2 mt-4 md:mt-2">
