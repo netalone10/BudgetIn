@@ -14,6 +14,25 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.11.0",
+    date: "2026-05-13",
+    title: "Performa dashboard dan keamanan email",
+    description: "Rilis mayor yang mempercepat waktu muat dashboard dengan cross-request cache, streaming Suspense, dan SWR pattern di client — serta menutup celah hyperlink injection pada template email.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.11.0`,
+    changes: [
+      "Menambahkan cross-request TTL cache (30 detik) pada data dashboard sehingga halaman yang dibuka berulang tidak memicu query database/Sheets ulang.",
+      "Menambahkan invalidasi cache otomatis di semua API mutasi (transaksi, budget, akun) agar data tetap fresh setelah perubahan.",
+      "Memecah Suspense boundary dashboard menjadi dua zona: KPI/ringkasan stream lebih dulu, lalu riwayat transaksi dan budget menyusul secara progresif.",
+      "Mengimplementasikan stale-while-revalidate di client — data lama langsung ditampilkan tanpa loading spinner, refresh berjalan di background.",
+      "Menambahkan optimistic update saat mencatat transaksi — UI langsung berubah sebelum server merespons, dengan rollback otomatis jika gagal.",
+      "Memanfaatkan ETag dan header If-None-Match pada fetch client untuk mengurangi payload transfer (304 Not Modified).",
+      "Menutup celah hyperlink injection di email verifikasi, reset password, dan pengingat recurring — nama user kini di-escape HTML sebelum dirender ke template.",
+      "Menambahkan validasi nama pada registrasi — nama yang mengandung URL, tag HTML, atau pola domain ditolak dengan pesan error yang jelas.",
+      "Membuat modul sanitasi nama (lib/name-validation.ts) sebagai defense-in-depth layer yang bisa dipakai di endpoint lain.",
+    ],
+  },
+  {
     version: "v1.10.1",
     date: "2026-05-12",
     title: "Perbaikan layout mobile dashboard",

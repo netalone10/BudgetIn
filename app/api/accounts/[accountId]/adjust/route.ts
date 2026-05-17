@@ -12,6 +12,7 @@ import {
   computeAccountBalancesFromTx,
 } from "@/utils/sheets";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest, { params }: Params) {
           : { fromAccountId: accountId, fromAccountName: account.name }),
       });
 
+      invalidateDashboardCache(session.userId);
       return NextResponse.json({
         message: `Saldo disesuaikan ${balanceIncreases ? "naik" : "turun"} Rp ${Math.abs(diff).toLocaleString("id-ID")}.`,
         previousBalance: current.toString(),
@@ -129,6 +131,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     },
   });
 
+  invalidateDashboardCache(session.userId);
   return NextResponse.json({
     message: `Saldo disesuaikan ${diff.isPositive() ? "naik" : "turun"} Rp ${diff.abs().toNumber().toLocaleString("id-ID")}.`,
     previousBalance: current.toString(),

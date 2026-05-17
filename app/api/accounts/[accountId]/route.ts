@@ -11,6 +11,7 @@ import {
   ensureAccountHeader,
 } from "@/utils/sheets";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -64,6 +65,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         tanggalJatuhTempo: tanggalJatuhTempo ?? existingAccount.tanggalJatuhTempo,
       });
 
+      invalidateDashboardCache(session.userId);
       return NextResponse.json({ 
         account: { 
           id: accountId, 
@@ -159,6 +161,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     include: { accountType: true },
   });
 
+  invalidateDashboardCache(session.userId);
   return NextResponse.json({ account: updated });
 }
 
@@ -182,6 +185,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     try {
       const accessToken = await getValidToken(session.userId);
       await deleteAccountSheets(user.sheetsId, accessToken, accountId);
+      invalidateDashboardCache(session.userId);
       return NextResponse.json({ message: "Akun dihapus." });
     } catch (e) {
       console.error("Failed to delete account from Sheets:", e);
@@ -203,6 +207,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       );
     }
     await prisma.account.delete({ where: { id: accountId } });
+    invalidateDashboardCache(session.userId);
     return NextResponse.json({ message: "Akun dihapus permanen." });
   }
 
@@ -219,5 +224,6 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     where: { id: accountId },
     data: { isActive: false },
   });
+  invalidateDashboardCache(session.userId);
   return NextResponse.json({ message: "Akun diarsipkan." });
 }

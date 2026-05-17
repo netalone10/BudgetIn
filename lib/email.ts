@@ -2,8 +2,28 @@ import { Resend } from "resend";
 import crypto from "crypto";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
+import { sanitizeName } from "./name-validation";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// ---------------------------------------------------------------------------
+// HTML Escape Utility
+// ---------------------------------------------------------------------------
+
+/**
+ * Escapes HTML special characters to prevent XSS and HTML injection
+ * when interpolating user-generated content into HTML email templates.
+ *
+ * Escapes: < > & " '
+ */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
 
 /**
  * Resend SDK v3+ tidak throw error pada API failure — return { data, error }.
@@ -43,6 +63,7 @@ export async function sendVerificationEmail(
   token: string
 ): Promise<void> {
   const link = `${APP_URL}/api/verify-email?token=${token}`;
+  const safeName = escapeHtml(sanitizeName(name));
 
   await sendOrThrow({
     from: FROM,
@@ -67,7 +88,7 @@ export async function sendVerificationEmail(
           <!-- Body -->
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Hai, ${name}! 👋</p>
+              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Hai, ${safeName}! 👋</p>
               <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
                 Terima kasih sudah mendaftar di BudgetIn. Klik tombol di bawah untuk memverifikasi email kamu dan mulai mencatat keuangan.
               </p>
@@ -114,7 +135,7 @@ export async function sendRecurringReminderEmail(params: {
   const urgencyLabel = daysUntil === 1 ? "⚠️ Besok" : `⏰ ${daysUntil} hari lagi`;
   const typeLabel = type === "income" ? "pemasukan" : type === "transfer" ? "transfer" : "pembayaran";
   const subject = `[BudgetIn] ${name} jatuh tempo ${daysUntil === 1 ? "besok" : `dalam ${daysUntil} hari`}`;
-  const billName = name; // backwards-compat for inline template below
+  const safeBillName = escapeHtml(sanitizeName(name));
 
   await sendOrThrow({
     from: FROM,
@@ -142,7 +163,7 @@ export async function sendRecurringReminderEmail(params: {
                 Item berulang kamu akan segera jatuh tempo:
               </p>
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
-                <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${billName}</p>
+                <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${safeBillName}</p>
                 <p style="margin:0 0 4px;font-size:14px;color:#475569;">Nominal: <strong>Rp ${amount.toLocaleString("id-ID")}</strong></p>
                 <p style="margin:0 0 4px;font-size:14px;color:#475569;">Jatuh tempo: <strong>${dueDateStr}</strong></p>
                 <p style="margin:0;font-size:14px;color:#dc2626;font-weight:600;">${urgencyLabel}</p>
@@ -201,6 +222,7 @@ export async function sendAutoRecordConfirmation(params: {
   const occurredStr = format(occurredAt, "d MMMM yyyy", { locale: idLocale });
   const typeLabel = type === "income" ? "Pemasukan" : type === "transfer" ? "Transfer" : "Pengeluaran";
   const headerLabel = type === "income" ? "Pemasukan Otomatis" : type === "transfer" ? "Transfer Otomatis" : "Pengeluaran Otomatis";
+  const safeName = escapeHtml(sanitizeName(name));
 
   await sendOrThrow({
     from: FROM,
@@ -228,7 +250,7 @@ export async function sendAutoRecordConfirmation(params: {
                 Transaksi berikut telah otomatis dicatat oleh BudgetIn:
               </p>
               <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
-                <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${name}</p>
+                <p style="margin:0 0 6px;font-size:16px;font-weight:700;color:#0f172a;">${safeName}</p>
                 <p style="margin:0 0 4px;font-size:14px;color:#475569;">Tipe: <strong>${typeLabel}</strong></p>
                 <p style="margin:0 0 4px;font-size:14px;color:#475569;">Nominal: <strong>Rp ${amount.toLocaleString("id-ID")}</strong></p>
                 <p style="margin:0;font-size:14px;color:#475569;">Dicatat pada: <strong>${occurredStr}</strong></p>
@@ -253,6 +275,7 @@ export async function sendPasswordResetEmail(
   newPassword: string
 ): Promise<void> {
   const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://budget.amuharr.com"}/auth`;
+  const safeName = escapeHtml(sanitizeName(name));
 
   await sendOrThrow({
     from: FROM,
@@ -275,7 +298,7 @@ export async function sendPasswordResetEmail(
           </tr>
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Halo, ${name}!</p>
+              <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#0f172a;">Halo, ${safeName}!</p>
               <p style="margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;">
                 Password akun BudgetIn kamu telah direset oleh admin. Gunakan password sementara di bawah untuk login, lalu segera ganti password kamu.
               </p>

@@ -7,6 +7,7 @@ import { updateTransaction, deleteTransaction, getAccounts, getTransactionRow } 
 import { updateTransactionDB, deleteTransactionDB } from "@/utils/db-transactions";
 import { isValidTransactionTime } from "@/lib/transaction-time";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 type Params = { params: Promise<{ recordId: string }> };
 
@@ -90,6 +91,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           accountId: body.accountId,
         });
       }
+      invalidateDashboardCache(session.userId);
       return NextResponse.json({ success: true });
     } catch {
       return NextResponse.json({ error: "Gagal update transaksi." }, { status: 500 });
@@ -148,6 +150,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(fromAccountId !== undefined && { fromAccountId, fromAccountName }),
     });
     // Sheets: saldo dihitung pure-ledger di pembacaan; tidak perlu revert/reapply cache.
+    invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Gagal update transaksi." }, { status: 500 });
@@ -195,6 +198,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       } else {
         await deleteTransactionDB(session.userId, recordId);
       }
+      invalidateDashboardCache(session.userId);
       return NextResponse.json({ success: true });
     } catch {
       return NextResponse.json({ error: "Gagal hapus transaksi." }, { status: 500 });
@@ -212,6 +216,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     await deleteTransaction(user.sheetsId, accessToken, recordId);
     // Sheets: saldo dihitung pure-ledger di pembacaan; tidak perlu revert cache.
+    invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Gagal hapus transaksi." }, { status: 500 });

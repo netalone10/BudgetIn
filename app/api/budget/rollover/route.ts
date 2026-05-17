@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isValidMonth } from "@/lib/budget-data";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       )
     );
 
+    invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true, copied: budgets.length });
   } catch {
     return NextResponse.json(

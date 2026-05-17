@@ -6,6 +6,7 @@ import { generateVerificationToken, getTokenExpiry } from "@/lib/token-utils";
 import { sendVerificationEmail } from "@/lib/email";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { evaluatePassword } from "@/lib/password-strength";
+import { validateName } from "@/lib/name-validation";
 
 // POST /api/auth/register — daftar dengan email + password
 export async function POST(req: NextRequest) {
@@ -24,6 +25,15 @@ export async function POST(req: NextRequest) {
     if (!name?.trim() || !email?.trim() || !password?.trim()) {
       return NextResponse.json(
         { error: "Nama, email, dan password wajib diisi." },
+        { status: 400 }
+      );
+    }
+
+    // Validate name: reject URLs, HTML tags, and suspicious domain patterns
+    const nameValidation = validateName(name.trim());
+    if (!nameValidation.valid) {
+      return NextResponse.json(
+        { error: nameValidation.error },
         { status: 400 }
       );
     }

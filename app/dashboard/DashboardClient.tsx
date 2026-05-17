@@ -30,6 +30,63 @@ import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import KPICard from "@/components/dashboard/KPICard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 
+// ---------------------------------------------------------------------------
+// SWR (Stale-While-Revalidate) utilities for client-side fetching
+// ---------------------------------------------------------------------------
+
+/** Stored ETags per endpoint for conditional requests */
+interface ETagStore {
+  [endpoint: string]: string;
+}
+
+/**
+ * Performs a fetch with SWR semantics:
+ * - Sends If-None-Match header with last known ETag
+ * - On 304 response, returns null (caller keeps current data)
+ * - On success, extracts and stores the new ETag
+ * - Never throws on network errors — returns null for graceful degradation
+ */
+async function swrFetch<T>(
+  url: string,
+  etagStore: React.MutableRefObject<ETagStore>
+): Promise<{ data: T; etag: string | null } | null> {
+  try {
+    const headers: HeadersInit = { "Cache-Control": "no-cache" };
+    const lastEtag = etagStore.current[url];
+    if (lastEtag) {
+      headers["If-None-Match"] = lastEtag;
+    }
+
+    const res = await fetch(url, { headers });
+
+    // 304 Not Modified — current data is still fresh
+    if (res.status === 304) {
+      return null;
+    }
+
+    if (res.status === 401) {
+      const data = await res.json();
+      if (data.error === "token_expired") {
+        return { data: data as T, etag: null };
+      }
+      return null;
+    }
+
+    if (!res.ok) return null;
+
+    const etag = res.headers.get("etag");
+    if (etag) {
+      etagStore.current[url] = etag;
+    }
+
+    const data = (await res.json()) as T;
+    return { data, etag };
+  } catch {
+    // Network error — graceful degradation, keep stale data
+    return null;
+  }
+}
+
 // Below-the-fold components: lazy loaded with skeleton placeholders to reduce initial bundle
 const RecentTransactionsCard = dynamic(
   () => import("@/components/dashboard/RecentTransactionsCard"),
@@ -279,9 +336,15 @@ const PROMPT_EXAMPLES = [
 
 interface DashboardClientProps {
   initialData: DashboardInitialData;
+  /** Controls which sections to render for streaming Suspense boundaries.
+   * - "kpi-only": Renders KPI cards (net worth, income, expense, savings rate) — streams first
+   * - "secondary-only": Renders greeting, input, transactions, budget sidebar — streams after
+   * - undefined: Renders everything (fallback for non-streaming usage)
+   */
+  renderMode?: "kpi-only" | "secondary-only";
 }
 
-export default function DashboardClient({ initialData }: DashboardClientProps) {
+export default function DashboardClient({ initialData, renderMode }: DashboardClientProps) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ResponseData | null>(null);
@@ -306,6 +369,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // SWR: ETag store for conditional requests across all endpoints
+  const etagStoreRef = useRef<ETagStore>({});
 
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
   const todayStats = useMemo(() => {
@@ -393,83 +459,101 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   }, []);
 
   useDataEvent(["transactions", "budget", "accounts", "categories"], (topic) => {
-    if (topic === "transactions") fetchTransactions(true, true);
-    if (topic === "budget") fetchBudget(true, true);
+    if (topic === "transactions") fetchTransactions(true);
+    if (topic === "budget") fetchBudget(true);
     if (topic === "accounts") fetchAccounts(true);
     if (topic === "categories") fetchCategories();
   });
 
   async function fetchCategories() {
     try {
-      const r = await fetch("/api/categories");
-      const d = await r.json();
-      const cats = d.categories ?? [];
+      const result = await swrFetch<{ categories?: { name: string; type: string; isSavings?: boolean }[] }>(
+        "/api/categories",
+        etagStoreRef
+      );
+      if (!result) return; // 304 or error — keep stale data
+      const cats = result.data.categories ?? [];
       setTransactionCategories(
-        cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type }))
+        cats.map((c) => ({ name: c.name, type: c.type }))
       );
       const savingsNames = new Set<string>(
         cats
-          .filter((c: { isSavings?: boolean }) => c.isSavings)
-          .map((c: { name: string }) => c.name.toLowerCase())
+          .filter((c) => c.isSavings)
+          .map((c) => c.name.toLowerCase())
       );
       setSavingsCategoryNames(savingsNames);
     } catch {
-      // ignore
+      // ignore — keep stale data (SWR graceful degradation)
     }
   }
 
-  async function fetchTransactions(noStore = false, silent = false) {
+  /**
+   * SWR-enhanced transaction fetch.
+   * - Shows stale data immediately (already in state from initialData)
+   * - Refetches in background without loading spinners
+   * - Sends If-None-Match header; handles 304 by keeping current data
+   * @param silent - When true (default for background refetches), no loading spinner shown
+   */
+  async function fetchTransactions(silent = true) {
     if (!silent) setTxLoading(true);
     try {
-      const res = await fetch(
+      const result = await swrFetch<{ transactions?: Transaction[]; error?: string }>(
         "/api/record?period=bulan+ini",
-        noStore ? { cache: "no-store" } : undefined
+        etagStoreRef
       );
-      if (res.status === 401) {
-        const data = await res.json();
-        if (data.error === "token_expired") {
-          setResponse({ error: "Sesi Google expired. Silakan logout lalu login ulang." });
-        }
+      if (!result) return; // 304 or network error — keep stale data
+      if (result.data.error === "token_expired") {
+        setResponse({ error: "Sesi Google expired. Silakan logout lalu login ulang." });
         return;
       }
-      const data = await res.json();
-      setTransactions(data.transactions ?? []);
+      setTransactions(result.data.transactions ?? []);
     } catch {
-      // ignore
+      // ignore — keep stale data
     } finally {
       if (!silent) setTxLoading(false);
     }
   }
 
-  async function fetchBudget(noStore = false, silent = false) {
+  /**
+   * SWR-enhanced budget fetch.
+   * Background refetch without loading spinners by default.
+   */
+  async function fetchBudget(silent = true) {
     if (!silent) setBudgetLoading(true);
     try {
-      const res = await fetch("/api/budget", noStore ? { cache: "no-store" } : undefined);
-      const data = await res.json();
-      setBudgetData(data);
+      const result = await swrFetch<BudgetData>("/api/budget", etagStoreRef);
+      if (!result) return; // 304 or error — keep stale data
+      setBudgetData(result.data);
     } catch {
-      // ignore
+      // ignore — keep stale data
     } finally {
       if (!silent) setBudgetLoading(false);
     }
   }
 
-  async function fetchAccounts(noStore = false) {
+  /**
+   * SWR-enhanced accounts fetch.
+   * Background refetch without loading spinners.
+   */
+  async function fetchAccounts(silent = true) {
     try {
-      const res = await fetch("/api/accounts", noStore ? { cache: "no-store" } : undefined);
-      const data = await res.json();
-      setAccounts(data.accounts ?? []);
+      const result = await swrFetch<{ accounts?: typeof accounts }>(
+        "/api/accounts",
+        etagStoreRef
+      );
+      if (!result) return; // 304 or error — keep stale data
+      setAccounts(result.data.accounts ?? []);
       setAccountVersion((v) => v + 1);
     } catch {
-      // ignore
+      // ignore — keep stale data
     }
   }
 
   async function handleManualRefresh() {
     await Promise.all([
-      fetchTransactions(true),
-      fetchBudget(true),
-      fetchAccounts(true),
+      fetchTransactions(false),
+      fetchBudget(false),
+      fetchAccounts(false),
       fetchCategories(),
     ]);
   }
@@ -495,6 +579,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     setResponse(null);
     const stopTiming = measureTiming("transaction-create");
 
+    // Snapshot current state for rollback on error (optimistic update support)
+    const prevTransactions = transactions;
+    const prevBudgetData = budgetData;
+    const prevAccounts = accounts;
+
     try {
       const res = await submitRecord({ prompt: prompt.trim() });
 
@@ -514,28 +603,39 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       setResponse(data);
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
+        // Optimistic update: immediately add the transaction to local state
         setTransactions((prev) => [data.transaction, ...prev]);
-        fetchBudget();
-        fetchAccounts();
+        // Background refetch budget and accounts (SWR: no loading spinners)
+        // These run in background — if they fail, stale data remains visible
+        fetchBudget().catch(() => {
+          // Rollback not needed for budget — stale data is acceptable
+        });
+        fetchAccounts().catch(() => {
+          // Rollback not needed for accounts — stale data is acceptable
+        });
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "transaksi_bulk" && data.transactions?.length) {
+        // Optimistic update: immediately add all transactions to local state
         setTransactions((prev) => [...data.transactions, ...prev]);
-        fetchBudget();
-        fetchAccounts();
+        // Background refetch (SWR: silent, no loading spinners)
+        fetchBudget().catch(() => {});
+        fetchAccounts().catch(() => {});
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "transfer") {
-        fetchTransactions(true);
-        fetchBudget();
-        fetchAccounts();
+        // For transfers, we need fresh data — refetch in background (SWR: silent)
+        fetchTransactions().catch(() => {});
+        fetchBudget().catch(() => {});
+        fetchAccounts().catch(() => {});
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "budget_setting") {
-        fetchBudget();
+        // Background refetch (SWR: silent, no loading spinners)
+        fetchBudget().catch(() => {});
         emitDataChanged(["budget", "categories"]);
         fetchCategories();
       }
@@ -543,6 +643,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       if (data.intent !== "unknown") setPrompt("");
       textareaRef.current?.focus();
     } catch {
+      // Network error — rollback optimistic updates
+      setTransactions(prevTransactions);
+      setBudgetData(prevBudgetData);
+      setAccounts(prevAccounts);
       setResponse({ error: "Koneksi gagal. Coba lagi." });
     } finally {
       const duration = stopTiming();
@@ -557,6 +661,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   async function handleSavingsGoalSelect(goalId: string) {
     if (!response || "error" in response || response.intent !== "unknown" || !response.pendingAction) return;
     setLoading(true);
+
+    // Snapshot for rollback
+    const prevTransactions = transactions;
 
     try {
       const res = await submitRecord({
@@ -580,13 +687,17 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       const data = await res.json();
       setResponse(data);
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
+        // Optimistic update: immediately add transaction
         setTransactions((prev) => [data.transaction, ...prev]);
-        fetchBudget();
-        fetchAccounts();
+        // Background refetch (SWR: silent, no loading spinners)
+        fetchBudget().catch(() => {});
+        fetchAccounts().catch(() => {});
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
       setPrompt("");
     } catch {
+      // Rollback optimistic update on network error
+      setTransactions(prevTransactions);
       setResponse({ error: "Koneksi gagal. Coba lagi." });
     } finally {
       setLoading(false);
@@ -621,39 +732,45 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   return (
     <div className="flex flex-col gap-5 md:gap-6">
-      <DashboardGreeting
-        userName={initialData.user?.name}
-        todayStats={todayStats}
-        onQuickAction={focusAIWithIntent}
-        onRefresh={handleManualRefresh}
-        refreshing={dataLoading}
-      />
+      {/* KPI Section: KPI cards grid — streams first */}
+      {renderMode !== "secondary-only" && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
+          <KPICard
+            type="income"
+            label="Pemasukan Bulan Ini"
+            value={monthlyStats.income}
+            delta={incomeDelta}
+          />
+          <KPICard
+            type="expense"
+            label="Pengeluaran Bulan Ini"
+            value={monthlyStats.expense}
+            delta={expenseDelta}
+            expenseSemantics
+          />
+          <KPICard
+            type="savings"
+            label="Savings Rate"
+            value={monthlyStats.savingsRate}
+            suffix="%"
+            trendLabel={`${formatSignedIDR(monthlyStats.surplus, "+")} surplus bulan ini`}
+          />
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
-        <KPICard
-          type="income"
-          label="Pemasukan Bulan Ini"
-          value={monthlyStats.income}
-          delta={incomeDelta}
-        />
-        <KPICard
-          type="expense"
-          label="Pengeluaran Bulan Ini"
-          value={monthlyStats.expense}
-          delta={expenseDelta}
-          expenseSemantics
-        />
-        <KPICard
-          type="savings"
-          label="Savings Rate"
-          value={monthlyStats.savingsRate}
-          suffix="%"
-          trendLabel={`${formatSignedIDR(monthlyStats.surplus, "+")} surplus bulan ini`}
-        />
-      </div>
+      {/* Secondary Section: Greeting + Input + Transactions + Budget — streams progressively */}
+      {renderMode !== "kpi-only" && (
+        <>
+          <DashboardGreeting
+            userName={initialData.user?.name}
+            todayStats={todayStats}
+            onQuickAction={focusAIWithIntent}
+            onRefresh={handleManualRefresh}
+            refreshing={dataLoading}
+          />
 
-      <div className="grid items-start gap-5 lg:grid-cols-[1.62fr_1fr]">
+          <div className="grid items-start gap-5 lg:grid-cols-[1.62fr_1fr]">
         <div className="flex flex-col gap-5 md:gap-6">
       <SectionCard
         eyebrow="Input · AI Capture"
@@ -934,6 +1051,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               accounts={accounts}
               categories={transactionCategories}
               onSuccess={() => {
+                // SWR: background refetch without loading spinners
                 fetchTransactions();
                 fetchBudget();
                 fetchAccounts();
@@ -969,6 +1087,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           <SavingsGoalMiniCard goal={initialData.activeSavingsGoal} />
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

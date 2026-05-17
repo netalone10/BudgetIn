@@ -27,6 +27,7 @@ import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-
 import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
 import { normalizePaginationParams } from "@/lib/pagination";
 import { sanitizeErrorForProduction } from "@/lib/api-error";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -286,6 +287,7 @@ export async function POST(req: NextRequest) {
         // Saldo dihitung dari ledger via getAccountsWithBalance — tidak perlu update cache.
       }
 
+      invalidateDashboardCache(session.userId);
       return NextResponse.json({
         account: {
           ...newAccount,
@@ -365,6 +367,7 @@ export async function POST(req: NextRequest) {
     return newAccount;
   });
 
+  invalidateDashboardCache(session.userId);
   return NextResponse.json({ account }, { status: 201 });
 }
 

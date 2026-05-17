@@ -7,6 +7,7 @@ import { blockDemoResponse } from "@/lib/demo-account";
 import { sanitizeErrorForProduction } from "@/lib/api-error";
 import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
 import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 // GET /api/budget — ambil semua budget bulan ini + spent + rollover per kategori
 export async function GET(req: NextRequest) {
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true, budget });
   } catch (error) {
     const apiError = sanitizeErrorForProduction(error, "internal");

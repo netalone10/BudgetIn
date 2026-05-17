@@ -620,3 +620,193 @@ async function fetchAccounts(
 // fetchCategories replaced by getCachedCategories from lib/cache.ts
 // which provides per-request deduplication via React cache() and uses
 // Prisma select-only fields (Requirement 6.2).
+
+// ---------------------------------------------------------------------------
+// Split Data Fetching for Granular Suspense Boundaries (Requirement 2.4)
+// ---------------------------------------------------------------------------
+
+/**
+ * KPI/Summary data — lightweight fetch for above-the-fold KPI cards.
+ * Includes: user info, accounts (for net worth), categories, savings goal,
+ * and last month totals (for delta comparison).
+ * This resolves quickly and streams first via its own Suspense boundary.
+ */
+export interface DashboardKPIData {
+  accounts: Account[];
+  categories: Category[];
+  savingsCategoryNames: string[];
+  lastMonthTotals: MonthlyTotals;
+  activeSavingsGoal: ActiveSavingsGoal | null;
+  user: {
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
+}
+
+/**
+ * Secondary data — heavier fetch for transaction history and budget details.
+ * Includes: transactions (sorted, limited to 200), budget data with rollover calculations.
+ * This streams progressively after KPI data has rendered.
+ */
+export interface DashboardSecondaryData {
+  transactions: Transaction[];
+  budgetData: BudgetData | null;
+}
+
+/**
+ * Fetch KPI/summary data for the dashboard.
+ * This is the lightweight portion that should resolve quickly for streaming.
+ */
+export async function fetchDashboardKPIData(
+  userId: string
+): Promise<DashboardKPIData> {
+  const now = toZonedTime(new Date(), TIMEZONE);
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = format(lastMonthDate, "yyyy-MM");
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { sheetsId: true, name: true, email: true, image: true },
+  });
+  const sheetsId = user?.sheetsId ?? null;
+
+  let accounts: Account[];
+  let categories: Category[];
+  let txLastMonthRaw: RawTxn[];
+  let activeSavingsGoal: ActiveSavingsGoal | null;
+
+  if (sheetsId) {
+    try {
+      const [ledgerData, cats, savings] = await Promise.all([
+        getFullSheetsLedger(userId, sheetsId),
+        getCachedCategories(userId),
+        fetchActiveSavingsGoal(userId),
+      ]);
+
+      const { transactions: allTransactions, accounts: sheetsAccountsRaw } = ledgerData;
+      txLastMonthRaw = filterAndMapSheetsTxns(allTransactions, lastMonth);
+
+      const balances = computeAccountBalancesFromTx(sheetsAccountsRaw, allTransactions);
+      accounts = sheetsAccountsRaw.map((a) => ({
+        id: a.id,
+        name: a.name,
+        currency: a.currency,
+        accountType: { name: a.type, classification: a.classification },
+        currentBalance: (balances.get(a.id) ?? 0).toString(),
+        color: a.color,
+        note: a.note,
+      }));
+
+      categories = cats;
+      activeSavingsGoal = savings;
+    } catch (error) {
+      console.error("Failed to load Sheets KPI data:", error);
+      accounts = [];
+      categories = [];
+      txLastMonthRaw = [];
+      activeSavingsGoal = null;
+    }
+  } else {
+    const [accts, cats, txLast, savings] = await Promise.all([
+      fetchAccounts(userId, null),
+      getCachedCategories(userId),
+      fetchRawTransactions(userId, null, lastMonth),
+      fetchActiveSavingsGoal(userId),
+    ]);
+    accounts = accts;
+    categories = cats;
+    txLastMonthRaw = txLast;
+    activeSavingsGoal = savings;
+  }
+
+  const savingsCategoryNames = categories
+    .filter((c) => c.isSavings)
+    .map((c) => c.name.toLowerCase());
+
+  const lastMonthTotals = computeMonthlyTotals(txLastMonthRaw);
+
+  return {
+    accounts,
+    categories,
+    savingsCategoryNames,
+    lastMonthTotals,
+    activeSavingsGoal,
+    user: {
+      name: user?.name ?? null,
+      email: user?.email ?? null,
+      image: user?.image ?? null,
+    },
+  };
+}
+
+/**
+ * Fetch secondary/heavy data for the dashboard (transactions + budget).
+ * This is the heavier portion that streams progressively after KPI data.
+ */
+export async function fetchDashboardSecondaryData(
+  userId: string
+): Promise<DashboardSecondaryData> {
+  const now = toZonedTime(new Date(), TIMEZONE);
+  const currentMonth = format(now, "yyyy-MM");
+  const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonth = format(lastMonthDate, "yyyy-MM");
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { sheetsId: true },
+  });
+  const sheetsId = user?.sheetsId ?? null;
+
+  let txThisMonthRaw: RawTxn[];
+  let txLastMonthRaw: RawTxn[];
+  let budgets: BudgetWithCategory[];
+  let lastMonthBudgets: BudgetWithCategory[];
+
+  if (sheetsId) {
+    try {
+      const [ledgerData, b1, b2] = await Promise.all([
+        getFullSheetsLedger(userId, sheetsId),
+        findBudgetsWithCategory({ userId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
+        findBudgetsWithCategory({ userId, month: lastMonth }).catch(() => []),
+      ]);
+
+      const { transactions: allTransactions } = ledgerData;
+      txThisMonthRaw = filterAndMapSheetsTxns(allTransactions, currentMonth);
+      txLastMonthRaw = filterAndMapSheetsTxns(allTransactions, lastMonth);
+      budgets = b1;
+      lastMonthBudgets = b2;
+    } catch (error) {
+      console.error("Failed to load Sheets secondary data:", error);
+      txThisMonthRaw = [];
+      txLastMonthRaw = [];
+      budgets = [];
+      lastMonthBudgets = [];
+    }
+  } else {
+    const [txThis, txLast, b1, b2] = await Promise.all([
+      fetchRawTransactions(userId, null, "bulan ini"),
+      fetchRawTransactions(userId, null, lastMonth),
+      findBudgetsWithCategory({ userId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
+      findBudgetsWithCategory({ userId, month: lastMonth }).catch(() => []),
+    ]);
+    txThisMonthRaw = txThis;
+    txLastMonthRaw = txLast;
+    budgets = b1;
+    lastMonthBudgets = b2;
+  }
+
+  const transactions = mapTxnsForDisplay(txThisMonthRaw);
+  const budgetData = computeBudgetData(
+    txThisMonthRaw,
+    txLastMonthRaw,
+    budgets,
+    lastMonthBudgets,
+    currentMonth
+  );
+
+  return {
+    transactions,
+    budgetData,
+  };
+}

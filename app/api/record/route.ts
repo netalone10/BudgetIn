@@ -14,6 +14,7 @@ import { handleTransaksi, handleTransaksiBulk, handlePemasukan, handleTransfer, 
 import type { RuntimeAccount } from "@/utils/record/account-resolver";
 import { compareTransactionDateTimeDesc, currentJakartaTime } from "@/lib/transaction-time";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -181,7 +182,12 @@ export async function POST(req: NextRequest) {
       time: pendingAction.time ?? currentTime,
     };
 
-    return handleTransaksi(parsed, { ...ctx, prompt: resolvedPrompt });
+    return handleTransaksi(parsed, { ...ctx, prompt: resolvedPrompt }).then((response) => {
+      if (response.status >= 200 && response.status < 300) {
+        invalidateDashboardCache(userId);
+      }
+      return response;
+    });
   }
 
   // Classify intent via Groq
@@ -196,11 +202,23 @@ export async function POST(req: NextRequest) {
     console.log("[record] parsed:", JSON.stringify(parsed, null, 2));
   }
 
-  if (parsed.intent === "transaksi")      return handleTransaksi(parsed, ctx);
-  if (parsed.intent === "transaksi_bulk") return handleTransaksiBulk(parsed, ctx);
-  if (parsed.intent === "pemasukan")      return handlePemasukan(parsed, ctx);
-  if (parsed.intent === "transfer")       return handleTransfer(parsed, ctx);
-  if (parsed.intent === "budget_setting") return handleBudgetSetting(parsed, ctx);
+  // Mutation intents — invalidate dashboard cache after successful response
+  const mutationIntents = ["transaksi", "transaksi_bulk", "pemasukan", "transfer", "budget_setting"];
+  if (mutationIntents.includes(parsed.intent)) {
+    let response: NextResponse;
+    if (parsed.intent === "transaksi")      response = await handleTransaksi(parsed, ctx);
+    else if (parsed.intent === "transaksi_bulk") response = await handleTransaksiBulk(parsed, ctx);
+    else if (parsed.intent === "pemasukan")      response = await handlePemasukan(parsed, ctx);
+    else if (parsed.intent === "transfer")       response = await handleTransfer(parsed, ctx);
+    else                                         response = await handleBudgetSetting(parsed, ctx);
+
+    // Invalidate cache after successful mutation (2xx status)
+    if (response.status >= 200 && response.status < 300) {
+      invalidateDashboardCache(userId);
+    }
+    return response;
+  }
+
   if (parsed.intent === "laporan")        return handleLaporan(parsed, ctx);
 
   return NextResponse.json({

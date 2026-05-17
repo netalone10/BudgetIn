@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { blockDemoResponse } from "@/lib/demo-account";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 export async function DELETE(
   _req: NextRequest,
@@ -25,6 +26,7 @@ export async function DELETE(
     }
 
     await prisma.budget.delete({ where: { id } });
+    invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Gagal hapus budget. Coba lagi." }, { status: 500 });
