@@ -73,6 +73,37 @@ export default function AboutPage() {
               sebagai aplikasi pencatat keuangan pribadi yang ringan, responsif, dan mudah dipakai di perangkat harian.
             </p>
           </section>
+
+          <section id="google-api-disclosure" className="space-y-3 rounded-lg border border-border bg-muted/40 px-5 py-4">
+            <h2 className="text-xl font-semibold text-foreground">Google API — Pernyataan Penggunaan Data</h2>
+            <p>
+              BudgetIn menggunakan Google API untuk memungkinkan pengguna menyimpan data transaksi ke Google Sheets milik mereka sendiri. Penggunaan dan transfer informasi yang diterima dari Google API ke aplikasi lain mana pun akan mematuhi{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline underline-offset-4"
+              >
+                Google API Services User Data Policy
+              </a>
+              , termasuk persyaratan Limited Use.
+            </p>
+            <p>
+              BudgetIn hanya meminta akses ke file Google Sheets yang dibuat oleh aplikasi ini atas nama pengguna. Data yang diperoleh dari Google API tidak digunakan untuk keperluan iklan, tidak dijual kepada pihak ketiga, dan tidak digunakan di luar fungsi inti aplikasi.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              The use and transfer of information received from Google APIs to any other app will adhere to the{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline underline-offset-4"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+          </section>
         </div>
 
         <div className="mt-12 flex flex-wrap gap-3 border-t border-border pt-8">

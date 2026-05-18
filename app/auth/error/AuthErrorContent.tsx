@@ -24,7 +24,7 @@ function AuthErrorInner() {
         </h1>
         <p className="text-muted-foreground max-w-sm">
           {isGooglePermissionRequired
-            ? "BudgetIn membutuhkan akses Google Sheets dan Drive file agar akun Google bisa menyimpan data dengan benar. Silakan login ulang dan izinkan semua permission."
+            ? "BudgetIn membutuhkan akses Google Drive file agar akun Google bisa menyimpan data dengan benar. Silakan login ulang dan izinkan permission yang diminta."
             : isOnboardingFailed
             ? "Gagal membuat Google Sheets untuk akun kamu. Silakan coba login ulang."
             : "Terjadi kesalahan saat login. Silakan coba lagi."}

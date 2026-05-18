@@ -11,7 +11,6 @@ import { encryptSecret } from "@/lib/crypto";
 import bcrypt from "bcryptjs";
 
 const REQUIRED_GOOGLE_SCOPES = [
-  "https://www.googleapis.com/auth/spreadsheets",
   "https://www.googleapis.com/auth/drive.file",
 ];
 
@@ -33,7 +32,6 @@ export const authOptions: NextAuthOptions = {
             "openid",
             "email",
             "profile",
-            "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive.file",
           ].join(" "),
           access_type: "offline",

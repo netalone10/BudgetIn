@@ -85,7 +85,7 @@ export default function GoogleSetupRecovery({ mode }: { mode: "reconnect" | "mig
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {mode === "reconnect"
-                ? "Akun Google kamu belum punya Google Sheet. Login ulang dan izinkan akses Sheets serta Drive file untuk melanjutkan."
+                ? "Akun Google kamu belum punya Google Sheet. Login ulang dan izinkan akses Drive file untuk melanjutkan."
                 : "Sheet baru sudah siap. Periksa ringkasan data DB fallback, lalu migrasikan ke Google Sheets jika target masih kosong."}
             </p>
           </div>

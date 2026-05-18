@@ -179,8 +179,46 @@ export default function PrivacyPage() {
             </p>
           </section>
 
+          <section id="google-limited-use" className="space-y-3 rounded-lg border border-border bg-muted/40 px-5 py-4">
+            <h2 className="text-base font-semibold text-foreground">11. Pernyataan Kepatuhan Google API — Limited Use</h2>
+            <p>
+              Penggunaan dan transfer informasi yang diterima dari Google API ke aplikasi lain mana pun akan mematuhi{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline underline-offset-4"
+              >
+                Google API Services User Data Policy
+              </a>
+              , termasuk persyaratan Limited Use.
+            </p>
+            <p className="text-xs italic">
+              The use and transfer of information received from Google APIs to any other app will adhere to the{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline underline-offset-4"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+            <p>
+              Secara spesifik, BudgetIn berkomitmen bahwa:
+            </p>
+            <ul className="list-disc list-inside space-y-1 pl-2">
+              <li>Data Google hanya digunakan untuk menyediakan atau meningkatkan fitur yang terlihat oleh pengguna dalam aplikasi BudgetIn.</li>
+              <li>Data Google tidak digunakan untuk keperluan iklan, termasuk iklan bertarget.</li>
+              <li>Data Google tidak dijual kepada pihak ketiga.</li>
+              <li>Data Google tidak digunakan atau ditransfer untuk tujuan yang tidak terkait dengan layanan BudgetIn.</li>
+              <li>Data Google tidak digunakan atau ditransfer untuk menentukan kelayakan kredit atau untuk tujuan pinjaman.</li>
+            </ul>
+          </section>
+
           <section className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">11. Hubungi Kami</h2>
+            <h2 className="text-base font-semibold text-foreground">12. Hubungi Kami</h2>
             <p>
               Jika ada pertanyaan terkait privasi atau data Google kamu, silakan hubungi:{" "}
               <a href="mailto:akbar.rm10@gmail.com" className="text-primary hover:underline underline-offset-4">akbar.rm10@gmail.com</a>

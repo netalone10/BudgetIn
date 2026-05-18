@@ -599,7 +599,7 @@ Default account types mendukung klasifikasi asset/liability, seperti kas, bank, 
 - Password disimpan sebagai bcrypt hash.
 - Email/password login wajib email verified.
 - Credentials login dilindungi Turnstile, kecuali demo account.
-- Google login wajib scopes `spreadsheets` dan `drive.file`.
+- Google login wajib scope `drive.file`.
 - Admin guard dilakukan server-side.
 - Backup JSON tidak boleh menyimpan secrets/token.
 - Aksi destruktif user memakai konfirmasi eksplisit.
