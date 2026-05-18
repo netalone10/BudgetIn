@@ -393,7 +393,7 @@ export default function Sidebar() {
                     <p className="truncate text-sm font-semibold text-sidebar-foreground">
                       {session.user.name}
                     </p>
-                    <p className="truncate text-[11px] text-sidebar-foreground/60">
+                    <p className="truncate text-[11px] text-sidebar-foreground/60" title={session.user.email ?? ""}>
                       {session.user.email}
                     </p>
                   </m.div>
@@ -403,7 +403,7 @@ export default function Sidebar() {
                   <m.button
                     variants={labelVariants}
                     onClick={() => signOut({ callbackUrl: "/" })}
-                    className="rounded-md border border-sidebar-border bg-sidebar p-1.5 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                    className="cursor-pointer rounded-md border border-sidebar-border bg-sidebar p-1.5 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                     title="Logout"
                   >
                     <LogOut className="size-4" />
@@ -596,13 +596,13 @@ export default function Sidebar() {
                       <p className="truncate text-sm font-semibold text-sidebar-foreground">
                         {session.user.name}
                       </p>
-                      <p className="truncate text-[12px] text-sidebar-foreground/60">
+                      <p className="truncate text-[12px] text-sidebar-foreground/60" title={session.user.email ?? ""}>
                         {session.user.email}
                       </p>
                     </div>
                     <button
                       onClick={() => signOut({ callbackUrl: "/" })}
-                      className="rounded-md border border-sidebar-border bg-sidebar p-2 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                      className="cursor-pointer rounded-md border border-sidebar-border bg-sidebar p-2 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                       title="Logout"
                     >
                       <LogOut className="size-4" />
