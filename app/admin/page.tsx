@@ -346,8 +346,8 @@ export default function AdminPage() {
           <StatCard icon={<Calendar className="size-4 text-primary" />} label="Recurring" value={statsLoading ? "…" : fmt(stats?.totalRecurringBills ?? 0)} sub="Transaksi berulang" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-          <div className="rounded-2xl border bg-card shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border bg-card shadow-sm lg:col-span-2">
             <div className="border-b p-4 md:p-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
