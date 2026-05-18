@@ -4,9 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { AlertTriangle, CheckCircle2, Database, Eraser, Loader2, RefreshCw, ShieldAlert, Trash2, UserCog, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Database, Eraser, Loader2, Pencil, RefreshCw, ShieldAlert, Trash2, UserCog, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import dynamic from "next/dynamic";
+
+const AvatarPickerModal = dynamic(() => import("@/components/AvatarPickerModal"), { ssr: false });
 
 const CONFIRMATIONS = {
   "reset-data": "RESET DATA",
@@ -153,6 +157,9 @@ export default function AccountSettingsPage() {
   const [confirmation, setConfirmation] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+
+  const isEmailUser = !user?.sheetsId;
 
   const actions = useMemo<ActionConfig[]>(() => [
     {
@@ -288,8 +295,19 @@ export default function AccountSettingsPage() {
 
       <section className="grid gap-4 rounded-[28px] border border-border/70 bg-card p-5 shadow-sm md:grid-cols-3 md:p-6">
         <div className="flex items-center gap-3 md:col-span-2">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <UserCog className="size-5" />
+          <div className="relative shrink-0">
+            <div className="flex size-11 items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted">
+              <UserAvatar image={user?.image} name={user?.name ?? "?"} size={44} />
+            </div>
+            {isEmailUser && (
+              <button
+                onClick={() => setShowAvatarPicker(true)}
+                className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-primary hover:text-primary-foreground"
+                title="Ganti avatar"
+              >
+                <Pencil className="size-2.5" />
+              </button>
+            )}
           </div>
           <div className="min-w-0">
             <h2 className="truncate text-lg font-semibold text-foreground">{user?.name}</h2>
@@ -322,6 +340,15 @@ export default function AccountSettingsPage() {
           onValueChange={setConfirmation}
           onClose={() => !actionLoading && setDialog(null)}
           onConfirm={handleConfirm}
+        />
+      )}
+
+      {showAvatarPicker && user && (
+        <AvatarPickerModal
+          currentImage={user.image}
+          userName={user.name}
+          onClose={() => setShowAvatarPicker(false)}
+          onSaved={(newImage) => setUser((prev) => prev ? { ...prev, image: newImage } : prev)}
         />
       )}
     </div>

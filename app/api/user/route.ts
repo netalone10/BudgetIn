@@ -30,6 +30,40 @@ export async function GET() {
   return NextResponse.json({ user });
 }
 
+// PATCH /api/user — update image (avatar)
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  const demoBlock = await blockDemoResponse(session);
+  if (demoBlock) return demoBlock;
+  if (!session?.userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { image } = await req.json();
+
+  // Validate: must be a dicebear string or null
+  if (image !== null && image !== undefined) {
+    if (typeof image !== "string") {
+      return NextResponse.json({ error: "Format image tidak valid" }, { status: 400 });
+    }
+    if (!image.startsWith("dicebear:")) {
+      return NextResponse.json({ error: "Hanya format dicebear yang diizinkan" }, { status: 400 });
+    }
+    const parts = image.split(":");
+    if (parts.length < 3 || !parts[1] || !parts[2]) {
+      return NextResponse.json({ error: "Format dicebear tidak valid" }, { status: 400 });
+    }
+  }
+
+  const user = await prisma.user.update({
+    where: { id: session.userId },
+    data: { image: image ?? null },
+    select: { id: true, name: true, email: true, image: true },
+  });
+
+  return NextResponse.json({ user });
+}
+
 // PUT /api/user — update name (sheetsId tidak bisa diubah manual)
 export async function PUT(req: NextRequest) {
   const session = await getServerSession(authOptions);

@@ -35,8 +35,7 @@ import {
   FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ProfileImage } from "@/components/ui/profile-image";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 import ManageCategoriesModal from "@/components/ManageCategoriesModal";
@@ -180,13 +179,6 @@ export default function Sidebar() {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [pathname]);
-
-  const initials = session?.user?.name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) ?? "?";
 
   const isEmailUser = !session?.sheetsId;
   const isAdminUser = session?.isAdmin === true;
@@ -383,10 +375,9 @@ export default function Sidebar() {
               )}
             >
               <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2")}>
-                <Avatar className="size-8 shrink-0 border border-sidebar-border">
-                  <ProfileImage src={session.user.image} alt={session.user.name ?? ""} size={32} />
-                  <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                </Avatar>
+                <div className="size-8 shrink-0 overflow-hidden rounded-full border border-sidebar-border">
+                  <UserAvatar image={session.user.image} name={session.user.name ?? ""} size={32} />
+                </div>
 
                 {!isCollapsed && (
                   <m.div variants={labelVariants} className="min-w-0 flex-1">
@@ -588,10 +579,9 @@ export default function Sidebar() {
               {session?.user && (
                 <div className="rounded-lg border border-sidebar-border bg-sidebar-accent/35 p-3">
                   <div className="flex items-center gap-3">
-                    <Avatar className="size-10 shrink-0 border border-sidebar-border">
-                      <ProfileImage src={session.user.image} alt={session.user.name ?? ""} size={40} />
-                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-                    </Avatar>
+                    <div className="size-10 shrink-0 overflow-hidden rounded-full border border-sidebar-border">
+                      <UserAvatar image={session.user.image} name={session.user.name ?? ""} size={40} />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-sidebar-foreground">
                         {session.user.name}
