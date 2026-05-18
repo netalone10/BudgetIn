@@ -59,7 +59,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     return (
       <div
         className={cn(
-          "animate-pulse rounded-[26px] border border-border/70 bg-background",
+          "animate-pulse rounded-[20px] border border-border/70 bg-background",
           compact ? "p-4" : "p-6"
         )}
         style={{ minHeight: compact ? 128 : 192 }}
@@ -74,7 +74,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
   if (!data) {
     return (
       <div
-        className={cn("rounded-[26px] border border-border/70 bg-background", compact ? "p-4" : "p-6")}
+        className={cn("rounded-[20px] border border-border/70 bg-background", compact ? "p-4" : "p-6")}
         style={{ minHeight: compact ? 128 : 192 }}
       >
         <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -98,7 +98,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     <Link href="/dashboard/accounts" className="block group">
       <div
         className={cn(
-          "flex h-full flex-col rounded-[26px] border border-border/70 bg-background transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35",
+          "flex h-full flex-col rounded-[20px] border border-border/70 bg-background transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35",
           compact ? "p-4" : "p-6"
         )}
       >

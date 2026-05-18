@@ -112,7 +112,7 @@ export default function RecentTransactionsCard({
       action={
         <Link
           href="/dashboard/transactions"
-          className="text-[12px] font-semibold text-primary hover:underline"
+          className="cursor-pointer text-[12px] font-semibold text-primary hover:underline"
         >
           {transactions.length > limit
             ? `${transactions.length} total →`
@@ -198,12 +198,12 @@ export default function RecentTransactionsCard({
                 </div>
 
                 {!isDemo && (
-                  <div className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="ml-1 flex shrink-0 items-center gap-0.5 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => setEditingTx(t)}
                       disabled={deletingId === t.id}
-                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       aria-label="Edit transaksi"
                     >
                       <Pencil className="size-3" />
@@ -212,7 +212,7 @@ export default function RecentTransactionsCard({
                       type="button"
                       onClick={() => handleDelete(t)}
                       disabled={deletingId === t.id}
-                      className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                      className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                       aria-label="Hapus transaksi"
                     >
                       {deletingId === t.id ? (

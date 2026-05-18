@@ -758,9 +758,20 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
 
   return (
     <div className="flex flex-col gap-5 md:gap-6">
+      {/* Greeting — always first for warm welcome */}
+      {renderMode !== "secondary-only" && (
+        <DashboardGreeting
+          userName={initialData.user?.name}
+          todayStats={todayStats}
+          onQuickAction={focusAIWithIntent}
+          onRefresh={handleManualRefresh}
+          refreshing={dataLoading}
+        />
+      )}
+
       {/* KPI Section: KPI cards grid — streams first */}
       {renderMode !== "secondary-only" && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
           <KPICard
             type="income"
@@ -785,17 +796,9 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
         </div>
       )}
 
-      {/* Secondary Section: Greeting + Input + Transactions + Budget — streams progressively */}
+      {/* Secondary Section: Input + Transactions + Budget — streams progressively */}
       {renderMode !== "kpi-only" && (
         <>
-          <DashboardGreeting
-            userName={initialData.user?.name}
-            todayStats={todayStats}
-            onQuickAction={focusAIWithIntent}
-            onRefresh={handleManualRefresh}
-            refreshing={dataLoading}
-          />
-
           <div className="grid items-start gap-5 lg:grid-cols-[1.62fr_1fr]">
         <div className="flex flex-col gap-5 md:gap-6">
       <SectionCard
@@ -807,7 +810,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             type="button"
             onClick={() => setInputMode("ai")}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-all",
+              "flex cursor-pointer items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-all",
               inputMode === "ai"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -820,7 +823,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             type="button"
             onClick={() => setInputMode("manual")}
             className={cn(
-              "flex items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-all",
+              "flex cursor-pointer items-center justify-center gap-1.5 rounded-[10px] px-3 py-2 text-sm font-medium transition-all",
               inputMode === "manual"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -876,7 +879,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                     <button
                       type="button"
                       onClick={randomizePromptExamples}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       title="Acak saran prompt"
                     >
                       <Dices className="size-3" />
@@ -895,7 +898,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                         setPrompt(example);
                         textareaRef.current?.focus();
                       }}
-                      className="rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      className="cursor-pointer rounded-lg border border-border bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {example}
                     </button>
@@ -914,7 +917,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                   type="button"
                   onClick={() => setResponse(null)}
                   aria-label="Tutup pesan"
-                  className="absolute top-2 right-2 z-10 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="absolute top-2 right-2 z-10 cursor-pointer rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -1096,7 +1099,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       />
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5 md:gap-6">
           <MiniCashflowCard
             transactions={transactions}
             monthlyIncome={monthlyStats.income}
