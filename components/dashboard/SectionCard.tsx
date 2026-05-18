@@ -30,7 +30,7 @@ export function SectionCard({
     >
       <div
         className={cn(
-          "flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between",
+          "flex items-start justify-between gap-3",
           dense ? "mb-3" : "mb-5"
         )}
       >

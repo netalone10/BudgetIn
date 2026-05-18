@@ -68,7 +68,7 @@ export default function KPICard({
       <p className="label-mono text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "mt-1.5 truncate text-[20px] font-bold tracking-tight md:text-[22px]",
+          "mt-1.5 truncate text-[18px] font-bold tracking-tight md:text-[22px]",
           VALUE_TONE[type]
         )}
       >

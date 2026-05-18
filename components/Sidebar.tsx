@@ -378,8 +378,8 @@ export default function Sidebar() {
           {session?.user && (
             <div
               className={cn(
-                "rounded-md border border-sidebar-border bg-sidebar-accent/35 p-2",
-                isCollapsed && "flex justify-center p-1"
+                "rounded-md border border-sidebar-border bg-sidebar-accent/35",
+                isCollapsed ? "flex justify-center p-1.5" : "p-2"
               )}
             >
               <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-2")}>

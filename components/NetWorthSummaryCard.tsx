@@ -122,8 +122,8 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
           />
           <span
             className={cn(
-              "break-words font-bold leading-none tracking-tight",
-              compact ? "text-2xl md:text-[28px]" : "text-[40px] md:text-[46px]",
+              "min-w-0 break-all font-bold leading-none tracking-tight",
+              compact ? "text-xl md:text-[28px]" : "text-[40px] md:text-[46px]",
               isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
             )}
           >

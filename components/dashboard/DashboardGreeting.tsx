@@ -81,7 +81,7 @@ export default function DashboardGreeting({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <QuickAction
             label="Pengeluaran"
             tone="expense"

@@ -757,7 +757,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   }
 
   return (
-    <div className="flex flex-col gap-5 md:gap-6">
+    <div className="flex flex-col gap-4 md:gap-5 lg:gap-6">
       {/* Greeting — always first for warm welcome */}
       {renderMode !== "secondary-only" && (
         <DashboardGreeting
@@ -771,7 +771,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
 
       {/* KPI Section: KPI cards grid — streams first */}
       {renderMode !== "secondary-only" && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
           <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
           <KPICard
             type="income"
@@ -799,12 +799,12 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       {/* Secondary Section: Input + Transactions + Budget — streams progressively */}
       {renderMode !== "kpi-only" && (
         <>
-          <div className="grid items-start gap-5 lg:grid-cols-[1.62fr_1fr]">
-        <div className="flex flex-col gap-5 md:gap-6">
-      <SectionCard
-        eyebrow="Input · AI Capture"
-        title="Tulis seperti ngobrol"
-      >
+          <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-[1.62fr_1fr]">
+            <div className="flex flex-col gap-5 md:gap-6">
+              <SectionCard
+                eyebrow="Input · AI Capture"
+                title="Tulis seperti ngobrol"
+              >
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-[14px] bg-muted/40 p-1">
           <button
             type="button"
@@ -1088,39 +1088,39 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             />
           </div>
         )}
-      </SectionCard>
+              </SectionCard>
 
-      <RecentTransactionsCard
-        transactions={transactions}
-        categories={transactionCategories}
-        accounts={accounts}
-        onDelete={handleDeleteTx}
-        onUpdate={handleUpdateTx}
-      />
-        </div>
+              <RecentTransactionsCard
+                transactions={transactions}
+                categories={transactionCategories}
+                accounts={accounts}
+                onDelete={handleDeleteTx}
+                onUpdate={handleUpdateTx}
+              />
+            </div>
 
-        <div className="flex flex-col gap-5 md:gap-6">
-          <MiniCashflowCard
-            transactions={transactions}
-            monthlyIncome={monthlyStats.income}
-            monthlyExpense={monthlyStats.expense}
-            surplus={monthlyStats.surplus}
-            month={currentMonth}
-            today={todayStr}
-          />
-          <RunwayKasCard
-            months={runway.months}
-            liquid={runway.liquid}
-            avgBurn={runway.avgBurn}
-          />
-          <BudgetMiniListCard
-            budgets={budgetData?.budgets}
-            loading={budgetLoading}
-            categoryBreakdown={categoryBreakdown}
-          />
-          <SavingsGoalMiniCard goal={initialData.activeSavingsGoal} />
-        </div>
-      </div>
+            <div className="flex flex-col gap-5 md:gap-6">
+              <MiniCashflowCard
+                transactions={transactions}
+                monthlyIncome={monthlyStats.income}
+                monthlyExpense={monthlyStats.expense}
+                surplus={monthlyStats.surplus}
+                month={currentMonth}
+                today={todayStr}
+              />
+              <RunwayKasCard
+                months={runway.months}
+                liquid={runway.liquid}
+                avgBurn={runway.avgBurn}
+              />
+              <BudgetMiniListCard
+                budgets={budgetData?.budgets}
+                loading={budgetLoading}
+                categoryBreakdown={categoryBreakdown}
+              />
+              <SavingsGoalMiniCard goal={initialData.activeSavingsGoal} />
+            </div>
+          </div>
         </>
       )}
     </div>
