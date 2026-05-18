@@ -1,4 +1,4 @@
-import { createAvatar } from "@dicebear/core";
+import { createAvatar, type Style } from "@dicebear/core";
 import {
   adventurer,
   avataaars,
@@ -11,14 +11,14 @@ import {
 } from "@dicebear/collection";
 
 export const AVATAR_STYLES = [
-  { id: "adventurer", label: "Adventurer", style: adventurer },
-  { id: "avataaars", label: "Avataaars", style: avataaars },
-  { id: "bottts", label: "Bottts", style: bottts },
-  { id: "funEmoji", label: "Fun Emoji", style: funEmoji },
-  { id: "lorelei", label: "Lorelei", style: lorelei },
-  { id: "micah", label: "Micah", style: micah },
-  { id: "pixelArt", label: "Pixel Art", style: pixelArt },
-  { id: "thumbs", label: "Thumbs", style: thumbs },
+  { id: "adventurer", label: "Adventurer", style: adventurer as Style<object> },
+  { id: "avataaars", label: "Avataaars", style: avataaars as Style<object> },
+  { id: "bottts", label: "Bottts", style: bottts as Style<object> },
+  { id: "funEmoji", label: "Fun Emoji", style: funEmoji as Style<object> },
+  { id: "lorelei", label: "Lorelei", style: lorelei as Style<object> },
+  { id: "micah", label: "Micah", style: micah as Style<object> },
+  { id: "pixelArt", label: "Pixel Art", style: pixelArt as Style<object> },
+  { id: "thumbs", label: "Thumbs", style: thumbs as Style<object> },
 ] as const;
 
 export type AvatarStyleId = (typeof AVATAR_STYLES)[number]["id"];
