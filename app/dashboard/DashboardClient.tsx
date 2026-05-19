@@ -757,7 +757,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-5 lg:gap-6">
+    <div className="flex flex-col gap-5 md:gap-6 lg:gap-8">
       {/* Greeting — always first for warm welcome */}
       {renderMode !== "secondary-only" && (
         <DashboardGreeting
