@@ -61,11 +61,6 @@ const labelVariants = {
   collapsed: { opacity: 0, x: -8, transition: { duration: 0.12 } },
 };
 
-const navListVariants = {
-  expanded: { transition: { staggerChildren: 0.025, delayChildren: 0.03 } },
-  collapsed: { transition: { staggerChildren: 0 } },
-};
-
 function NavSection({
   title,
   items,
@@ -89,7 +84,7 @@ function NavSection({
           {title}
         </m.p>
       )}
-      <m.div variants={navListVariants} className="space-y-1">
+      <div className="space-y-1">
         {items.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -97,49 +92,48 @@ function NavSection({
           const Icon = item.icon;
 
           return (
-            <m.div key={item.name} variants={labelVariants}>
-              <Link
-                href={item.href}
-                onClick={onNavigate}
-                className={cn(
-                  "group relative flex h-9 items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  isActive &&
-                    "bg-sidebar-primary text-sidebar-primary-foreground shadow-[var(--shadow-offset-x)_var(--shadow-offset-y)_var(--shadow-blur)_var(--shadow-spread)_var(--shadow-color)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
-                  isCollapsed && "justify-center px-0"
-                )}
-                title={isCollapsed ? item.name : undefined}
-                aria-label={isCollapsed ? item.name : undefined}
-              >
-                {isActive && (
-                  <span className="absolute inset-y-1 left-0 w-0.5 rounded-r-full bg-sidebar-ring" />
-                )}
-                <Icon className="size-4 shrink-0" />
-                {!isCollapsed && (
-                  <m.span
-                    variants={labelVariants}
-                    className="min-w-0 flex-1 truncate text-sm font-medium"
-                  >
-                    {item.name}
-                  </m.span>
-                )}
-                {!isCollapsed && item.badge && (
-                  <m.span
-                    variants={labelVariants}
-                    className={cn(
-                      "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                      isActive
-                        ? "bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground"
-                        : "bg-sidebar-accent text-sidebar-accent-foreground"
-                    )}
-                  >
-                    {item.badge}
-                  </m.span>
-                )}
-              </Link>
-            </m.div>
+            <Link
+              key={item.name}
+              href={item.href}
+              onClick={onNavigate}
+              className={cn(
+                "group relative flex h-9 items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground/70 transition-colors duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isActive &&
+                  "bg-sidebar-primary text-sidebar-primary-foreground shadow-[var(--shadow-offset-x)_var(--shadow-offset-y)_var(--shadow-blur)_var(--shadow-spread)_var(--shadow-color)] hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
+                isCollapsed && "justify-center px-0"
+              )}
+              title={isCollapsed ? item.name : undefined}
+              aria-label={isCollapsed ? item.name : undefined}
+            >
+              {isActive && (
+                <span className="absolute inset-y-1 left-0 w-0.5 rounded-r-full bg-sidebar-ring" />
+              )}
+              <Icon className="size-4 shrink-0" />
+              {!isCollapsed && (
+                <m.span
+                  variants={labelVariants}
+                  className="min-w-0 flex-1 truncate text-sm font-medium"
+                >
+                  {item.name}
+                </m.span>
+              )}
+              {!isCollapsed && item.badge && (
+                <m.span
+                  variants={labelVariants}
+                  className={cn(
+                    "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                    isActive
+                      ? "bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground"
+                      : "bg-sidebar-accent text-sidebar-accent-foreground"
+                  )}
+                >
+                  {item.badge}
+                </m.span>
+              )}
+            </Link>
           );
         })}
-      </m.div>
+      </div>
     </div>
   );
 }
@@ -232,7 +226,8 @@ export default function Sidebar() {
       }}
       onFocusCapture={() => setIsCollapsed(false)}
     >
-      <m.div className="flex h-full w-full flex-col p-2" variants={navListVariants}>
+      <div className="flex h-full w-full flex-col p-2">
+        {/* Header */}
         <div className="mb-3 flex h-[54px] shrink-0 items-center border-b border-sidebar-border pb-2">
           <div
             className={cn(
@@ -276,6 +271,7 @@ export default function Sidebar() {
           </div>
         </div>
 
+        {/* Nav items */}
         <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-3 [scrollbar-width:thin]">
           <NavSection
             title="Utama"
@@ -300,8 +296,7 @@ export default function Sidebar() {
               </m.p>
             )}
 
-            <m.button
-              variants={labelVariants}
+            <button
               onClick={() => setShowManageCategories(true)}
               className={cn(
                 "flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -316,7 +311,7 @@ export default function Sidebar() {
                   Kelola Kategori
                 </m.span>
               )}
-            </m.button>
+            </button>
 
             <NavSection
               title="Pengaturan"
@@ -326,8 +321,7 @@ export default function Sidebar() {
             />
 
             {isEmailUser && (
-              <m.button
-                variants={labelVariants}
+              <button
                 onClick={() => setShowChangePassword(true)}
                 className={cn(
                   "flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -342,31 +336,30 @@ export default function Sidebar() {
                     Ganti Password
                   </m.span>
                 )}
-              </m.button>
+              </button>
             )}
           </div>
         </div>
 
+        {/* Footer */}
         <div className="space-y-2 border-t border-sidebar-border pt-2">
           <div
             className={cn(
-              "flex items-center gap-1 rounded-md border border-sidebar-border bg-sidebar-accent/35 p-1",
-              isCollapsed ? "justify-center" : "justify-between"
+              "flex items-center rounded-md border border-sidebar-border bg-sidebar-accent/35 p-1",
+              isCollapsed ? "justify-center flex-col gap-1" : "justify-between"
             )}
           >
             <ThemeToggle compact={isCollapsed} />
-            {!isCollapsed && (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setShowCalculator(true)}
-                aria-label="Buka calculator"
-                title="Calculator"
-                className="rounded-md shadow-none"
-              >
-                <Calculator className="size-4" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setShowCalculator(true)}
+              aria-label="Buka calculator"
+              title="Calculator"
+              className="rounded-md shadow-none"
+            >
+              <Calculator className="size-4" />
+            </Button>
           </div>
 
           {session?.user && (
@@ -406,7 +399,7 @@ export default function Sidebar() {
             </div>
           )}
         </div>
-      </m.div>
+      </div>
     </m.aside>
   );
 
