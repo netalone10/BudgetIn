@@ -3,6 +3,21 @@
 import { useEffect, useRef } from "react";
 import "./landing.css";
 
+export type LandingStats = {
+  userCountLabel: string;
+  transactionCountLabel: string;
+  ratingLabel: string;
+};
+
+export type LandingTestimonial = {
+  id: string;
+  name: string;
+  role: string;
+  quote: string;
+  rating: number;
+  avatarBg: string;
+};
+
 type ChatMsg = { user: string; ai: string; ok: boolean };
 
 const HERO_CONVOS: ChatMsg[] = [
@@ -83,7 +98,30 @@ const LogoMark = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
-export default function LandingPage() {
+type Props = {
+  stats: LandingStats;
+  testimonials: LandingTestimonial[];
+};
+
+function getInitial(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "?";
+  return trimmed[0].toUpperCase();
+}
+
+function Stars({ count }: { count: number }) {
+  const safe = Math.max(0, Math.min(5, count));
+  return (
+    <div className="tc-stars">
+      {Array.from({ length: safe }).map((_, i) => (
+        <span key={i}>&#9733;</span>
+      ))}
+    </div>
+  );
+}
+
+export default function LandingPage({ stats, testimonials }: Props) {
+  const hasTestimonials = testimonials.length > 0;
   const heroChatRef = useRef<HTMLDivElement | null>(null);
   const demoChatRef = useRef<HTMLDivElement | null>(null);
   const demoInputRef = useRef<HTMLDivElement | null>(null);
@@ -425,15 +463,15 @@ export default function LandingPage() {
       <div className="stats rv">
         <div className="wrap stats-row">
           <div className="stat">
-            <div className="stat-n">10.000+</div>
+            <div className="stat-n">{stats.userCountLabel}</div>
             <div className="stat-l">Pengguna Aktif</div>
           </div>
           <div className="stat">
-            <div className="stat-n">500.000+</div>
+            <div className="stat-n">{stats.transactionCountLabel}</div>
             <div className="stat-l">Transaksi Dicatat</div>
           </div>
           <div className="stat">
-            <div className="stat-n">4,8 / 5,0</div>
+            <div className="stat-n">{stats.ratingLabel}</div>
             <div className="stat-l">Rating Pengguna</div>
           </div>
         </div>
@@ -725,70 +763,58 @@ export default function LandingPage() {
         <div className="wrap">
           <div className="sh rv">
             <span className="label">Dari Pengguna</span>
-            <h2>Dipercaya ribuan anak muda Indonesia.</h2>
+            <h2>
+              {hasTestimonials
+                ? "Cerita nyata dari pengguna BudgetIn."
+                : "Jadilah yang pertama bagikan ceritamu."}
+            </h2>
+            {!hasTestimonials && (
+              <p>
+                Belum ada testimoni publik. Kalau BudgetIn sudah bantu kamu, cerita
+                singkatmu bisa jadi alasan teman lain mulai juga.
+              </p>
+            )}
           </div>
-          <div className="testi-grid">
-            <div className="tc rv d1">
-              <div className="tc-stars">
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
+
+          {hasTestimonials ? (
+            <>
+              <div className="testi-grid">
+                {testimonials.map((t, idx) => (
+                  <div key={t.id} className={`tc rv d${(idx % 3) + 1}`}>
+                    <Stars count={t.rating} />
+                    <p className="tc-q">&ldquo;{t.quote}&rdquo;</p>
+                    <div className="tc-author">
+                      <div className="tc-av" style={{ background: t.avatarBg }}>
+                        {getInitial(t.name)}
+                      </div>
+                      <div>
+                        <div className="tc-name">{t.name}</div>
+                        <div className="tc-role">{t.role}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <p className="tc-q">
-                &ldquo;Dulu gajian langsung habis gak jelas. Sekarang aku tahu persis ke
-                mana aja uangku pergi &mdash; dan mulai bisa nabung.&rdquo;
+              <div className="testi-cta rv">
+                <p>Punya pengalaman pakai BudgetIn? Bagikan ceritamu.</p>
+                <a href="/testimoni" className="btn btn-primary">
+                  Tulis Testimoni &rarr;
+                </a>
+              </div>
+            </>
+          ) : (
+            <div className="testi-empty rv">
+              <div className="testi-empty-icon" aria-hidden="true">{"💬"}</div>
+              <h3>Tulis testimoni pertamamu</h3>
+              <p>
+                Cerita singkat — 1-2 kalimat — tentang bagaimana BudgetIn membantu
+                kamu. Setelah di-review admin, kamu akan tampil di sini.
               </p>
-              <div className="tc-author">
-                <div className="tc-av" style={{ background: "#d04f99" }}>R</div>
-                <div>
-                  <div className="tc-name">Rina, 26</div>
-                  <div className="tc-role">Marketing Staff, Jakarta</div>
-                </div>
-              </div>
+              <a href="/testimoni" className="btn btn-primary">
+                Tulis Testimoni Pertama &rarr;
+              </a>
             </div>
-            <div className="tc rv d2">
-              <div className="tc-stars">
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-              </div>
-              <p className="tc-q">
-                &ldquo;Fitur budget vs realisasi bikin aku sadar pengeluaran makan di
-                luar over budget tiap bulan. Akhirnya bisa koreksi.&rdquo;
-              </p>
-              <div className="tc-author">
-                <div className="tc-av" style={{ background: "#6366f1" }}>D</div>
-                <div>
-                  <div className="tc-name">Dimas, 29</div>
-                  <div className="tc-role">Software Engineer, Bandung</div>
-                </div>
-              </div>
-            </div>
-            <div className="tc rv d3">
-              <div className="tc-stars">
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-                <span>&#9733;</span>
-              </div>
-              <p className="tc-q">
-                &ldquo;Akhirnya nemu app yang ngerti kalau transfer GoPay itu bukan
-                pengeluaran. Laporan jadi bersih dan akurat.&rdquo;
-              </p>
-              <div className="tc-author">
-                <div className="tc-av" style={{ background: "#0ea5b4" }}>S</div>
-                <div>
-                  <div className="tc-name">Sari, 24</div>
-                  <div className="tc-role">Freelance Designer, Surabaya</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

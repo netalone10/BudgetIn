@@ -34,8 +34,44 @@ model User {
   accountTypes   AccountType[]
   accounts       Account[]
   recurringTransactions RecurringTransaction[]
+  testimonials   Testimonial[]
 
   @@map("users")
+}
+
+// Testimoni publik di landing page. Submission butuh login,
+// tampil setelah disetujui admin (moderation queue).
+model Testimonial {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  name       String    // snapshot dari user.name saat submit
+  role       String    // contoh: "Marketing Staff, Jakarta"
+  quote      String    @db.Text
+  rating     Int       @default(5) // 1-5
+  avatarBg   String    @default("#d04f99") @map("avatar_bg")
+  approved   Boolean   @default(false)
+  approvedAt DateTime? @map("approved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([approved, createdAt])
+  @@index([userId, createdAt])
+  @@map("testimonials")
+}
+
+// Cache singleton untuk metrik landing page (Pengguna Aktif, Transaksi Dicatat, Rating).
+// Refresh berat (terutama Sheets count) di-trigger lazily/cron.
+model AppMetric {
+  id                     String   @id @default("global")
+  userCount              Int      @default(0) @map("user_count")
+  dbTransactionCount     Int      @default(0) @map("db_transaction_count")
+  sheetsTransactionCount Int      @default(0) @map("sheets_transaction_count")
+  approvedTestimonialCount Int    @default(0) @map("approved_testimonial_count")
+  avgRating              Float    @default(0) @map("avg_rating")
+  refreshedAt            DateTime @default(now()) @map("refreshed_at")
+
+  @@map("app_metrics")
 }
 
 model Category {

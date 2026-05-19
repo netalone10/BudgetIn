@@ -325,6 +325,13 @@ export default function AdminPage() {
               <p className="text-xs text-muted-foreground">
                 Logged in as <span className="font-medium text-foreground">{session?.user?.email}</span>
               </p>
+              <a
+                href="/admin/testimonials"
+                className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/15"
+              >
+                <Sparkles className="size-3.5" />
+                Moderasi Testimoni
+              </a>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
               <HeroMetric label="User aktif 7 hari" value={stats ? fmt(stats.activeLast7Days) : "-"} sub={stats ? pct(stats.activeLast7Days, stats.totalUsers) : ""} />
