@@ -14,6 +14,25 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.12.0",
+    date: "2026-05-13",
+    title: "Rincian Pemasukan & Pengeluaran per kategori",
+    description: "Halaman baru /dashboard/details untuk drill-down cepat per kategori — accordion expand, filter periode & pencarian, share bar kontribusi, dan edit/hapus inline. Angka konsisten dengan laporan keuangan.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.12.0`,
+    changes: [
+      "Menambahkan halaman Rincian (/dashboard/details) dengan sub-tab Pemasukan dan Pengeluaran dalam satu tampilan.",
+      "Mengelompokkan transaksi per kategori dengan accordion — klik baris untuk expand dan lihat transaksi anggotanya secara lazy-mount.",
+      "Menampilkan share bar kontribusi tiap kategori terhadap total tab aktif beserta badge jumlah transaksi.",
+      "Menyediakan filter periode (hari ini / minggu ini / bulan ini / bulan lalu / custom range), pencarian teks, filter akun, dan filter kategori dengan semantik AND.",
+      "Mendukung edit dan hapus transaksi inline langsung dari rincian kategori tanpa berpindah halaman.",
+      "Memastikan angka per kategori konsisten dengan halaman Report — rule eksklusi Saldo Awal, transfer principal, dan savings identik.",
+      "Menambahkan entri navigasi Rincian di sidebar grup Insights antara Kalender dan Report.",
+      "Menambahkan avatar picker Dicebear untuk pengguna email.",
+      "Menambahkan kartu Runway Kas di dashboard — estimasi berapa bulan bertahan tanpa pemasukan.",
+    ],
+  },
+  {
     version: "v1.11.0",
     date: "2026-05-13",
     title: "Performa dashboard dan keamanan email",

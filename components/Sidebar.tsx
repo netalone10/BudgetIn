@@ -33,6 +33,7 @@ import {
   UserCog,
   Receipt,
   FileText,
+  ListTree,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -199,6 +200,7 @@ export default function Sidebar() {
   const insightsItems: NavItem[] = [
     { name: "Arus Kas", href: "/dashboard/cashflow", icon: TrendingDown },
     { name: "Kalender", href: "/dashboard/calendar", icon: CalendarDays },
+    { name: "Rincian", href: "/dashboard/details", icon: ListTree },
     { name: "Report", href: "/dashboard/report", icon: FileText },
     { name: "AI Analyst", href: "/dashboard/analyst", icon: Sparkles, badge: "AI" },
   ];
