@@ -59,14 +59,14 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     return (
       <div
         className={cn(
-          "relative animate-pulse overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-sm",
+          "relative animate-pulse overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm",
           "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:bg-primary before:content-['']",
-          compact ? "p-4" : "p-6"
+          !compact && "p-6"
         )}
-        style={{ minHeight: compact ? 90 : 192 }}
       >
         <div className="mb-2 h-3 w-28 rounded bg-muted" />
         <div className={cn("rounded bg-muted", compact ? "h-6 w-36" : "h-10 w-64")} />
+        <div className="mt-1.5 h-3 w-24 rounded bg-muted" />
       </div>
     );
   }
@@ -75,9 +75,9 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-sm",
+          "relative overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm",
           "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:bg-primary before:content-['']",
-          compact ? "p-4" : "p-6"
+          !compact && "p-6"
         )}
       >
         <p className="label-mono text-muted-foreground">Kekayaan Bersih</p>
@@ -93,12 +93,12 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
   const TrendIcon = netWorth > 0 ? TrendingUp : netWorth < 0 ? TrendingDown : Minus;
 
   return (
-    <Link href="/dashboard/accounts" className="group block">
+    <Link href="/dashboard/accounts" className="group block min-w-0 h-full">
       <div
         className={cn(
-          "relative overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35",
+          "relative h-full overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35",
           "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:bg-primary before:content-['']",
-          compact ? "p-4" : "p-6"
+          !compact && "p-6"
         )}
       >
         <div className="flex items-center justify-between">
