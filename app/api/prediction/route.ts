@@ -9,6 +9,7 @@ import { callWithRotation } from "@/utils/groq";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
+import { checkRateLimit, RATE_LIMIT_PREDICTION } from "@/lib/rate-limit";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -23,6 +24,23 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limiting — prediction fetch 3 bulan data + Groq call
+  const rl = checkRateLimit(`prediction:${session.userId}`, RATE_LIMIT_PREDICTION);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak request. Tunggu sebentar sebelum mencoba lagi." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Limit": String(RATE_LIMIT_PREDICTION.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+        },
+      }
+    );
   }
 
   const now = toZonedTime(new Date(), TIMEZONE);

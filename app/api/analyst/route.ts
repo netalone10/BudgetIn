@@ -14,6 +14,7 @@ import {
   computeCashflowScore,
   computeSavingsRates,
 } from "@/lib/analyst-metrics";
+import { checkRateLimit, RATE_LIMIT_ANALYST } from "@/lib/rate-limit";
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -21,6 +22,23 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limiting — analyst adalah query berat yang memanggil Groq
+  const rl = checkRateLimit(`analyst:${session.userId}`, RATE_LIMIT_ANALYST);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak request. Tunggu sebentar sebelum mencoba lagi." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Limit": String(RATE_LIMIT_ANALYST.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+        },
+      }
+    );
   }
 
   const { searchParams } = new URL(req.url);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, RATE_LIMIT_PROMPT } from "@/lib/rate-limit";
 import { classifyIntent } from "@/utils/groq";
 import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccounts, ensureAccountHeader } from "@/utils/sheets";
@@ -76,6 +77,23 @@ export async function POST(req: NextRequest) {
   if (demoBlock) return demoBlock;
 
   const userId = session.userId;
+
+  // Rate limiting — lindungi endpoint prompt dari abuse
+  const rl = checkRateLimit(`record:${userId}`, RATE_LIMIT_PROMPT);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak request. Tunggu sebentar sebelum mencoba lagi." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+          "X-RateLimit-Limit": String(RATE_LIMIT_PROMPT.limit),
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+        },
+      }
+    );
+  }
 
   const { prompt, pendingAction, selectedGoalId } = await req.json();
   if (!prompt?.trim()) {
