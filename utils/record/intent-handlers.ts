@@ -68,7 +68,7 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   const { resolveAccount, validateAccount } = buildAccountResolver({ userId, prompt, useSheets, sheetsId, accessToken, userAccounts });
   const accountResolution = await resolveAccount(parsed.accountName, "expense");
   if ("clarification" in accountResolution) return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
-  const { accountId } = accountResolution;
+  const { accountId, accountCreated } = accountResolution;
 
   const accountError = await validateAccount(accountId);
   if (accountError) return NextResponse.json({ error: accountError.error }, { status: accountError.status });
@@ -109,21 +109,33 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
     : parsed.category;
   const base = { date, time, amount: parsed.amount, category, note, type: "expense" as const };
 
+  // ── Critical write ─ if this fails, transaction was NOT persisted; return 500.
+  let transaction;
   try {
-    const transaction = useSheets
+    transaction = useSheets
       ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
       : await appendTransactionDB(userId, { ...base, accountId });
+  } catch (err) {
+    console.error("[handleTransaksi] critical write failed:", err);
+    return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
+  }
 
-    // Sheets: saldo dihitung pure-ledger via getAccountsWithBalance (no cache write).
-
+  // ── Secondary side-effects ─ best-effort. Failures logged but do NOT poison the
+  // success response (previously they did — user saw an error toast even though
+  // the transaction was already in Sheets/DB).
+  try {
     await prisma.category.upsert({
       where: { userId_name: { userId, name: category } },
       update: savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated" ? { isSavings: true } : {},
       create: { userId, name: category, ...(savingsResolution.kind === "resolved" || savingsResolution.kind === "unallocated" ? { isSavings: true } : {}) },
       select: { id: true },
     });
+  } catch (err) {
+    console.error("[handleTransaksi] category upsert failed (non-fatal):", err);
+  }
 
-    if (savingsResolution.kind === "resolved") {
+  if (savingsResolution.kind === "resolved") {
+    try {
       await prisma.savingsContribution.create({
         data: {
           userId,
@@ -134,56 +146,52 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
           note,
         },
       });
+    } catch (err) {
+      console.error("[handleTransaksi] savings contribution failed (non-fatal):", err);
     }
+  }
 
-    if (savingsResolution.kind === "resolved") {
-      return NextResponse.json({
-        intent: "transaksi",
-        transaction,
-        message: `✓ Tabungan dicatat: ${formatSignedIDR(parsed.amount)} ke ${savingsResolution.goal.name} dari ${accountName}`,
-        details: {
-          date: base.date,
-          time: base.time,
-          category,
-          amount: parsed.amount,
-          accountName,
-          savingsGoalName: savingsResolution.goal.name,
-          contributionStatus: "allocated",
-        },
-      });
-    }
+  const baseDetails = {
+    date: base.date,
+    time: base.time,
+    category,
+    amount: parsed.amount,
+    accountName,
+    note: note || undefined,
+    accountCreated: accountCreated || undefined,
+  };
 
-    if (savingsResolution.kind === "unallocated") {
-      return NextResponse.json({
-        intent: "transaksi",
-        transaction,
-        message: "✓ Tabungan dicatat sebagai Tabungan umum. Kamu belum punya goal tabungan; buat goal agar kontribusi bisa dilacak per tujuan.",
-        details: {
-          date: base.date,
-          time: base.time,
-          category,
-          amount: parsed.amount,
-          accountName,
-          contributionStatus: "unallocated",
-        },
-      });
-    }
-
+  if (savingsResolution.kind === "resolved") {
     return NextResponse.json({
       intent: "transaksi",
       transaction,
-      message: `✓ Dicatat: ${category} — ${formatSignedIDR(parsed.amount)}`,
+      message: `✓ Tabungan dicatat: ${formatSignedIDR(parsed.amount)} ke ${savingsResolution.goal.name} dari ${accountName}`,
       details: {
-        date: base.date,
-        time: base.time,
-        category,
-        amount: parsed.amount,
-        accountName,
+        ...baseDetails,
+        savingsGoalName: savingsResolution.goal.name,
+        contributionStatus: "allocated",
       },
     });
-  } catch {
-    return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
   }
+
+  if (savingsResolution.kind === "unallocated") {
+    return NextResponse.json({
+      intent: "transaksi",
+      transaction,
+      message: "✓ Tabungan dicatat sebagai Tabungan umum. Kamu belum punya goal tabungan; buat goal agar kontribusi bisa dilacak per tujuan.",
+      details: {
+        ...baseDetails,
+        contributionStatus: "unallocated",
+      },
+    });
+  }
+
+  return NextResponse.json({
+    intent: "transaksi",
+    transaction,
+    message: `✓ Dicatat: ${category} — ${formatSignedIDR(parsed.amount)} dari ${accountName}`,
+    details: baseDetails,
+  });
 }
 
 export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
@@ -197,7 +205,7 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
   const { resolveAccount, validateAccount } = buildAccountResolver({ userId, prompt, useSheets, sheetsId, accessToken, userAccounts });
   const accountResolution = await resolveAccount(parsed.accountName, "expense");
   if ("clarification" in accountResolution) return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
-  const { accountId } = accountResolution;
+  const { accountId, accountCreated } = accountResolution;
 
   const accountError = await validateAccount(accountId);
   if (accountError) return NextResponse.json({ error: accountError.error }, { status: accountError.status });
@@ -206,46 +214,55 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
   const accountName = account?.name ?? "";
   const time = resolveTransactionTime(parsed, ctx);
 
-  try {
-    const transactions = [];
-    for (const item of items) {
-      if (!item.amount || !item.category) continue;
-      const base = { date: parsed.date ?? ctx.today, time, amount: item.amount, category: item.category, note: sanitizeTransactionNote(item.note), type: "expense" as const };
+  // Per-item writes: collect successes; a single item's failure shouldn't kill the batch.
+  const transactions = [];
+  const failedItems: { category: string; amount: number; error: string }[] = [];
+  for (const item of items) {
+    if (!item.amount || !item.category) continue;
+    const base = { date: parsed.date ?? ctx.today, time, amount: item.amount, category: item.category, note: sanitizeTransactionNote(item.note), type: "expense" as const };
+    try {
       const transaction = useSheets
         ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
         : await appendTransactionDB(userId, { ...base, accountId });
-
+      transactions.push(transaction);
+    } catch (err) {
+      console.error("[handleTransaksiBulk] item write failed:", { item, err });
+      failedItems.push({ category: item.category, amount: item.amount, error: "write_failed" });
+      continue;
+    }
+    // Category upsert is non-fatal — losing it doesn't undo the write.
+    try {
       await prisma.category.upsert({
         where: { userId_name: { userId, name: item.category } },
         update: {},
         create: { userId, name: item.category },
         select: { id: true },
       });
-      transactions.push(transaction);
+    } catch (err) {
+      console.error("[handleTransaksiBulk] category upsert failed (non-fatal):", err);
     }
-
-    if (transactions.length === 0) {
-      return NextResponse.json({ intent: "unknown", clarification: "Tidak ada item valid yang bisa dicatat. Pastikan setiap item memiliki nominal." });
-    }
-
-    const total = transactions.reduce((s, t) => s + t.amount, 0);
-    // Sheets: saldo dihitung pure-ledger (no cache write).
-
-    return NextResponse.json({
-      intent: "transaksi_bulk",
-      transactions,
-      message: `✓ ${transactions.length} transaksi dicatat (total ${formatSignedIDR(total)})`,
-      details: {
-        date: parsed.date ?? ctx.today,
-        time,
-        accountName,
-        total,
-        count: transactions.length,
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
   }
+
+  if (transactions.length === 0) {
+    return NextResponse.json({ intent: "unknown", clarification: "Tidak ada item valid yang bisa dicatat. Pastikan setiap item memiliki nominal." });
+  }
+
+  const total = transactions.reduce((s, t) => s + t.amount, 0);
+
+  return NextResponse.json({
+    intent: "transaksi_bulk",
+    transactions,
+    message: `✓ ${transactions.length} transaksi dicatat (total ${formatSignedIDR(total)}) ke ${accountName}${failedItems.length > 0 ? ` — ${failedItems.length} item gagal` : ""}`,
+    details: {
+      date: parsed.date ?? ctx.today,
+      time,
+      accountName,
+      total,
+      count: transactions.length,
+      accountCreated: accountCreated || undefined,
+      failedCount: failedItems.length || undefined,
+    },
+  });
 }
 
 export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
@@ -285,10 +302,12 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
   const date = parsed.date ?? ctx.today;
   const time = resolveTransactionTime(parsed, ctx);
   const note = sanitizeTransactionNote(parsed.note);
+  const accountCreatedNames = [fromResolution.accountCreated, toResolution.accountCreated].filter(Boolean) as string[];
 
-  try {
-    if (useSheets) {
-      const transaction = await appendTransaction(sheetsId!, accessToken, {
+  if (useSheets) {
+    let transaction;
+    try {
+      transaction = await appendTransaction(sheetsId!, accessToken, {
         date,
         time,
         amount: transferAmount,
@@ -300,8 +319,15 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
         toAccountId,
         toAccountName,
       });
-      const transactions = [transaction];
-      if (fee > 0) {
+    } catch (err) {
+      console.error("[handleTransfer] critical write failed:", err);
+      return NextResponse.json({ error: "Gagal menyimpan transfer. Coba lagi." }, { status: 500 });
+    }
+
+    const transactions = [transaction];
+    let feeFailed = false;
+    if (fee > 0) {
+      try {
         const feeTransaction = await appendTransaction(sheetsId!, accessToken, {
           date,
           time,
@@ -313,27 +339,34 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
           fromAccountName,
         });
         transactions.push(feeTransaction);
+      } catch (err) {
+        // Transfer succeeded, only fee row failed. Report partial success.
+        console.error("[handleTransfer] fee append failed (non-fatal):", err);
+        feeFailed = true;
       }
-
-      if (fee > 0) {
+      try {
         await prisma.category.upsert({
           where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
           update: {},
           create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
           select: { id: true },
         });
+      } catch (err) {
+        console.error("[handleTransfer] fee category upsert failed (non-fatal):", err);
       }
-
-      return NextResponse.json({
-        intent: "transfer",
-        transactions,
-        transaction,
-        message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
-        details: { date, time, amount: transferAmount, fee, fromAccountName, toAccountName },
-      });
     }
 
-    const transferId = randomUUID();
+    return NextResponse.json({
+      intent: "transfer",
+      transactions,
+      transaction,
+      message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 && !feeFailed ? ` + fee ${formatSignedIDR(fee)}` : ""}${feeFailed ? " (fee gagal dicatat — coba ulang fee saja)" : ""}`,
+      details: { date, time, amount: transferAmount, fee: feeFailed ? 0 : fee, fromAccountName, toAccountName, note: note || undefined, accountCreated: accountCreatedNames.length > 0 ? accountCreatedNames.join(", ") : undefined },
+    });
+  }
+
+  const transferId = randomUUID();
+  try {
     await prisma.$transaction([
       prisma.transaction.create({
         data: {
@@ -378,25 +411,30 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
           ]
         : []),
     ]);
+  } catch (err) {
+    console.error("[handleTransfer] critical $transaction failed:", err);
+    return NextResponse.json({ error: "Gagal menyimpan transfer. Coba lagi." }, { status: 500 });
+  }
 
-    if (fee > 0) {
+  if (fee > 0) {
+    try {
       await prisma.category.upsert({
         where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
         update: {},
         create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
         select: { id: true },
       });
+    } catch (err) {
+      console.error("[handleTransfer] fee category upsert failed (non-fatal):", err);
     }
-
-    return NextResponse.json({
-      intent: "transfer",
-      transferId,
-      message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
-      details: { date, time, amount: transferAmount, fee, fromAccountName, toAccountName },
-    });
-  } catch {
-    return NextResponse.json({ error: "Gagal menyimpan transfer. Coba lagi." }, { status: 500 });
   }
+
+  return NextResponse.json({
+    intent: "transfer",
+    transferId,
+    message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
+    details: { date, time, amount: transferAmount, fee, fromAccountName, toAccountName, note: note || undefined, accountCreated: accountCreatedNames.length > 0 ? accountCreatedNames.join(", ") : undefined },
+  });
 }
 
 export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {
@@ -413,46 +451,53 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
   const { resolveAccount, validateAccount } = buildAccountResolver({ userId, prompt, useSheets, sheetsId, accessToken, userAccounts });
   const accountResolution = await resolveAccount(parsed.accountName, "income");
   if ("clarification" in accountResolution) return NextResponse.json({ intent: "unknown", clarification: accountResolution.clarification });
-  const { accountId } = accountResolution;
+  const { accountId, accountCreated } = accountResolution;
 
   const accountError = await validateAccount(accountId);
   if (accountError) return NextResponse.json({ error: accountError.error }, { status: accountError.status });
 
   const account = userAccounts.find((a) => a.id === accountId);
   const accountName = account?.name ?? "";
-  const base = { date: parsed.date ?? ctx.today, time: resolveTransactionTime(parsed, ctx), amount: incomeAmount, category: incomeCategory, note: sanitizeTransactionNote(parsed.note), type: "income" as const };
+  const note = sanitizeTransactionNote(parsed.note);
+  const base = { date: parsed.date ?? ctx.today, time: resolveTransactionTime(parsed, ctx), amount: incomeAmount, category: incomeCategory, note, type: "income" as const };
 
+  let transaction;
   try {
-    const transaction = useSheets
+    transaction = useSheets
       ? await appendTransaction(sheetsId!, accessToken, { ...base, toAccountId: accountId, toAccountName: accountName })
       : await appendTransactionDB(userId, { ...base, accountId });
+  } catch (err) {
+    console.error("[handlePemasukan] critical write failed:", err);
+    return NextResponse.json({ error: "Gagal menyimpan pemasukan. Coba lagi." }, { status: 500 });
+  }
 
-    // Sheets: saldo dihitung pure-ledger (no cache write).
-
+  try {
     await prisma.category.upsert({
       where: { userId_name: { userId, name: incomeCategory } },
       update: {},
       create: { userId, name: incomeCategory },
       select: { id: true },
     });
-
-    return NextResponse.json({
-      intent: "pemasukan",
-      transaction,
-      amount: incomeAmount,
-      category: incomeCategory,
-      message: `✓ Pemasukan dicatat: ${incomeCategory} ${formatSignedIDR(incomeAmount, "+")}`,
-      details: {
-        date: base.date,
-        time: base.time,
-        category: incomeCategory,
-        amount: incomeAmount,
-        accountName,
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: "Gagal menyimpan pemasukan. Coba lagi." }, { status: 500 });
+  } catch (err) {
+    console.error("[handlePemasukan] category upsert failed (non-fatal):", err);
   }
+
+  return NextResponse.json({
+    intent: "pemasukan",
+    transaction,
+    amount: incomeAmount,
+    category: incomeCategory,
+    message: `✓ Pemasukan dicatat: ${incomeCategory} ${formatSignedIDR(incomeAmount, "+")} ke ${accountName}`,
+    details: {
+      date: base.date,
+      time: base.time,
+      category: incomeCategory,
+      amount: incomeAmount,
+      accountName,
+      note: note || undefined,
+      accountCreated: accountCreated || undefined,
+    },
+  });
 }
 
 export async function handleBudgetSetting(parsed: ParsedIntent, ctx: RecordContext): Promise<NextResponse> {

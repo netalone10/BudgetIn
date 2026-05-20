@@ -233,9 +233,10 @@ function SavingsGoalSkeleton() {
 
 type BudgetData = DashboardTabsBudgetData;
 
-type TxDetails = { date: string; category: string; amount: number; accountName?: string; savingsGoalName?: string; contributionStatus?: string };
-type BulkDetails = { date: string; accountName?: string; total: number; count: number };
+type TxDetails = { date: string; time?: string; category: string; amount: number; accountName?: string; note?: string; savingsGoalName?: string; contributionStatus?: string; accountCreated?: string };
+type BulkDetails = { date: string; time?: string; accountName?: string; total: number; count: number; accountCreated?: string; failedCount?: number };
 type BudgetDetails = { category: string; amount: number; month: string };
+type TransferDetails = { date: string; time?: string; amount: number; fee: number; fromAccountName: string; toAccountName: string; note?: string; accountCreated?: string };
 type SavingsPendingAction = {
   type: "savings_contribution";
   amount: number;
@@ -252,7 +253,7 @@ type ResponseData =
   | { intent: "pemasukan"; transaction: Transaction; amount: number; category: string; message: string; details?: TxDetails }
   | { intent: "budget_setting"; category: string; amount: number; month: string; message: string; details?: BudgetDetails }
   | { intent: "laporan"; period: string; totalSpent: number; spentByCategory: Record<string, number>; budgets: { category: string; budget: number; spent: number }[]; summary: string; transactionCount: number }
-  | { intent: "transfer"; message: string }
+  | { intent: "transfer"; message: string; details?: TransferDetails }
   | { intent: "unknown"; clarification: string; clarificationType?: string; pendingAction?: SavingsPendingAction; options?: SavingsGoalOption[] }
   | { error: string };
 
@@ -1016,15 +1017,21 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                        Transaksi dicatat
+                        {response.message || "Transaksi dicatat"}
                       </p>
                       {response.details && (
                         <DetailsGrid tone="green">
                           <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          {response.details.time && (
+                            <DetailRow label="Jam" value={response.details.time} />
+                          )}
                           <DetailRow label="Kategori" value={response.details.category} />
                           <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount)} />
                           {response.details.accountName && (
                             <DetailRow label="Akun" value={response.details.accountName} />
+                          )}
+                          {response.details.note && (
+                            <DetailRow label="Catatan" value={response.details.note} />
                           )}
                           {response.details.savingsGoalName && (
                             <DetailRow label="Goal" value={response.details.savingsGoalName} />
@@ -1037,6 +1044,11 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                           )}
                         </DetailsGrid>
                       )}
+                      {response.details?.accountCreated && (
+                        <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
+                          ⚠️ Akun &quot;{response.details.accountCreated}&quot; otomatis dibuat. Kalau bukan yang kamu maksud, edit transaksi atau hapus akun di menu Akun.
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : response.intent === "transaksi_bulk" ? (
@@ -1044,11 +1056,14 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                        {response.details?.count ?? response.transactions.length} transaksi dicatat
+                        {response.message || `${response.details?.count ?? response.transactions.length} transaksi dicatat`}
                       </p>
                       {response.details && (
                         <DetailsGrid tone="green">
                           <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          {response.details.time && (
+                            <DetailRow label="Jam" value={response.details.time} />
+                          )}
                           {response.details.accountName && (
                             <DetailRow label="Akun" value={response.details.accountName} />
                           )}
@@ -1066,6 +1081,16 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                           </li>
                         ))}
                       </ul>
+                      {response.details?.accountCreated && (
+                        <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
+                          ⚠️ Akun &quot;{response.details.accountCreated}&quot; otomatis dibuat. Cek menu Akun kalau bukan yang kamu maksud.
+                        </p>
+                      )}
+                      {response.details?.failedCount ? (
+                        <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
+                          ⚠️ {response.details.failedCount} item gagal disimpan. Coba ulang item yang gagal saja.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 ) : response.intent === "pemasukan" ? (
@@ -1073,17 +1098,28 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                        Pemasukan dicatat
+                        {response.message || "Pemasukan dicatat"}
                       </p>
                       {response.details && (
                         <DetailsGrid tone="green">
                           <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          {response.details.time && (
+                            <DetailRow label="Jam" value={response.details.time} />
+                          )}
                           <DetailRow label="Kategori" value={response.details.category} />
                           <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount, "+")} />
                           {response.details.accountName && (
                             <DetailRow label="Akun" value={response.details.accountName} />
                           )}
+                          {response.details.note && (
+                            <DetailRow label="Catatan" value={response.details.note} />
+                          )}
                         </DetailsGrid>
+                      )}
+                      {response.details?.accountCreated && (
+                        <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
+                          ⚠️ Akun &quot;{response.details.accountCreated}&quot; otomatis dibuat. Cek menu Akun kalau bukan yang kamu maksud.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -1135,9 +1171,33 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                 ) : response.intent === "transfer" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                      {response.message || "Transfer berhasil diproses."}
-                    </p>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                        {response.message || "Transfer berhasil diproses."}
+                      </p>
+                      {response.details && (
+                        <DetailsGrid tone="green">
+                          <DetailRow label="Tanggal" value={formatTanggalID(response.details.date)} />
+                          {response.details.time && (
+                            <DetailRow label="Jam" value={response.details.time} />
+                          )}
+                          <DetailRow label="Dari" value={response.details.fromAccountName} />
+                          <DetailRow label="Ke" value={response.details.toAccountName} />
+                          <DetailRow label="Nominal" value={formatSignedIDR(response.details.amount)} />
+                          {response.details.fee > 0 && (
+                            <DetailRow label="Fee" value={formatSignedIDR(response.details.fee)} />
+                          )}
+                          {response.details.note && (
+                            <DetailRow label="Catatan" value={response.details.note} />
+                          )}
+                        </DetailsGrid>
+                      )}
+                      {response.details?.accountCreated && (
+                        <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
+                          ⚠️ Akun &quot;{response.details.accountCreated}&quot; otomatis dibuat. Cek menu Akun kalau bukan yang kamu maksud.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-start gap-3 rounded-2xl border border-yellow-500/25 bg-yellow-500/5 px-4 py-3">
