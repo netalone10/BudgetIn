@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, type ReactNode } fro
 import dynamic from "next/dynamic";
 import type { BudgetData as DashboardTabsBudgetData } from "@/components/DashboardTabs";
 import type { Transaction, TransactionCategory } from "@/components/TransactionCard";
+import type { ManualTransactionCreated } from "@/components/ManualTransactionForm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -747,6 +748,90 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     emitDataChanged(["transactions", "budget", "accounts"]);
   }, []);
 
+  const handleManualTransactionCreated = useCallback((created?: ManualTransactionCreated) => {
+    // No optimistic data — fall back to background refetch.
+    if (!created) {
+      fetchTransactions();
+      fetchBudget();
+      fetchAccounts();
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const tempStamp = Date.now();
+    const fromName = accounts.find((a) => a.id === created.accountId)?.name ?? null;
+    const toName = accounts.find((a) => a.id === created.toAccountId)?.name ?? null;
+    const optimistic: Transaction[] = [];
+
+    if (created.type === "expense" || created.type === "income") {
+      optimistic.push({
+        id: created.transactionId ?? `temp-${tempStamp}`,
+        date: created.date,
+        time: created.time,
+        amount: created.amount,
+        category: created.category,
+        note: created.note,
+        created_at: nowIso,
+        type: created.type,
+        accountId: created.accountId,
+        fromAccountId: created.accountId,
+        fromAccountName: fromName,
+      });
+    } else if (created.type === "transfer") {
+      optimistic.push({
+        id: created.transactionId ?? `temp-out-${tempStamp}`,
+        date: created.date,
+        time: created.time,
+        amount: created.amount,
+        category: "Transfer",
+        note: created.note,
+        created_at: nowIso,
+        type: "transfer_out",
+        accountId: created.accountId,
+        fromAccountId: created.accountId,
+        fromAccountName: fromName,
+        toAccountId: created.toAccountId,
+        toAccountName: toName,
+      });
+      optimistic.push({
+        id: `temp-in-${tempStamp}`,
+        date: created.date,
+        time: created.time,
+        amount: created.amount,
+        category: "Transfer",
+        note: created.note,
+        created_at: nowIso,
+        type: "transfer_in",
+        accountId: created.toAccountId,
+        fromAccountId: created.accountId,
+        fromAccountName: fromName,
+        toAccountId: created.toAccountId,
+        toAccountName: toName,
+      });
+      if (created.fee > 0) {
+        optimistic.push({
+          id: created.feeTransactionId ?? `temp-fee-${tempStamp}`,
+          date: created.date,
+          time: created.time,
+          amount: created.fee,
+          category: "Biaya Admin",
+          note: created.note,
+          created_at: nowIso,
+          type: "expense",
+          accountId: created.accountId,
+          fromAccountId: created.accountId,
+          fromAccountName: fromName,
+        });
+      }
+    }
+
+    if (optimistic.length > 0) {
+      setTransactions((prev) => [...optimistic, ...prev]);
+    }
+    // Background refetch is triggered by the form's emitDataChanged() after
+    // the POST resolves (see useDataEvent listener above). No need to refetch here.
+  }, [accounts]);
+
   const dataLoading = txLoading || budgetLoading;
 
   function randomizePromptExamples() {
@@ -1079,12 +1164,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             <ManualTransactionForm
               accounts={accounts}
               categories={transactionCategories}
-              onSuccess={() => {
-                // SWR: background refetch without loading spinners
-                fetchTransactions();
-                fetchBudget();
-                fetchAccounts();
-              }}
+              onSuccess={handleManualTransactionCreated}
             />
           </div>
         )}

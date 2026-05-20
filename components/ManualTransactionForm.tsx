@@ -161,7 +161,53 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       payload.category = category;
     }
 
-    setLoading(true);
+    // Snapshot all submit values BEFORE resetting form (so background fetch sees them
+    // even if user starts typing another transaction).
+    const submitTab = tab;
+    const submitAccountId = accountId;
+    const submitToAccountId = toAccountId;
+    const submitCategory = category;
+    const submitNote = note ?? "";
+    const submitDate = date;
+
+    // Build optimistic record with temp IDs — listeners (DashboardClient,
+    // AccountDetailClient) push these into local state instantly. Real IDs
+    // arrive on next refetch after server confirms.
+    const tempStamp = Date.now();
+    const optimisticCreated: ManualTransactionCreated = {
+      type: submitTab,
+      amount: parsedAmount,
+      fee: parsedFee,
+      date: submitDate,
+      time: submitTime,
+      note: submitNote,
+      category: submitTab === "transfer" ? "Transfer" : submitCategory,
+      accountId: submitAccountId,
+      toAccountId: submitTab === "transfer" ? submitToAccountId : "",
+      transactionId: `temp-${tempStamp}`,
+      feeTransactionId: parsedFee > 0 ? `temp-fee-${tempStamp}` : undefined,
+      transferId: submitTab === "transfer" ? `temp-tr-${tempStamp}` : undefined,
+    };
+
+    const successMessage =
+      submitTab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.";
+
+    // Optimistic UX: reset form, toast, and notify parent immediately —
+    // BEFORE the network round-trip. Perceived latency drops to ~0.
+    setSuccess(successMessage);
+    toast.success(successMessage);
+    setAmount("");
+    setFee("");
+    setNote("");
+    setCategory("");
+    setTime(currentLocalTime());
+    setTimeManuallyEdited(false);
+    onSuccess(optimisticCreated);
+    setLoading(false);
+
+    // Fire POST in background. On success, broadcast so listeners refetch
+    // and reconcile (replacing temp IDs with real ones). On failure, toast
+    // error AND broadcast — refetch then removes the orphaned temp row.
     try {
       const res = await fetch("/api/transactions/manual", {
         method: "POST",
@@ -173,42 +219,13 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         const message = data?.error || "Gagal menyimpan transaksi.";
         setError(message);
         toast.error(message);
-        return;
       }
-      const successMessage =
-        tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.";
-      setSuccess(successMessage);
-      toast.success(successMessage);
-
-      const created: ManualTransactionCreated = {
-        type: tab,
-        amount: parsedAmount,
-        fee: parsedFee,
-        date,
-        time: submitTime,
-        note: note ?? "",
-        category: tab === "transfer" ? "Transfer" : category,
-        accountId,
-        toAccountId: tab === "transfer" ? toAccountId : "",
-        transactionId: data?.transaction?.id,
-        feeTransactionId: data?.feeTransaction?.id,
-        transferId: data?.transferId,
-      };
-
-      setAmount("");
-      setFee("");
-      setNote("");
-      setCategory("");
-      setTime(currentLocalTime());
-      setTimeManuallyEdited(false);
-      onSuccess(created);
-      emitDataChanged(["transactions", "budget", "accounts"]);
     } catch {
       const message = "Terjadi kesalahan. Coba lagi.";
       setError(message);
       toast.error(message);
     } finally {
-      setLoading(false);
+      emitDataChanged(["transactions", "budget", "accounts"]);
     }
   }
 
