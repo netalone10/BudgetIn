@@ -8,6 +8,7 @@ import { isAdmin } from "@/lib/is-admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { DEMO_ACCOUNT } from "@/lib/demo-account";
 import { encryptSecret } from "@/lib/crypto";
+import { heartbeat } from "@/lib/user-activity";
 import bcrypt from "bcryptjs";
 
 const REQUIRED_GOOGLE_SCOPES = [
@@ -191,6 +192,11 @@ export const authOptions: NextAuthOptions = {
       // Expose isAdmin ke client — dihitung server-side, tidak bocorkan list email
       session.isAdmin = token.isAdmin as boolean ?? false;
       session.isDemo = token.isDemo as boolean ?? false;
+      // Heartbeat — throttled 5 menit, fire-and-forget. Skip demo user supaya
+      // session test gak ngotori lastActivityAt akun publik.
+      if (token.userId && !session.isDemo) {
+        heartbeat(token.userId as string);
+      }
       return session;
     },
   },

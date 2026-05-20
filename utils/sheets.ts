@@ -156,6 +156,37 @@ export async function appendTransaction(
   return { id, ...data, time, created_at };
 }
 
+/**
+ * Lightweight count helpers — fetch hanya column A (ID) supaya payload kecil.
+ * Dipakai oleh cron sync-sheets-counts buat ngisi cache di User table.
+ * Note: tidak pakai getCached/setCached supaya cron selalu fetch fresh.
+ */
+export async function countTransactions(
+  sheetsId: string,
+  accessToken: string
+): Promise<number> {
+  const sheets = getSheetsClient(accessToken);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: "Transaksi!A2:A",
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  return (res.data.values ?? []).filter((row) => row[0]).length;
+}
+
+export async function countAccounts(
+  sheetsId: string,
+  accessToken: string
+): Promise<number> {
+  const sheets = getSheetsClient(accessToken);
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetsId,
+    range: "Akun!A2:A",
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  return (res.data.values ?? []).filter((row) => row[0]).length;
+}
+
 export async function getTransactions(
   sheetsId: string,
   accessToken: string,

@@ -26,6 +26,14 @@ model User {
   verificationTokenExpiry DateTime? @map("verification_token_expiry")
   createdAt               DateTime  @default(now()) @map("created_at")
 
+  // Aktivitas terakhir user (throttled heartbeat dari session callback).
+  lastActivityAt          DateTime  @default(now()) @map("last_activity_at")
+  // Cache count Sheets, di-isi cron 6 jam (handler app/api/cron/sync-sheets-counts).
+  // Untuk user DB (sheetsId null) kolom ini diabaikan oleh admin endpoint.
+  sheetsTxCount           Int       @default(0) @map("sheets_tx_count")
+  sheetsAccountCount      Int       @default(0) @map("sheets_account_count")
+  sheetsCountSyncedAt     DateTime? @map("sheets_count_synced_at")
+
   budgets        Budget[]
   categories     Category[]
   transactions   Transaction[]
@@ -36,6 +44,7 @@ model User {
   recurringTransactions RecurringTransaction[]
   testimonials   Testimonial[]
 
+  @@index([lastActivityAt(sort: Desc)])
   @@map("users")
 }
 

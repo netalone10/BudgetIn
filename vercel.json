@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/recurring",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sync-sheets-counts",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

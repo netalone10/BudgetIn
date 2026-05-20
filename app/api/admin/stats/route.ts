@@ -44,11 +44,13 @@ export async function GET() {
     prisma.user.count({ where: { googleId: { not: null }, sheetsId: null } }),
     prisma.user.count({ where: { createdAt: { gte: startOfMonth } } }),
     prisma.user.count({ where: { createdAt: { gte: startOf7Days } } }),
+    // Pakai lastActivityAt (di-update via heartbeat tiap session check) supaya
+    // Google Sheets users ikut keitung — bukan cuma yang punya Prisma transaction.
     prisma.user.count({
-      where: { transactions: { some: { createdAt: { gte: startOf7Days } } } },
+      where: { lastActivityAt: { gte: startOf7Days } },
     }),
     prisma.user.count({
-      where: { transactions: { some: { createdAt: { gte: startOf30Days } } } },
+      where: { lastActivityAt: { gte: startOf30Days } },
     }),
     prisma.transaction.count(),
     prisma.budget.count(),

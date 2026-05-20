@@ -75,6 +75,10 @@ export async function GET(req: NextRequest) {
         sheetsId: true,
         emailVerified: true,
         createdAt: true,
+        lastActivityAt: true,
+        sheetsTxCount: true,
+        sheetsAccountCount: true,
+        sheetsCountSyncedAt: true,
         _count: {
           select: {
             budgets: true,
@@ -85,32 +89,32 @@ export async function GET(req: NextRequest) {
             recurringTransactions: true,
           },
         },
-        transactions: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { createdAt: true },
-        },
       },
     }),
   ]);
 
   return NextResponse.json({
-    users: users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      type: u.googleId ? "google" : "email",
-      dataMode: u.sheetsId ? "sheets" : u.googleId ? "google_setup_required" : "database",
-      emailVerified: !!u.emailVerified,
-      budgetCount: u._count.budgets,
-      categoryCount: u._count.categories,
-      accountCount: u._count.accounts,
-      transactionCount: u._count.transactions,
-      savingsGoalCount: u._count.savingsGoals,
-      recurringBillCount: u._count.recurringTransactions,
-      createdAt: u.createdAt.toISOString(),
-      lastActivityAt: (u.transactions[0]?.createdAt ?? u.createdAt).toISOString(),
-    })),
+    users: users.map((u) => {
+      const isGoogleSheetsUser = !!u.sheetsId;
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        type: u.googleId ? "google" : "email",
+        dataMode: u.sheetsId ? "sheets" : u.googleId ? "google_setup_required" : "database",
+        emailVerified: !!u.emailVerified,
+        budgetCount: u._count.budgets,
+        categoryCount: u._count.categories,
+        // Sheets users: pakai cached count dari cron sync. DB users: pakai Prisma _count.
+        accountCount: isGoogleSheetsUser ? u.sheetsAccountCount : u._count.accounts,
+        transactionCount: isGoogleSheetsUser ? u.sheetsTxCount : u._count.transactions,
+        savingsGoalCount: u._count.savingsGoals,
+        recurringBillCount: u._count.recurringTransactions,
+        createdAt: u.createdAt.toISOString(),
+        lastActivityAt: u.lastActivityAt.toISOString(),
+        sheetsCountSyncedAt: u.sheetsCountSyncedAt?.toISOString() ?? null,
+      };
+    }),
     pagination: {
       page,
       pageSize,
