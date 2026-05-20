@@ -757,7 +757,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   }
 
   return (
-    <div className="flex flex-col gap-6 md:gap-8 lg:gap-10">
+    <div className="flex min-w-0 flex-col gap-6 md:gap-8 lg:gap-10">
       {/* Greeting — always first for warm welcome */}
       {renderMode !== "secondary-only" && (
         <DashboardGreeting
@@ -799,8 +799,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       {/* Secondary Section: Input + Transactions + Budget — streams progressively */}
       {renderMode !== "kpi-only" && (
         <>
-          <div className="grid items-start gap-5 md:gap-6 lg:grid-cols-[1.62fr_1fr]">
-            <div className="flex flex-col gap-5 md:gap-6">
+          <div className="grid min-w-0 items-start gap-5 md:gap-6 lg:grid-cols-[1.62fr_1fr]">
+            <div className="flex min-w-0 flex-col gap-5 md:gap-6">
               <SectionCard
                 eyebrow="Input · AI Capture"
                 title="Tulis seperti ngobrol"
@@ -1099,7 +1099,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
               />
             </div>
 
-            <div className="flex flex-col gap-5 md:gap-6">
+            <div className="flex min-w-0 flex-col gap-5 md:gap-6">
               <MiniCashflowCard
                 transactions={transactions}
                 monthlyIncome={monthlyStats.income}
