@@ -23,7 +23,7 @@ export function SectionCard({
   return (
     <section
       className={cn(
-        "rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm sm:rounded-[30px]",
+        "overflow-hidden rounded-[24px] border border-border/70 bg-card/90 p-4 shadow-sm sm:rounded-[30px]",
         dense ? "md:p-4" : "md:p-6",
         className
       )}

@@ -805,7 +805,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                 eyebrow="Input · AI Capture"
                 title="Tulis seperti ngobrol"
               >
-        <div className="mb-4 grid grid-cols-2 gap-1 rounded-[14px] bg-muted/40 p-1">
+        <div className="mb-4 grid min-w-0 grid-cols-2 gap-1 rounded-[14px] bg-muted/40 p-1">
           <button
             type="button"
             onClick={() => setInputMode("ai")}
@@ -837,17 +837,17 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
         {inputMode === "ai" ? (
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/70 bg-background p-4">
-              <div className="mb-3 flex items-center gap-2">
-                <MicVocal className="size-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">
+              <div className="mb-3 flex min-w-0 items-center gap-2">
+                <MicVocal className="size-4 shrink-0 text-primary" />
+                <p className="min-w-0 truncate text-sm font-semibold text-foreground">
                   AI Capture
                 </p>
-                <span className="ml-auto text-[11px] text-muted-foreground">
+                <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
                   Enter untuk kirim
                 </span>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-3">
+              <form onSubmit={handleSubmit} className="min-w-0 space-y-3">
                 <div className="relative">
                   <Textarea
                     ref={textareaRef}
@@ -888,7 +888,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                   {promptExamples.map((example) => (
                     <button
                       key={example}

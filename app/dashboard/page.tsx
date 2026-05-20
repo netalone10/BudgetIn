@@ -22,7 +22,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex w-full flex-col">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 md:gap-8 md:px-8 md:py-8">
         {/* KPI/summary data (today's summary, net worth) streams first
             with its own Suspense boundary — reduced TTFB for critical metrics.
             Uses the cached dashboard data which resolves quickly from the

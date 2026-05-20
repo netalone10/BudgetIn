@@ -119,12 +119,12 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
 
         <div
           className={cn(
-            "mt-1.5 flex items-center gap-1 text-[11.5px] font-medium",
+            "mt-1.5 flex min-w-0 items-center gap-1 text-[11.5px] font-medium",
             isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
           )}
         >
           <TrendIcon className="size-3 shrink-0" />
-          <span>{isPositive ? "Aset bersih positif" : "Aset bersih negatif"}</span>
+          <span className="truncate">{isPositive ? "Aset bersih positif" : "Aset bersih negatif"}</span>
         </div>
 
         {!compact && (

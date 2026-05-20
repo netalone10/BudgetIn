@@ -77,14 +77,14 @@ export default function KPICard({
       {(trendLabel || trend) && (
         <div
           className={cn(
-            "mt-1.5 flex items-center gap-1 text-[11.5px] font-medium",
+            "mt-1.5 flex min-w-0 items-center gap-1 text-[11.5px] font-medium",
             trend?.tone === "up" && "text-emerald-600 dark:text-emerald-400",
             trend?.tone === "down" && "text-destructive",
             trend?.tone === "neutral" && "text-muted-foreground"
           )}
         >
           {trend?.icon}
-          <span>{trendLabel ?? trend?.label}</span>
+          <span className="truncate">{trendLabel ?? trend?.label}</span>
         </div>
       )}
     </div>
