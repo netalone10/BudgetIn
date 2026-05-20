@@ -307,8 +307,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="flex flex-col w-full">
-      <div className="mx-auto w-full max-w-7xl px-4 md:p-8 space-y-6">
+    <div className="flex min-w-0 flex-col w-full">
+      <div className="mx-auto w-full min-w-0 max-w-7xl px-4 md:p-8 space-y-6">
         <div className="overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/12 via-card to-card p-6 shadow-sm">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
@@ -353,8 +353,8 @@ export default function AdminPage() {
           <StatCard icon={<Calendar className="size-4 text-primary" />} label="Recurring" value={statsLoading ? "…" : fmt(stats?.totalRecurringBills ?? 0)} sub="Transaksi berulang" />
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border bg-card shadow-sm lg:col-span-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-3">
+          <div className="min-w-0 rounded-2xl border bg-card shadow-sm lg:col-span-2">
             <div className="border-b p-4 md:p-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
