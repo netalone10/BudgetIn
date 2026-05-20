@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fira_Code, Lora, Poppins } from "next/font/google";
+import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
 import { Analytics } from "@vercel/analytics/next";
@@ -90,6 +91,12 @@ export default function RootLayout({
       <body className="antialiased">
         <Providers>
           {children}
+          <Toaster
+            position="top-center"
+            richColors
+            closeButton
+            duration={3500}
+          />
           <Analytics />
           <SpeedInsights />
           <WebVitalsReporter />

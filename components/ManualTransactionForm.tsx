@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emitDataChanged } from "@/lib/data-events";
@@ -128,19 +129,23 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
     const parsedAmount = Number(amount);
     if (!amount || isNaN(parsedAmount)) {
       setError("Nominal tidak valid.");
+      toast.error("Nominal tidak valid.");
       return;
     }
     if (tab === "transfer" && parsedAmount <= 0) {
       setError("Nominal transfer harus lebih dari 0.");
+      toast.error("Nominal transfer harus lebih dari 0.");
       return;
     }
     if (tab !== "transfer" && parsedAmount === 0) {
       setError("Nominal tidak boleh 0.");
+      toast.error("Nominal tidak boleh 0.");
       return;
     }
     const parsedFee = fee.trim() === "" ? 0 : Number(fee);
     if (tab === "transfer" && (!Number.isFinite(parsedFee) || parsedFee < 0)) {
       setError("Fee harus 0 atau lebih.");
+      toast.error("Fee harus 0 atau lebih.");
       return;
     }
 
@@ -165,10 +170,15 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        setError(data?.error || "Gagal menyimpan transaksi.");
+        const message = data?.error || "Gagal menyimpan transaksi.";
+        setError(message);
+        toast.error(message);
         return;
       }
-      setSuccess(tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.");
+      const successMessage =
+        tab === "transfer" ? "Transfer berhasil dicatat." : "Transaksi berhasil dicatat.";
+      setSuccess(successMessage);
+      toast.success(successMessage);
 
       const created: ManualTransactionCreated = {
         type: tab,
@@ -194,7 +204,9 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
       onSuccess(created);
       emitDataChanged(["transactions", "budget", "accounts"]);
     } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+      const message = "Terjadi kesalahan. Coba lagi.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

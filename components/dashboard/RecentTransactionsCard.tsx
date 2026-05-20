@@ -129,7 +129,11 @@ export default function RecentTransactionsCard({
           {recent.map((t) => {
             const isIncome = t.type === "income" || t.type === "transfer_in";
             const isTransfer = isTransferTransaction(t);
-            const tone: "out" | "in" | "tf" = isTransfer ? "tf" : isIncome ? "in" : "out";
+            // Signed effective amount: for non-transfers, reverse the sign of expenses so
+            // contra-entries (refund/reversal with negative amount) flip tone to "in".
+            const effectiveAmount = isTransfer ? t.amount : (isIncome ? t.amount : -t.amount);
+            const isPositiveEffect = effectiveAmount >= 0;
+            const tone: "out" | "in" | "tf" = isTransfer ? "tf" : isPositiveEffect ? "in" : "out";
 
             const resolveAccountName = (id: string | null | undefined, fallback: string | null | undefined) =>
               fallback || (id ? accounts.find((a) => a.id === id)?.name : undefined) || null;
@@ -153,7 +157,7 @@ export default function RecentTransactionsCard({
             const amountText = (() => {
               const abs = idFormat.format(Math.abs(t.amount));
               if (isTransfer) return `Rp ${abs}`;
-              return `${isIncome ? "+" : "-"}Rp ${abs}`;
+              return `${isPositiveEffect ? "+" : "-"}Rp ${abs}`;
             })();
 
             return (
