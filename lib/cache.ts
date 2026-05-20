@@ -17,8 +17,14 @@ import type { DashboardInitialData } from "./dashboard-data";
 // Cross-Request TTL Cache
 // ---------------------------------------------------------------------------
 
-/** Default TTL for dashboard data cache: 30 seconds */
-const DASHBOARD_CACHE_TTL_MS = 30_000;
+/** Default TTL for dashboard data cache: 60 seconds.
+ *  30 seconds was too short — a user returning after 31s would get a full
+ *  blocking fetch instead of instant stale data. 60 seconds gives a
+ *  comfortable window for repeat visits while keeping data reasonably fresh.
+ *  Cache is invalidated immediately after any mutation (record, budget,
+ *  accounts) so stale data is never shown after a user-initiated change.
+ */
+const DASHBOARD_CACHE_TTL_MS = 60_000;
 
 interface CacheEntry {
   data: DashboardInitialData;

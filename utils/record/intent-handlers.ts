@@ -6,7 +6,7 @@
  * Side Effects: DB write, Sheets write, Groq API call
  */
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
 import { randomUUID } from "crypto";
@@ -25,6 +25,20 @@ import { resolvePromptTransactionTime } from "@/lib/transaction-time";
 import { sanitizeTransactionNote } from "./note-sanitizer";
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
+
+/**
+ * Wraps `after()` with a try-catch fallback for non-Next.js environments.
+ * Requirement 3.10: WHEN `after()` tidak tersedia di environment (non-Next.js runtime)
+ * THEN sistem SHALL CONTINUE TO berfungsi dengan fallback ke synchronous Sheets append.
+ */
+function scheduleAfterRequest(fn: () => Promise<void>): void {
+  try {
+    after(fn);
+  } catch {
+    // Fallback: run synchronously if after() is not available
+    fn().catch((err) => console.error("[scheduleAfterRequest] fallback error:", err));
+  }
+}
 
 export interface RecordContext {
   userId: string;
@@ -78,7 +92,9 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   const date = parsed.date ?? ctx.today;
   const time = resolveTransactionTime(parsed, ctx);
   const note = sanitizeTransactionNote(parsed.note);
-  const goals = isSavingsPrompt(prompt, parsed.category)
+  // Only check the raw prompt — not the AI-assigned category — to avoid false
+  // positives when an account name contains "tabungan" (e.g. "BCA Tabungan").
+  const goals = isSavingsPrompt(prompt)
     ? (await prisma.savingsGoal.findMany({
         where: { userId },
         select: { id: true, name: true, targetAmount: true },
@@ -111,13 +127,29 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
 
   // ── Critical write ─ if this fails, transaction was NOT persisted; return 500.
   let transaction;
-  try {
-    transaction = useSheets
-      ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
-      : await appendTransactionDB(userId, { ...base, accountId });
-  } catch (err) {
-    console.error("[handleTransaksi] critical write failed:", err);
-    return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
+  if (useSheets) {
+    // Sheets path: generate local ID, schedule appendTransaction() in background via after()
+    const generatedId = randomUUID();
+    const sheetsPayload = { ...base, fromAccountId: accountId, fromAccountName: accountName };
+    scheduleAfterRequest(async () => {
+      try {
+        await appendTransaction(sheetsId!, accessToken, sheetsPayload);
+      } catch (error) {
+        const err = error as Error;
+        console.error(
+          `[handleTransaksi] sheets append failed: userId=${userId} transactionId=${generatedId} error=${err.message}`,
+          { userId, transactionId: generatedId, errorMessage: err.message, errorStack: err.stack }
+        );
+      }
+    });
+    transaction = { id: generatedId, ...base, accountId, fromAccountId: accountId, fromAccountName: accountName };
+  } else {
+    try {
+      transaction = await appendTransactionDB(userId, { ...base, accountId });
+    } catch (err) {
+      console.error("[handleTransaksi] critical write failed:", err);
+      return NextResponse.json({ error: "Gagal menyimpan transaksi. Coba lagi." }, { status: 500 });
+    }
   }
 
   // ── Secondary side-effects ─ best-effort. Failures logged but do NOT poison the
@@ -220,15 +252,31 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
   for (const item of items) {
     if (!item.amount || !item.category) continue;
     const base = { date: parsed.date ?? ctx.today, time, amount: item.amount, category: item.category, note: sanitizeTransactionNote(item.note), type: "expense" as const };
-    try {
-      const transaction = useSheets
-        ? await appendTransaction(sheetsId!, accessToken, { ...base, fromAccountId: accountId, fromAccountName: accountName })
-        : await appendTransactionDB(userId, { ...base, accountId });
-      transactions.push(transaction);
-    } catch (err) {
-      console.error("[handleTransaksiBulk] item write failed:", { item, err });
-      failedItems.push({ category: item.category, amount: item.amount, error: "write_failed" });
-      continue;
+    if (useSheets) {
+      // Sheets path: generate local ID, schedule appendTransaction() in background via after()
+      const generatedId = randomUUID();
+      const sheetsPayload = { ...base, fromAccountId: accountId, fromAccountName: accountName };
+      scheduleAfterRequest(async () => {
+        try {
+          await appendTransaction(sheetsId!, accessToken, sheetsPayload);
+        } catch (error) {
+          const err = error as Error;
+          console.error(
+            `[handleTransaksiBulk] sheets append failed: userId=${userId} transactionId=${generatedId} error=${err.message}`,
+            { userId, transactionId: generatedId, errorMessage: err.message, errorStack: err.stack }
+          );
+        }
+      });
+      transactions.push({ id: generatedId, ...base, accountId, fromAccountId: accountId, fromAccountName: accountName });
+    } else {
+      try {
+        const transaction = await appendTransactionDB(userId, { ...base, accountId });
+        transactions.push(transaction);
+      } catch (err) {
+        console.error("[handleTransaksiBulk] item write failed:", { item, err });
+        failedItems.push({ category: item.category, amount: item.amount, error: "write_failed" });
+        continue;
+      }
     }
     // Category upsert is non-fatal — losing it doesn't undo the write.
     try {
@@ -261,6 +309,7 @@ export async function handleTransaksiBulk(parsed: ParsedIntent, ctx: RecordConte
       count: transactions.length,
       accountCreated: accountCreated || undefined,
       failedCount: failedItems.length || undefined,
+      failedItems: failedItems.length > 0 ? failedItems : undefined,
     },
   });
 }
@@ -305,45 +354,59 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
   const accountCreatedNames = [fromResolution.accountCreated, toResolution.accountCreated].filter(Boolean) as string[];
 
   if (useSheets) {
-    let transaction;
-    try {
-      transaction = await appendTransaction(sheetsId!, accessToken, {
-        date,
-        time,
-        amount: transferAmount,
-        category: "Transfer",
-        note,
-        type: "expense",
-        fromAccountId,
-        fromAccountName,
-        toAccountId,
-        toAccountName,
-      });
-    } catch (err) {
-      console.error("[handleTransfer] critical write failed:", err);
-      return NextResponse.json({ error: "Gagal menyimpan transfer. Coba lagi." }, { status: 500 });
-    }
+    // Sheets path: generate local IDs, schedule both appendTransaction() calls in background via after()
+    const generatedTransferId = randomUUID();
+    const generatedFeeId = fee > 0 ? randomUUID() : null;
 
-    const transactions = [transaction];
-    let feeFailed = false;
-    if (fee > 0) {
+    const transferPayload = {
+      date,
+      time,
+      amount: transferAmount,
+      category: "Transfer",
+      note,
+      type: "expense" as const,
+      fromAccountId,
+      fromAccountName,
+      toAccountId,
+      toAccountName,
+    };
+
+    const feePayload = fee > 0 ? {
+      date,
+      time,
+      amount: fee,
+      category: TRANSFER_FEE_CATEGORY,
+      note: note ? `Fee transfer - ${note}` : "Fee transfer",
+      type: "expense" as const,
+      fromAccountId,
+      fromAccountName,
+    } : null;
+
+    scheduleAfterRequest(async () => {
       try {
-        const feeTransaction = await appendTransaction(sheetsId!, accessToken, {
-          date,
-          time,
-          amount: fee,
-          category: TRANSFER_FEE_CATEGORY,
-          note: note ? `Fee transfer - ${note}` : "Fee transfer",
-          type: "expense",
-          fromAccountId,
-          fromAccountName,
-        });
-        transactions.push(feeTransaction);
-      } catch (err) {
-        // Transfer succeeded, only fee row failed. Report partial success.
-        console.error("[handleTransfer] fee append failed (non-fatal):", err);
-        feeFailed = true;
+        await appendTransaction(sheetsId!, accessToken, transferPayload);
+      } catch (error) {
+        const err = error as Error;
+        console.error(
+          `[handleTransfer] sheets append failed: userId=${userId} transactionId=${generatedTransferId} error=${err.message}`,
+          { userId, transactionId: generatedTransferId, errorMessage: err.message, errorStack: err.stack }
+        );
       }
+
+      if (feePayload && generatedFeeId) {
+        try {
+          await appendTransaction(sheetsId!, accessToken, feePayload);
+        } catch (error) {
+          const err = error as Error;
+          console.error(
+            `[handleTransfer] sheets append failed: userId=${userId} transactionId=${generatedFeeId} error=${err.message}`,
+            { userId, transactionId: generatedFeeId, errorMessage: err.message, errorStack: err.stack }
+          );
+        }
+      }
+    });
+
+    if (fee > 0) {
       try {
         await prisma.category.upsert({
           where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
@@ -356,12 +419,43 @@ export async function handleTransfer(parsed: ParsedIntent, ctx: RecordContext): 
       }
     }
 
+    const transaction = {
+      id: generatedTransferId,
+      date,
+      time,
+      amount: transferAmount,
+      category: "Transfer",
+      note,
+      type: "expense",
+      fromAccountId,
+      fromAccountName,
+      toAccountId,
+      toAccountName,
+    };
+
+    const transactions = [transaction];
+    if (fee > 0 && generatedFeeId) {
+      transactions.push({
+        id: generatedFeeId,
+        date,
+        time,
+        amount: fee,
+        category: TRANSFER_FEE_CATEGORY,
+        note: note ? `Fee transfer - ${note}` : "Fee transfer",
+        type: "expense",
+        fromAccountId,
+        fromAccountName,
+        toAccountId: "",
+        toAccountName: "",
+      });
+    }
+
     return NextResponse.json({
       intent: "transfer",
       transactions,
       transaction,
-      message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 && !feeFailed ? ` + fee ${formatSignedIDR(fee)}` : ""}${feeFailed ? " (fee gagal dicatat — coba ulang fee saja)" : ""}`,
-      details: { date, time, amount: transferAmount, fee: feeFailed ? 0 : fee, fromAccountName, toAccountName, note: note || undefined, accountCreated: accountCreatedNames.length > 0 ? accountCreatedNames.join(", ") : undefined },
+      message: `✓ Transfer dicatat: ${fromAccountName} → ${toAccountName} ${formatSignedIDR(transferAmount)}${fee > 0 ? ` + fee ${formatSignedIDR(fee)}` : ""}`,
+      details: { date, time, amount: transferAmount, fee, fromAccountName, toAccountName, note: note || undefined, accountCreated: accountCreatedNames.length > 0 ? accountCreatedNames.join(", ") : undefined },
     });
   }
 
@@ -462,13 +556,29 @@ export async function handlePemasukan(parsed: ParsedIntent, ctx: RecordContext):
   const base = { date: parsed.date ?? ctx.today, time: resolveTransactionTime(parsed, ctx), amount: incomeAmount, category: incomeCategory, note, type: "income" as const };
 
   let transaction;
-  try {
-    transaction = useSheets
-      ? await appendTransaction(sheetsId!, accessToken, { ...base, toAccountId: accountId, toAccountName: accountName })
-      : await appendTransactionDB(userId, { ...base, accountId });
-  } catch (err) {
-    console.error("[handlePemasukan] critical write failed:", err);
-    return NextResponse.json({ error: "Gagal menyimpan pemasukan. Coba lagi." }, { status: 500 });
+  if (useSheets) {
+    // Sheets path: generate local ID, schedule appendTransaction() in background via after()
+    const generatedId = randomUUID();
+    const sheetsPayload = { ...base, toAccountId: accountId, toAccountName: accountName };
+    scheduleAfterRequest(async () => {
+      try {
+        await appendTransaction(sheetsId!, accessToken, sheetsPayload);
+      } catch (error) {
+        const err = error as Error;
+        console.error(
+          `[handlePemasukan] sheets append failed: userId=${userId} transactionId=${generatedId} error=${err.message}`,
+          { userId, transactionId: generatedId, errorMessage: err.message, errorStack: err.stack }
+        );
+      }
+    });
+    transaction = { id: generatedId, ...base, accountId, toAccountId: accountId, toAccountName: accountName };
+  } else {
+    try {
+      transaction = await appendTransactionDB(userId, { ...base, accountId });
+    } catch (err) {
+      console.error("[handlePemasukan] critical write failed:", err);
+      return NextResponse.json({ error: "Gagal menyimpan pemasukan. Coba lagi." }, { status: 500 });
+    }
   }
 
   try {

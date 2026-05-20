@@ -398,18 +398,23 @@ export default function AccountDetailClient({ initialData }: Props) {
     fetchData(period, { silent: true });
   });
 
+  // Prefetch accounts + categories on mount so the modal opens instantly.
+  // Re-fetch in background when accounts/categories change.
+  useEffect(() => {
+    fetchModalData();
+  }, [fetchModalData]);
+
   useDataEvent(["accounts", "categories"], () => {
-    if (showAddModal) fetchModalData();
+    fetchModalData();
   });
 
   useEffect(() => {
     if (showAddModal) {
-      fetchModalData();
       setPromptResult(null);
       const focusTimer = setTimeout(() => textareaRef.current?.focus(), 0);
       return () => clearTimeout(focusTimer);
     }
-  }, [showAddModal, fetchModalData]);
+  }, [showAddModal]);
 
   // ── Transaction CRUD handlers ───────────────────────────────────────────
 
@@ -767,7 +772,7 @@ export default function AccountDetailClient({ initialData }: Props) {
                 <div className="h-px flex-1 bg-border" />
               </div>
 
-              {modalDataLoading ? (
+              {modalDataLoading && accounts.length === 0 ? (
                 <div className="h-[280px] animate-pulse rounded-xl bg-muted" />
               ) : modalDataError ? (
                 <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-4">

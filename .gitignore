@@ -43,3 +43,5 @@ prisma/migrations/
 # codex
 .codex/agents/auth.json
 sketches/
+
+.vercel

@@ -34,6 +34,8 @@ interface ManualTransactionFormProps {
   accounts: Account[];
   categories: CategoryOption[];
   onSuccess: (created?: ManualTransactionCreated) => void;
+  onError?: (message: string) => void;
+  onReconcile?: (tempId: string, serverId: string) => void;
   defaultAccountId?: string;
 }
 
@@ -52,7 +54,7 @@ function currentLocalTime() {
   return new Date().toTimeString().slice(0, 5);
 }
 
-export default function ManualTransactionForm({ accounts, categories, onSuccess, defaultAccountId }: ManualTransactionFormProps) {
+export default function ManualTransactionForm({ accounts, categories, onSuccess, onError, onReconcile, defaultAccountId }: ManualTransactionFormProps) {
   const router = useRouter();
   const [tab, setTab] = useState<TabType>("expense");
   const [loading, setLoading] = useState(false);
@@ -219,11 +221,25 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         const message = data?.error || "Gagal menyimpan transaksi.";
         setError(message);
         toast.error(message);
+        onError?.(message);
+      } else if (onReconcile && data) {
+        // Replace temp IDs with real server IDs so subsequent delete/edit use valid IDs.
+        if (optimisticCreated.transactionId && data.transaction?.id) {
+          onReconcile(optimisticCreated.transactionId, data.transaction.id);
+        }
+        if (optimisticCreated.feeTransactionId && data.feeTransaction?.id) {
+          onReconcile(optimisticCreated.feeTransactionId, data.feeTransaction.id);
+        }
+        // For transfer (Prisma path): reconcile transferId with data.transferId
+        if (optimisticCreated.transferId && data.transferId) {
+          onReconcile(optimisticCreated.transferId, data.transferId);
+        }
       }
     } catch {
       const message = "Terjadi kesalahan. Coba lagi.";
       setError(message);
       toast.error(message);
+      onError?.(message);
     } finally {
       emitDataChanged(["transactions", "budget", "accounts"]);
     }

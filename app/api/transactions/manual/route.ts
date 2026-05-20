@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +25,20 @@ function isValidDateString(date: unknown): date is string {
 }
 
 const TRANSFER_FEE_CATEGORY = "Biaya Admin";
+
+/**
+ * Wraps `after()` with a try-catch fallback for non-Next.js environments.
+ * Requirement 3.10: WHEN `after()` tidak tersedia di environment (non-Next.js runtime)
+ * THEN sistem SHALL CONTINUE TO berfungsi dengan fallback ke synchronous Sheets append.
+ */
+function scheduleAfterRequest(fn: () => Promise<void>): void {
+  try {
+    after(fn);
+  } catch {
+    // Fallback: run synchronously if after() is not available
+    fn().catch((err) => console.error("[scheduleAfterRequest] fallback error:", err));
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -99,26 +113,56 @@ export async function POST(req: NextRequest) {
       const account = sheetsAccounts.find((a) => a.id === accountId);
       if (!account) return NextResponse.json({ error: "Akun tidak ditemukan" }, { status: 400 });
 
-      const transaction = await appendTransaction(user!.sheetsId!, accessToken, {
+      // Simpan data transaksi ke variabel lokal sebelum after()
+      const generatedId = randomUUID();
+      const userId = session.userId;
+      const sheetsId = user!.sheetsId!;
+      const trimmedCategory = category.trim();
+      const appendPayload = {
         date,
         time: transactionTime,
         amount: parsedAmount,
-        category: category.trim(),
+        category: trimmedCategory,
         note: note ?? "",
         type,
         ...(type === "expense"
           ? { fromAccountId: accountId, fromAccountName: account.name }
           : { toAccountId: accountId, toAccountName: account.name }),
-      });
+      };
 
       // Sheets: saldo dihitung pure-ledger via getAccountsWithBalance (no cache write).
 
+      // prisma.category.upsert() tetap di critical path (cepat, tidak blocking)
       await prisma.category.upsert({
-        where: { userId_name: { userId: session.userId, name: category.trim() } },
+        where: { userId_name: { userId, name: trimmedCategory } },
         update: {},
-        create: { userId: session.userId, name: category.trim(), type: type === "income" ? "income" : "expense" },
+        create: { userId, name: trimmedCategory, type: type === "income" ? "income" : "expense" },
         select: { id: true },
       });
+
+      // appendTransaction() dipindahkan ke background via after()
+      scheduleAfterRequest(async () => {
+        try {
+          await appendTransaction(sheetsId, accessToken, appendPayload);
+        } catch (error) {
+          const err = error as Error;
+          console.error(
+            `[manual/route] sheets append failed: userId=${userId} transactionId=${generatedId} error=${err.message}`,
+            { userId, transactionId: generatedId, errorMessage: err.message, errorStack: err.stack }
+          );
+        }
+      });
+
+      const transaction = {
+        id: generatedId,
+        date,
+        time: transactionTime,
+        amount: parsedAmount,
+        category: trimmedCategory,
+        note: note ?? "",
+        type,
+        accountId,
+      };
 
       return NextResponse.json({ transaction, accountName: account.name }, { status: 201 });
     }
@@ -142,7 +186,77 @@ export async function POST(req: NextRequest) {
         }, { status: 400 });
       }
 
-      const transaction = await appendTransaction(user!.sheetsId!, accessToken, {
+      // Simpan data transaksi ke variabel lokal sebelum after()
+      const generatedTransferId = randomUUID();
+      const generatedFeeId = parsedFee > 0 ? randomUUID() : null;
+      const userId = session.userId;
+      const sheetsId = user!.sheetsId!;
+
+      const transferAppendPayload = {
+        date,
+        time: transactionTime,
+        amount: parsedAmount,
+        category: "Transfer",
+        note: note ?? "",
+        type: "expense" as const,
+        fromAccountId: accountId,
+        fromAccountName: fromAccount.name,
+        toAccountId,
+        toAccountName: toAccount.name,
+      };
+
+      const feeAppendPayload = parsedFee > 0 ? {
+        date,
+        time: transactionTime,
+        amount: parsedFee,
+        category: TRANSFER_FEE_CATEGORY,
+        note: note ? `Fee transfer - ${note}` : "Fee transfer",
+        type: "expense" as const,
+        fromAccountId: accountId,
+        fromAccountName: fromAccount.name,
+      } : null;
+
+      // prisma.category.upsert() untuk fee tetap di critical path jika ada fee
+      if (parsedFee > 0) {
+        await prisma.category.upsert({
+          where: { userId_name: { userId, name: TRANSFER_FEE_CATEGORY } },
+          update: {},
+          create: { userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
+          select: { id: true },
+        });
+      }
+
+      // Kedua appendTransaction() calls dipindahkan ke background via after()
+      scheduleAfterRequest(async () => {
+        try {
+          await appendTransaction(sheetsId, accessToken, transferAppendPayload);
+        } catch (error) {
+          const err = error as Error;
+          console.error(
+            `[manual/route] sheets transfer append failed: userId=${userId} transactionId=${generatedTransferId} error=${err.message}`,
+            { userId, transactionId: generatedTransferId, errorMessage: err.message, errorStack: err.stack }
+          );
+        }
+
+        if (feeAppendPayload && generatedFeeId) {
+          try {
+            await appendTransaction(sheetsId, accessToken, feeAppendPayload);
+          } catch (error) {
+            const err = error as Error;
+            console.error(
+              `[manual/route] sheets fee append failed: userId=${userId} transactionId=${generatedFeeId} error=${err.message}`,
+              { userId, transactionId: generatedFeeId, errorMessage: err.message, errorStack: err.stack }
+            );
+          }
+        }
+      });
+
+      // Sheets: saldo dihitung pure-ledger (no cache write). Transfer terekam sebagai
+      // 1 row expense dengan from+to terisi; getAccountsWithBalance akan menghitung
+      // delta untuk kedua akun dari ledger.
+
+      const transaction = {
+        id: generatedTransferId,
         date,
         time: transactionTime,
         amount: parsedAmount,
@@ -153,32 +267,19 @@ export async function POST(req: NextRequest) {
         fromAccountName: fromAccount.name,
         toAccountId,
         toAccountName: toAccount.name,
-      });
+      };
 
-      let feeTransaction = null;
-      if (parsedFee > 0) {
-        feeTransaction = await appendTransaction(user!.sheetsId!, accessToken, {
-          date,
-          time: transactionTime,
-          amount: parsedFee,
-          category: TRANSFER_FEE_CATEGORY,
-          note: note ? `Fee transfer - ${note}` : "Fee transfer",
-          type: "expense",
-          fromAccountId: accountId,
-          fromAccountName: fromAccount.name,
-        });
-
-        await prisma.category.upsert({
-          where: { userId_name: { userId: session.userId, name: TRANSFER_FEE_CATEGORY } },
-          update: {},
-          create: { userId: session.userId, name: TRANSFER_FEE_CATEGORY, type: "expense" },
-          select: { id: true },
-        });
-      }
-
-      // Sheets: saldo dihitung pure-ledger (no cache write). Transfer terekam sebagai
-      // 1 row expense dengan from+to terisi; getAccountsWithBalance akan menghitung
-      // delta untuk kedua akun dari ledger.
+      const feeTransaction = parsedFee > 0 && generatedFeeId ? {
+        id: generatedFeeId,
+        date,
+        time: transactionTime,
+        amount: parsedFee,
+        category: TRANSFER_FEE_CATEGORY,
+        note: note ? `Fee transfer - ${note}` : "Fee transfer",
+        type: "expense",
+        fromAccountId: accountId,
+        fromAccountName: fromAccount.name,
+      } : null;
 
       return NextResponse.json({ transaction, feeTransaction, message: "Transfer berhasil dicatat." }, { status: 201 });
     }

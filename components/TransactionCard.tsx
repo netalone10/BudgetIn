@@ -2,7 +2,8 @@
 
 import { memo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, Trash2, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Loader2, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,7 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
   const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const categoryType =
     transaction.type === "income" || transaction.type === "transfer_in"
@@ -93,6 +95,7 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSaved(false);
     const res = await fetch(`/api/record/${transaction.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -106,6 +109,8 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
       }),
     });
     if (res.ok) {
+      setSaved(true);
+      toast.success("Transaksi berhasil diperbarui.");
       onSaved({
         date: editDate,
         time: editTime,
@@ -116,7 +121,9 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
       });
     } else {
       const data = await res.json().catch(() => ({}));
-      setError((data as { error?: string }).error || "Gagal menyimpan.");
+      const msg = (data as { error?: string }).error || "Gagal menyimpan.";
+      setError(msg);
+      toast.error(msg);
     }
     setLoading(false);
   }
@@ -221,6 +228,12 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
             </div>
           )}
 
+          {saved && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-400">
+              <CheckCircle2 className="size-3.5 shrink-0" />
+              Transaksi berhasil diperbarui.
+            </div>
+          )}
           {error && (
             <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive">
               {error}

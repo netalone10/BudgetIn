@@ -122,11 +122,14 @@ const SavingsGoalMiniCard = dynamic(
   }
 );
 
-// Modal/dialog components: dynamically imported only when user triggers the action
+// Modal/dialog components: dynamically imported only when user triggers the action.
+// Preloaded on mount so the chunk is ready before the user clicks "Manual Form".
 const ManualTransactionForm = dynamic(
   () => import("@/components/ManualTransactionForm"),
   { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-[28px] bg-muted" /> }
 );
+// Kick off the chunk download immediately — no await, fire-and-forget.
+ManualTransactionForm.preload?.();
 
 const ReportView = dynamic(
   () => import("@/components/ReportView"),
@@ -234,7 +237,7 @@ function SavingsGoalSkeleton() {
 type BudgetData = DashboardTabsBudgetData;
 
 type TxDetails = { date: string; time?: string; category: string; amount: number; accountName?: string; note?: string; savingsGoalName?: string; contributionStatus?: string; accountCreated?: string };
-type BulkDetails = { date: string; time?: string; accountName?: string; total: number; count: number; accountCreated?: string; failedCount?: number };
+type BulkDetails = { date: string; time?: string; accountName?: string; total: number; count: number; accountCreated?: string; failedCount?: number; failedItems?: { category: string; amount: number; error: string }[] };
 type BudgetDetails = { category: string; amount: number; month: string };
 type TransferDetails = { date: string; time?: string; amount: number; fee: number; fromAccountName: string; toAccountName: string; note?: string; accountCreated?: string };
 type SavingsPendingAction = {
@@ -357,6 +360,11 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
 
   const [budgetData, setBudgetData] = useState<BudgetData | null>(initialData.budgetData);
   const [budgetLoading, setBudgetLoading] = useState(false);
+
+  // Background revalidation indicator — true only during silent SWR refetches
+  const [isRevalidating, setIsRevalidating] = useState(false);
+  // Track in-flight silent fetches to coordinate the shared indicator
+  const revalidatingCountRef = useRef(0);
 
   const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(() =>
     initialData.categories.map((c) => ({ name: c.name, type: c.type }))
@@ -523,7 +531,12 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
    * @param silent - When true (default for background refetches), no loading spinner shown
    */
   async function fetchTransactions(silent = true) {
-    if (!silent) setTxLoading(true);
+    if (!silent) {
+      setTxLoading(true);
+    } else {
+      revalidatingCountRef.current += 1;
+      setIsRevalidating(true);
+    }
     try {
       const result = await swrFetch<{ transactions?: Transaction[]; error?: string }>(
         "/api/record?period=bulan+ini",
@@ -538,7 +551,15 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     } catch {
       // ignore — keep stale data
     } finally {
-      if (!silent) setTxLoading(false);
+      if (!silent) {
+        setTxLoading(false);
+      } else {
+        revalidatingCountRef.current -= 1;
+        if (revalidatingCountRef.current <= 0) {
+          revalidatingCountRef.current = 0;
+          setIsRevalidating(false);
+        }
+      }
     }
   }
 
@@ -547,7 +568,12 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
    * Background refetch without loading spinners by default.
    */
   async function fetchBudget(silent = true) {
-    if (!silent) setBudgetLoading(true);
+    if (!silent) {
+      setBudgetLoading(true);
+    } else {
+      revalidatingCountRef.current += 1;
+      setIsRevalidating(true);
+    }
     try {
       const result = await swrFetch<BudgetData>("/api/budget", etagStoreRef);
       if (!result) return; // 304 or error — keep stale data
@@ -555,7 +581,15 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     } catch {
       // ignore — keep stale data
     } finally {
-      if (!silent) setBudgetLoading(false);
+      if (!silent) {
+        setBudgetLoading(false);
+      } else {
+        revalidatingCountRef.current -= 1;
+        if (revalidatingCountRef.current <= 0) {
+          revalidatingCountRef.current = 0;
+          setIsRevalidating(false);
+        }
+      }
     }
   }
 
@@ -564,6 +598,10 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
    * Background refetch without loading spinners.
    */
   async function fetchAccounts(silent = true) {
+    if (silent) {
+      revalidatingCountRef.current += 1;
+      setIsRevalidating(true);
+    }
     try {
       const result = await swrFetch<{ accounts?: typeof accounts }>(
         "/api/accounts",
@@ -574,6 +612,14 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       setAccountVersion((v) => v + 1);
     } catch {
       // ignore — keep stale data
+    } finally {
+      if (silent) {
+        revalidatingCountRef.current -= 1;
+        if (revalidatingCountRef.current <= 0) {
+          revalidatingCountRef.current = 0;
+          setIsRevalidating(false);
+        }
+      }
     }
   }
 
@@ -749,6 +795,9 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     emitDataChanged(["transactions", "budget", "accounts"]);
   }, []);
 
+  // Ref to hold the pre-optimistic-update snapshot for rollback when POST fails.
+  const manualTxRollbackRef = useRef<Transaction[] | null>(null);
+
   const handleManualTransactionCreated = useCallback((created?: ManualTransactionCreated) => {
     // No optimistic data — fall back to background refetch.
     if (!created) {
@@ -827,11 +876,32 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     }
 
     if (optimistic.length > 0) {
+      // Snapshot current transactions BEFORE applying optimistic update so we
+      // can roll back if the POST fails (see handleManualTransactionError below).
+      manualTxRollbackRef.current = transactions;
       setTransactions((prev) => [...optimistic, ...prev]);
     }
     // Background refetch is triggered by the form's emitDataChanged() after
     // the POST resolves (see useDataEvent listener above). No need to refetch here.
-  }, [accounts]);
+  }, [accounts, transactions]);
+
+  const handleManualTransactionError = useCallback((_message: string) => {
+    // Roll back optimistic rows to the snapshot taken before the update.
+    if (manualTxRollbackRef.current !== null) {
+      setTransactions(manualTxRollbackRef.current);
+      manualTxRollbackRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Reconcile a temp ID with the real server ID after POST succeeds.
+   * Replaces the optimistic row's temp ID so delete/edit operations use the valid ID.
+   */
+  const handleReconcile = useCallback((tempId: string, serverId: string) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === tempId ? { ...t, id: serverId } : t))
+    );
+  }, []);
 
   const dataLoading = txLoading || budgetLoading;
 
@@ -852,6 +922,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
           onQuickAction={focusAIWithIntent}
           onRefresh={handleManualRefresh}
           refreshing={dataLoading}
+          isRevalidating={isRevalidating && !txLoading && !budgetLoading}
         />
       )}
 
@@ -1054,7 +1125,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                 ) : response.intent === "transaksi_bulk" ? (
                   <div className="flex items-start gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-4 py-3">
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
                         {response.message || `${response.details?.count ?? response.transactions.length} transaksi dicatat`}
                       </p>
@@ -1070,23 +1141,37 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                           <DetailRow label="Total" value={formatSignedIDR(response.details.total)} />
                         </DetailsGrid>
                       )}
-                      <ul className="mt-2 space-y-1">
-                        {response.transactions.map((t, i) => (
-                          <li
-                            key={i}
-                            className="text-xs text-emerald-700 dark:text-emerald-400"
-                          >
-                            - {t.category}: {formatSignedIDR(t.amount)}
-                            {t.note ? ` (${t.note})` : ""}
-                          </li>
-                        ))}
-                      </ul>
+                      {/* Per-item breakdown */}
+                      {response.transactions.length > 0 && (
+                        <div className="mt-2.5 space-y-1">
+                          {response.transactions.map((t, i) => (
+                            <div key={i} className="flex items-baseline justify-between gap-2 rounded-lg bg-emerald-500/8 px-2.5 py-1.5 text-xs">
+                              <span className="font-medium text-emerald-800 dark:text-emerald-300 truncate">
+                                ✓ {t.category}{t.note ? <span className="font-normal text-emerald-600 dark:text-emerald-500"> · {t.note}</span> : null}
+                              </span>
+                              <span className="shrink-0 tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">
+                                {formatSignedIDR(t.amount)}
+                              </span>
+                            </div>
+                          ))}
+                          {response.details?.failedItems?.map((f, i) => (
+                            <div key={`fail-${i}`} className="flex items-baseline justify-between gap-2 rounded-lg bg-destructive/8 px-2.5 py-1.5 text-xs">
+                              <span className="font-medium text-destructive truncate">
+                                ✗ {f.category} <span className="font-normal opacity-70">— gagal disimpan</span>
+                              </span>
+                              <span className="shrink-0 tabular-nums font-semibold text-destructive">
+                                {formatSignedIDR(f.amount)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {response.details?.accountCreated && (
                         <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
                           ⚠️ Akun &quot;{response.details.accountCreated}&quot; otomatis dibuat. Cek menu Akun kalau bukan yang kamu maksud.
                         </p>
                       )}
-                      {response.details?.failedCount ? (
+                      {response.details?.failedCount && !response.details.failedItems ? (
                         <p className="mt-2 rounded-lg border border-amber-300/40 bg-amber-50 px-2 py-1.5 text-[11px] leading-relaxed text-amber-700 dark:border-amber-700/40 dark:bg-amber-950/30 dark:text-amber-300">
                           ⚠️ {response.details.failedCount} item gagal disimpan. Coba ulang item yang gagal saja.
                         </p>
@@ -1225,6 +1310,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
               accounts={accounts}
               categories={transactionCategories}
               onSuccess={handleManualTransactionCreated}
+              onError={handleManualTransactionError}
+              onReconcile={handleReconcile}
             />
           </div>
         )}

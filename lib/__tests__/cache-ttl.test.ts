@@ -10,7 +10,7 @@
  */
 
 describe("Cross-Request TTL Cache", () => {
-  const DASHBOARD_CACHE_TTL_MS = 30_000;
+  const DASHBOARD_CACHE_TTL_MS = 60_000;
 
   interface CacheEntry {
     data: any;
@@ -101,8 +101,8 @@ describe("Cross-Request TTL Cache", () => {
       cache.getCachedDashboardData("user-1", now);
       expect(cache.getQueryCount()).toBe(1);
 
-      // After TTL (30s) expires
-      cache.getCachedDashboardData("user-1", now + 31_000);
+      // After TTL (60s) expires
+      cache.getCachedDashboardData("user-1", now + 61_000);
       expect(cache.getQueryCount()).toBe(2);
     });
 
@@ -111,7 +111,7 @@ describe("Cross-Request TTL Cache", () => {
       const now = Date.now();
 
       const first = cache.getCachedDashboardData("user-1", now);
-      const afterExpiry = cache.getCachedDashboardData("user-1", now + 31_000);
+      const afterExpiry = cache.getCachedDashboardData("user-1", now + 61_000);
 
       // Different data (fresh query executed)
       expect(afterExpiry.transactions[0].id).not.toBe(first.transactions[0].id);
@@ -123,12 +123,12 @@ describe("Cross-Request TTL Cache", () => {
 
       cache.getCachedDashboardData("user-1", now);
 
-      // At exactly TTL boundary (29.999s) — still cached
-      cache.getCachedDashboardData("user-1", now + 29_999);
+      // At exactly TTL boundary (59.999s) — still cached
+      cache.getCachedDashboardData("user-1", now + 59_999);
       expect(cache.getQueryCount()).toBe(1);
 
       // At TTL + 1ms — expired
-      cache.getCachedDashboardData("user-1", now + 30_000);
+      cache.getCachedDashboardData("user-1", now + 60_000);
       expect(cache.getQueryCount()).toBe(2);
     });
   });

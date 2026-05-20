@@ -22,6 +22,8 @@ export interface DashboardGreetingProps {
   onQuickAction: (kind: "expense" | "income" | "transfer") => void;
   onRefresh: () => void;
   refreshing?: boolean;
+  /** When true, shows a subtle background-sync indicator (SWR revalidation in progress) */
+  isRevalidating?: boolean;
 }
 
 function pickGreeting(hour: number): string {
@@ -38,6 +40,7 @@ export default function DashboardGreeting({
   onQuickAction,
   onRefresh,
   refreshing = false,
+  isRevalidating = false,
 }: DashboardGreetingProps) {
   const [greeting, setGreeting] = useState("Halo");
   const [dateLabel, setDateLabel] = useState("");
@@ -65,7 +68,19 @@ export default function DashboardGreeting({
   })();
 
   return (
-    <header className="rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow-sm md:p-6">
+    <header className="relative rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow-sm md:p-6">
+      {/* Background revalidation indicator — subtle dot, only during SWR silent refetch */}
+      {isRevalidating && (
+        <span
+          className="absolute top-3 right-3 flex size-2 items-center justify-center opacity-50"
+          title="Memperbarui data di background…"
+          aria-label="Memperbarui data"
+          aria-live="polite"
+        >
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        </span>
+      )}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 space-y-1.5">
           <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
