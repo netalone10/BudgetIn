@@ -6,6 +6,10 @@ const securityHeaders = [
   { key: "X-XSS-Protection", value: "1; mode=block" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  // Override any wildcard CORS header inherited from Vercel/CDN defaults on
+  // static endpoints (robots.txt, sitemap.xml, etc.). Same-origin browser
+  // requests are unaffected; this just locks down cross-origin access.
+  { key: "Access-Control-Allow-Origin", value: "https://budget.amuharr.com" },
   {
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",

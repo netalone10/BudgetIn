@@ -114,3 +114,12 @@ export const RATE_LIMIT_PREDICTION: RateLimitConfig = {
   limit: 10,
   windowMs: 60 * 1000,
 };
+
+/**
+ * Account mutation (PATCH/DELETE /api/accounts/{id}): 10 request per menit per user.
+ * Mitigasi VAPT finding: cegah session-hijack abuse mass-rename/delete akun.
+ */
+export const RATE_LIMIT_ACCOUNT_MUTATION: RateLimitConfig = {
+  limit: 10,
+  windowMs: 60 * 1000,
+};

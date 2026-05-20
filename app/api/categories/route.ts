@@ -29,6 +29,11 @@ function isMissingBudgetTypeColumnError(error: unknown) {
   );
 }
 
+function isUniqueConstraintError(error: unknown) {
+  if (typeof error !== "object" || error === null) return false;
+  return (error as { code?: string }).code === "P2002";
+}
+
 async function findCategories(userId: string, includeBudgetType = true): Promise<CategoryResponseRow[]> {
   if (!includeBudgetType) {
     return prisma.category.findMany({
@@ -130,9 +135,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, type } = await req.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
+    }
+    const { name, type } = body;
 
-    if (!name || (type !== "expense" && type !== "income")) {
+    if (!name || typeof name !== "string" || (type !== "expense" && type !== "income")) {
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 
@@ -148,7 +163,7 @@ export async function POST(req: Request) {
     });
 
     if (existing) {
-      return NextResponse.json({ error: "Kategori sudah ada" }, { status: 400 });
+      return NextResponse.json({ error: "Kategori sudah ada" }, { status: 409 });
     }
 
     const data = {
@@ -165,15 +180,25 @@ export async function POST(req: Request) {
         select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
       });
     } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        return NextResponse.json({ error: "Kategori sudah ada" }, { status: 409 });
+      }
       if (!isMissingBudgetTypeColumnError(error)) throw error;
-      category = await prisma.category.create({
-        data: {
-          userId: session.userId,
-          name: name.trim(),
-          type,
-        },
-        select: { id: true, name: true, type: true, isSavings: true },
-      });
+      try {
+        category = await prisma.category.create({
+          data: {
+            userId: session.userId,
+            name: name.trim(),
+            type,
+          },
+          select: { id: true, name: true, type: true, isSavings: true },
+        });
+      } catch (fallbackError) {
+        if (isUniqueConstraintError(fallbackError)) {
+          return NextResponse.json({ error: "Kategori sudah ada" }, { status: 409 });
+        }
+        throw fallbackError;
+      }
     }
 
     return NextResponse.json({ category });

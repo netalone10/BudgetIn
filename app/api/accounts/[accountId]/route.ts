@@ -12,6 +12,22 @@ import {
 } from "@/utils/sheets";
 import { blockDemoResponse } from "@/lib/demo-account";
 import { invalidateDashboardCache } from "@/lib/cache";
+import { checkRateLimit, RATE_LIMIT_ACCOUNT_MUTATION } from "@/lib/rate-limit";
+
+function rateLimitResponse(rl: { resetAt: number }) {
+  return NextResponse.json(
+    { error: "Terlalu banyak request. Tunggu sebentar sebelum mencoba lagi." },
+    {
+      status: 429,
+      headers: {
+        "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+        "X-RateLimit-Limit": String(RATE_LIMIT_ACCOUNT_MUTATION.limit),
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": String(Math.ceil(rl.resetAt / 1000)),
+      },
+    }
+  );
+}
 
 type Params = { params: Promise<{ accountId: string }> };
 
@@ -27,8 +43,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const rl = checkRateLimit(`account-mutate:${session.userId}`, RATE_LIMIT_ACCOUNT_MUTATION);
+  if (!rl.allowed) return rateLimitResponse(rl);
+
   const { accountId } = await params;
-  const body = await req.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
+  }
   const { accountTypeId, accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
 
   const user = await prisma.user.findUnique({
@@ -170,6 +198,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const demoBlock = await blockDemoResponse(session);
   if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rl = checkRateLimit(`account-mutate:${session.userId}`, RATE_LIMIT_ACCOUNT_MUTATION);
+  if (!rl.allowed) return rateLimitResponse(rl);
 
   const { accountId } = await params;
   const { searchParams } = new URL(req.url);

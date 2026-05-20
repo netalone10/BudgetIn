@@ -2,7 +2,23 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+// Host header allowlist — cegah Host Header Injection meskipun Cloudflare WAF
+// sudah jadi first line of defense. Skip cek di non-production supaya preview
+// deployment (*.vercel.app) dan dev tooling tetap jalan.
+const ALLOWED_HOSTS = new Set([
+  "budget.amuharr.com",
+  "localhost:3000",
+  "127.0.0.1:3000",
+]);
+
 export async function proxy(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    const host = request.headers.get("host");
+    if (host && !ALLOWED_HOSTS.has(host)) {
+      return new NextResponse("Bad Host", { status: 400 });
+    }
+  }
+
   const { pathname } = request.nextUrl;
 
   // ── Landing page (/) ──

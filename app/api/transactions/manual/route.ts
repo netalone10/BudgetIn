@@ -33,8 +33,24 @@ export async function POST(req: NextRequest) {
   if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
+  }
   const { type, amount, accountId, toAccountId, category, date, note, fee } = body;
+
+  if (type !== "expense" && type !== "income" && type !== "transfer") {
+    return NextResponse.json({ error: "Tipe transaksi tidak valid." }, { status: 400 });
+  }
+  if (body.time !== undefined && body.time !== null && typeof body.time !== "string") {
+    return NextResponse.json({ error: "Format jam tidak valid (HH:mm)." }, { status: 400 });
+  }
 
   const parsedAmount = Number(amount);
   const parsedFee = fee === undefined || fee === null || fee === "" ? 0 : Number(fee);
