@@ -10,3 +10,12 @@ mintlify/
 
 # Editor / tooling
 .vscode/
+
+# Test files (not needed for production build)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/*.property.test.ts
+**/*.property.test.tsx
+lib/__tests__/
