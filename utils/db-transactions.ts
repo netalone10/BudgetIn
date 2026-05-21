@@ -4,7 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 export interface DbTransaction {
@@ -37,7 +37,7 @@ export async function appendTransactionDB(
 ): Promise<DbTransaction> {
   const tx = await prisma.transaction.create({
     data: {
-      id: uuidv4(),
+      id: randomUUID(),
       userId,
       date: data.date,
       time: normalizeTransactionTime(data.time),

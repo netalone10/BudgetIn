@@ -2,7 +2,7 @@ import { sheets as googleSheets } from "@googleapis/sheets";
 import { OAuth2Client } from "google-auth-library";
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "crypto";
 import { normalizeTransactionTime } from "@/lib/transaction-time";
 
 const TIMEZONE = "Asia/Jakarta";
@@ -123,7 +123,7 @@ export async function appendTransaction(
 ): Promise<Transaction> {
   const sheets = getSheetsClient(accessToken);
 
-  const id = uuidv4();
+  const id = randomUUID();
   const created_at = format(
     toZonedTime(new Date(), TIMEZONE),
     "yyyy-MM-dd'T'HH:mm:ssxxx"
@@ -381,7 +381,7 @@ export async function appendAccount(
 ): Promise<AccountData> {
   const sheets = getSheetsClient(accessToken);
 
-  const id = uuidv4();
+  const id = randomUUID();
   const row = [
     id,
     data.name,
