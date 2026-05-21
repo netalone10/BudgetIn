@@ -45,3 +45,8 @@ prisma/migrations/
 sketches/
 
 .vercel
+
+# IDE / AI tool configs
+.claude/
+.kiro/
+.windsurf/
