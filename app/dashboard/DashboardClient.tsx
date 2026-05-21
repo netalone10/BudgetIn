@@ -129,7 +129,7 @@ const ManualTransactionForm = dynamic(
   { ssr: false, loading: () => <div className="h-[280px] animate-pulse rounded-[28px] bg-muted" /> }
 );
 // Kick off the chunk download immediately — no await, fire-and-forget.
-ManualTransactionForm.preload?.();
+(ManualTransactionForm as any).preload?.();
 
 const ReportView = dynamic(
   () => import("@/components/ReportView"),
