@@ -8,6 +8,7 @@ import TransactionCard, {
 } from "@/components/TransactionCard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { useDataEvent, emitDataChanged } from "@/lib/data-events";
+import { useApi } from "@/lib/hooks/use-api";
 import { isExpenseTransaction, isTransferTransaction } from "@/lib/transaction-classification";
 import { cn } from "@/lib/utils";
 
@@ -43,9 +44,13 @@ export default function TransactionsClient() {
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(20);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<TransactionCategory[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const { data: accountsData } = useApi<{ accounts: Account[] }>("/api/accounts");
+  const accounts = accountsData?.accounts ?? [];
+
+  const { data: categoriesData } = useApi<{ categories: { name: string; type: string }[] }>("/api/categories");
+  const categories: TransactionCategory[] = (categoriesData?.categories ?? []).map(c => ({ name: c.name, type: c.type }));
 
   const fetchTransactions = useCallback(
     async (signal?: AbortSignal) => {
@@ -79,42 +84,14 @@ export default function TransactionsClient() {
     [period, customFrom, customTo]
   );
 
-  const fetchAccounts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/accounts");
-      const data = await res.json();
-      setAccounts(data.accounts ?? []);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await fetch("/api/categories");
-      const data = await res.json();
-      const cats = (data.categories ?? []) as { name: string; type: string }[];
-      setCategories(cats.map((c) => ({ name: c.name, type: c.type })));
-    } catch {
-      // ignore
-    }
-  }, []);
-
   useEffect(() => {
     const controller = new AbortController();
     fetchTransactions(controller.signal);
     return () => controller.abort();
   }, [fetchTransactions]);
 
-  useEffect(() => {
-    fetchAccounts();
-    fetchCategories();
-  }, [fetchAccounts, fetchCategories]);
-
-  useDataEvent(["transactions", "accounts", "categories"], (topic) => {
-    if (topic === "transactions") fetchTransactions();
-    if (topic === "accounts") fetchAccounts();
-    if (topic === "categories") fetchCategories();
+  useDataEvent(["transactions"], () => {
+    fetchTransactions();
   });
 
   useEffect(() => {

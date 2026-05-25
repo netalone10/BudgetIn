@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { X } from "lucide-react";
+import { toast } from "sonner";
+import { useApi } from "@/lib/hooks/use-api";
 import { format } from "date-fns";
 import { RecurringWithMeta } from "@/components/RecurringCard";
 import {
@@ -65,15 +67,14 @@ export default function AddRecurringModal({ onClose, onSaved, editItem }: Props)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const { data: accountsData } = useApi<{ accounts: Account[] }>("/api/accounts");
+  const accounts = accountsData?.accounts ?? [];
 
-  useEffect(() => {
-    fetch("/api/accounts").then((r) => r.json()).then((d) => setAccounts(Array.isArray(d?.accounts) ? d.accounts : []));
-    fetch("/api/categories").then((r) => r.json()).then((d) => setCategories(Array.isArray(d?.categories) ? d.categories : []));
-    fetch("/api/savings").then((r) => r.ok ? r.json() : { goals: [] }).then((d) => setGoals(Array.isArray(d?.goals) ? d.goals : [])).catch(() => {});
-  }, []);
+  const { data: categoriesData } = useApi<{ categories: Category[] }>("/api/categories");
+  const categories = categoriesData?.categories ?? [];
+
+  const { data: savingsData } = useApi<{ goals: SavingsGoal[] }>("/api/savings");
+  const goals = savingsData?.goals ?? [];
 
   const filteredCategories = useMemo(() => {
     if (type === "transfer") return [];
@@ -127,16 +128,21 @@ export default function AddRecurringModal({ onClose, onSaved, editItem }: Props)
         reminderDays,
         note: note.trim() || null,
       };
+      // Optimistic: close & notify parent immediately.
+      onSaved();
+      onClose();
+
       const res = await fetch("/api/recurring", {
         method: editItem ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) { setError(await readErrorMessage(res)); return; }
-      onSaved();
-      onClose();
+      if (!res.ok) {
+        const msg = await readErrorMessage(res);
+        toast.error(msg || "Gagal menyimpan transaksi berulang.");
+      }
     } catch {
-      setError("Gagal menyimpan. Coba lagi.");
+      toast.error("Gagal menyimpan. Coba lagi.");
     } finally {
       setLoading(false);
     }

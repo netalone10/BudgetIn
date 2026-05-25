@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Search, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,8 @@ type ErrorKind =
   | null;
 
 export default function DetailsClient() {
+  const [, startTransition] = useTransition();
+
   // ── UI state ────────────────────────────────────────────────────────────
   const [activeTab, setActiveTabRaw] = useState<DetailType>("expense");
   const [period, setPeriod] = useState<Period>("month");
@@ -337,7 +339,7 @@ export default function DetailsClient() {
             <button
               key={opt.key}
               type="button"
-              onClick={() => setPeriod(opt.key)}
+              onClick={() => startTransition(() => setPeriod(opt.key))}
               className={cn(
                 "rounded-full border px-3 py-1 text-[12.5px] font-medium transition-colors",
                 period === opt.key

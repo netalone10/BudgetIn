@@ -2,7 +2,7 @@
 
 import { memo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Pencil, Trash2, Loader2, CheckCircle2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
@@ -76,9 +76,7 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
   const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? "");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   const categoryType =
     transaction.type === "income" || transaction.type === "transfer_in"
@@ -93,39 +91,37 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-    setSaved(false);
-    const res = await fetch(`/api/record/${transaction.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        date: editDate,
-        time: editTime,
-        note: editNote,
-        amount: Number(editAmount),
-        category: editCategory,
-        accountId: editAccountId || null,
-      }),
-    });
-    if (res.ok) {
-      setSaved(true);
-      toast.success("Transaksi berhasil diperbarui.");
-      onSaved({
-        date: editDate,
-        time: editTime,
-        note: editNote,
-        amount: Number(editAmount),
-        category: editCategory,
-        accountId: editAccountId || null,
+
+    const updates = {
+      date: editDate,
+      time: editTime,
+      note: editNote,
+      amount: Number(editAmount),
+      category: editCategory,
+      accountId: editAccountId || null,
+    };
+
+    // Optimistic: notify parent & close immediately — no spinner.
+    toast.success("Transaksi berhasil diperbarui.");
+    onSaved(updates);
+
+    try {
+      const res = await fetch(`/api/record/${transaction.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
       });
-    } else {
-      const data = await res.json().catch(() => ({}));
-      const msg = (data as { error?: string }).error || "Gagal menyimpan.";
-      setError(msg);
-      toast.error(msg);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const msg = (data as { error?: string }).error || "Gagal menyimpan.";
+        toast.error(msg);
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
+      emitDataChanged(["transactions", "budget", "accounts"]);
     }
-    setLoading(false);
   }
 
   return createPortal(
@@ -228,12 +224,6 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
             </div>
           )}
 
-          {saved && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-400">
-              <CheckCircle2 className="size-3.5 shrink-0" />
-              Transaksi berhasil diperbarui.
-            </div>
-          )}
           {error && (
             <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs leading-relaxed text-destructive">
               {error}
@@ -241,11 +231,11 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
           )}
 
           <div className="grid grid-cols-2 gap-3 pt-1">
-            <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={onClose} disabled={loading}>
+            <Button type="button" variant="outline" className="h-10 rounded-lg" onClick={onClose}>
               Batal
             </Button>
-            <Button type="submit" className="h-10 rounded-lg" disabled={loading}>
-              {loading ? <Loader2 className="size-4 animate-spin" /> : "Simpan"}
+            <Button type="submit" className="h-10 rounded-lg">
+              Simpan
             </Button>
           </div>
         </form>
@@ -260,18 +250,26 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
 function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts = EMPTY_ACCOUNTS, onDelete, onUpdate }: Props) {
   const isDemo = useIsDemo();
   const [showModal, setShowModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
   async function handleDelete() {
     if (!confirm("Hapus transaksi ini?")) return;
-    setDeleting(true);
-    const res = await fetch(`/api/record/${transaction.id}`, { method: "DELETE" });
-    if (res.ok) {
-      onDelete(transaction.id);
+
+    // Optimistic: remove row immediately, reconcile via refetch on error.
+    onDelete(transaction.id);
+
+    try {
+      const res = await fetch(`/api/record/${transaction.id}`, { method: "DELETE" });
+      if (res.ok) {
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      } else {
+        toast.error("Gagal menghapus transaksi.");
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
       emitDataChanged(["transactions", "budget", "accounts"]);
     }
-    setDeleting(false);
   }
 
   function handleSaved(updates: Partial<Transaction>) {
@@ -351,7 +349,7 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
               variant="ghost"
               className="size-7 rounded-lg shadow-none"
               onClick={() => setShowModal(true)}
-              disabled={deleting}
+
             >
               <Pencil className="size-3" />
             </Button>
@@ -360,7 +358,7 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
               variant="ghost"
               className="size-7 rounded-lg shadow-none hover:text-destructive"
               onClick={handleDelete}
-              disabled={deleting}
+
             >
               <Trash2 className="size-3" />
             </Button>

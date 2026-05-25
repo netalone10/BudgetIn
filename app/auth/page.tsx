@@ -94,7 +94,6 @@ function AuthForm() {
     }
 
     router.push("/dashboard");
-    router.refresh();
   }
 
   useEffect(() => {
@@ -208,7 +207,6 @@ function AuthForm() {
         }
       } else {
         router.push("/dashboard");
-        router.refresh();
       }
     }
 

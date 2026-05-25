@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import "./landing.css";
 
 export type LandingStats = {
@@ -363,12 +364,12 @@ export default function LandingPage({ stats, testimonials }: Props) {
             <a href="#cara-kerja">Cara Kerja</a>
           </div>
           <div className="nav-right">
-            <a href="/auth" className="nav-sign">
+            <Link href="/auth" className="nav-sign">
               Masuk
-            </a>
-            <a href="/auth" className="btn btn-primary btn-sm">
+            </Link>
+            <Link href="/auth" className="btn btn-primary btn-sm">
               Mulai Gratis
-            </a>
+            </Link>
           </div>
         </div>
       </nav>
@@ -392,12 +393,12 @@ export default function LandingPage({ stats, testimonials }: Props) {
               form kaku.
             </p>
             <div className="hero-ctas">
-              <a href="/auth" className="btn btn-primary">
+              <Link href="/auth" className="btn btn-primary">
                 Mulai Gratis &rarr;
-              </a>
-              <a href="/auth?demo=1" className="btn btn-outline">
+              </Link>
+              <Link href="/auth?demo=1" className="btn btn-outline">
                 Coba Demo Dulu
-              </a>
+              </Link>
             </div>
             <div className="hero-trust">
               <span>
@@ -797,9 +798,9 @@ export default function LandingPage({ stats, testimonials }: Props) {
               </div>
               <div className="testi-cta rv">
                 <p>Punya pengalaman pakai BudgetIn? Bagikan ceritamu.</p>
-                <a href="/testimoni" className="btn btn-primary">
+                <Link href="/testimoni" className="btn btn-primary">
                   Tulis Testimoni &rarr;
-                </a>
+                </Link>
               </div>
             </>
           ) : (
@@ -810,9 +811,9 @@ export default function LandingPage({ stats, testimonials }: Props) {
                 Cerita singkat — 1-2 kalimat — tentang bagaimana BudgetIn membantu
                 kamu. Setelah di-review admin, kamu akan tampil di sini.
               </p>
-              <a href="/testimoni" className="btn btn-primary">
+              <Link href="/testimoni" className="btn btn-primary">
                 Tulis Testimoni Pertama &rarr;
-              </a>
+              </Link>
             </div>
           )}
         </div>
@@ -872,12 +873,12 @@ export default function LandingPage({ stats, testimonials }: Props) {
             uang &mdash; gratis, tanpa ribet.
           </p>
           <div className="cta-btns">
-            <a href="/auth" className="btn-white btn">
+            <Link href="/auth" className="btn-white btn">
               Mulai Gratis Sekarang &rarr;
-            </a>
-            <a href="/auth?demo=1" className="btn-wghost btn">
+            </Link>
+            <Link href="/auth?demo=1" className="btn-wghost btn">
               Coba Demo Dulu
-            </a>
+            </Link>
           </div>
           <div className="cta-tags">
             <span>Gratis selamanya</span>
@@ -892,10 +893,10 @@ export default function LandingPage({ stats, testimonials }: Props) {
         <div className="wrap foot-inner">
           <div className="foot-logo">BudgetIn</div>
           <div className="foot-links">
-            <a href="/about">Tentang</a>
-            <a href="/contact">Kontak</a>
-            <a href="/privacy">Kebijakan Privasi</a>
-            <a href="/terms">Syarat & Ketentuan</a>
+            <Link href="/about">Tentang</Link>
+            <Link href="/contact">Kontak</Link>
+            <Link href="/privacy">Kebijakan Privasi</Link>
+            <Link href="/terms">Syarat &amp; Ketentuan</Link>
           </div>
           <div className="foot-copy">
             &copy; 2026 BudgetIn &middot; Dibuat oleh{" "}

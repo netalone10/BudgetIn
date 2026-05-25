@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useTransition } from "react";
 import Image from "next/image";
-import { X, Check, Loader2, Shuffle } from "lucide-react";
+import { X, Check, Shuffle } from "lucide-react";
+import { toast } from "sonner";
 import { createAvatar } from "@dicebear/core";
 import { AVATAR_STYLES, buildDicebearImage, type AvatarStyleId } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,7 @@ export default function AvatarPickerModal({
 }: AvatarPickerModalProps) {
   const [selectedStyle, setSelectedStyle] = useState<AvatarStyleId>("thumbs");
   const [selectedSeed, setSelectedSeed] = useState(userName);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const seeds = useMemo(() => generateSeeds(userName), [userName]);
 
@@ -61,24 +61,24 @@ export default function AvatarPickerModal({
   }
 
   async function handleSave() {
-    setSaving(true);
-    setError(null);
+    const imageValue = buildDicebearImage(selectedStyle, selectedSeed);
+
+    // Optimistic: notify parent & close immediately.
+    onSaved(imageValue);
+    onClose();
+
     try {
-      const imageValue = buildDicebearImage(selectedStyle, selectedSeed);
       const res = await fetch("/api/user", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imageValue }),
       });
-      const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Gagal menyimpan avatar.");
-        return;
+        const data = await res.json().catch(() => ({}));
+        toast.error((data as { error?: string }).error ?? "Gagal menyimpan avatar.");
       }
-      onSaved(imageValue);
-      onClose();
-    } finally {
-      setSaving(false);
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
     }
   }
 
@@ -130,7 +130,7 @@ export default function AvatarPickerModal({
             {AVATAR_STYLES.map((s) => (
               <button
                 key={s.id}
-                onClick={() => setSelectedStyle(s.id)}
+                onClick={() => startTransition(() => setSelectedStyle(s.id))}
                 className={cn(
                   "rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors",
                   selectedStyle === s.id
@@ -151,7 +151,7 @@ export default function AvatarPickerModal({
             {previews.map(({ seed, url }) => (
               <button
                 key={seed}
-                onClick={() => setSelectedSeed(seed)}
+                onClick={() => startTransition(() => setSelectedSeed(seed))}
                 className={cn(
                   "relative overflow-hidden rounded-full border-2 transition-all",
                   selectedSeed === seed
@@ -170,17 +170,12 @@ export default function AvatarPickerModal({
           </div>
         </div>
 
-        {error && (
-          <p className="rounded-xl bg-destructive/10 px-3 py-2 text-xs text-destructive">{error}</p>
-        )}
-
         {/* Actions */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onClose} disabled={saving}>
+          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>
             Batal
           </Button>
-          <Button className="flex-1 rounded-2xl" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+          <Button className="flex-1 rounded-2xl" onClick={handleSave}>
             Simpan
           </Button>
         </div>

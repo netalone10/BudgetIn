@@ -142,45 +142,39 @@ export default function DashboardTabs({
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
-  const [editLoading, setEditLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  async function handleEditSave(item: BudgetItem) {
+  function handleEditSave(item: BudgetItem) {
     const parsed = parseFloat(editAmount.replace(/\./g, "").replace(",", "."));
     if (!parsed || parsed <= 0) return;
-    setEditLoading(true);
-    try {
-      await fetch("/api/budget", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: item.category, amount: parsed }),
-      });
-      setEditingId(null);
-      onBudgetChange?.();
-    } finally {
-      setEditLoading(false);
-    }
+
+    // Optimistic: close inline editor immediately, fire in background.
+    setEditingId(null);
+    fetch("/api/budget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: item.category, amount: parsed }),
+    }).then(res => {
+      if (res.ok) onBudgetChange?.();
+    });
   }
 
-  async function handleDelete(id: string) {
-    setDeleteLoading(true);
-    try {
-      await fetch(`/api/budget/${id}`, { method: "DELETE" });
-      setDeletingId(null);
-      onBudgetChange?.();
-    } finally {
-      setDeleteLoading(false);
-    }
+  function handleDelete(id: string) {
+    // Optimistic: close confirm immediately, fire in background.
+    setDeletingId(null);
+    fetch(`/api/budget/${id}`, { method: "DELETE" }).then(res => {
+      if (res.ok) onBudgetChange?.();
+    });
   }
 
-  async function handleToggleRollover(item: BudgetItem) {
-    await fetch(`/api/categories/${item.categoryId}`, {
+  function handleToggleRollover(item: BudgetItem) {
+    fetch(`/api/categories/${item.categoryId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rolloverEnabled: !item.rolloverEnabled }),
+    }).then(res => {
+      if (res.ok) onBudgetChange?.();
     });
-    onBudgetChange?.();
   }
 
   const now = toZonedTime(new Date(), TIMEZONE);
@@ -560,7 +554,6 @@ export default function DashboardTabs({
                           <>
                             <button
                               onClick={() => handleEditSave(item)}
-                              disabled={editLoading}
                               className="flex size-8 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
                               title="Simpan"
                             >
@@ -578,7 +571,6 @@ export default function DashboardTabs({
                           <>
                             <button
                               onClick={() => handleDelete(item.id)}
-                              disabled={deleteLoading}
                               className="rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                             >
                               Hapus
@@ -757,8 +749,7 @@ export default function DashboardTabs({
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => handleEditSave(item)}
-                                    disabled={editLoading}
-                                    className="flex size-7 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
+                                          className="flex size-7 items-center justify-center rounded-lg text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:hover:bg-emerald-900/30"
                                     title="Simpan"
                                   >
                                     <Check className="size-3.5" />
@@ -775,8 +766,7 @@ export default function DashboardTabs({
                                 <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => handleDelete(item.id)}
-                                    disabled={deleteLoading}
-                                    className="rounded-lg bg-destructive px-2 py-1 text-[11px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                                          className="rounded-lg bg-destructive px-2 py-1 text-[11px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                                   >
                                     Hapus
                                   </button>

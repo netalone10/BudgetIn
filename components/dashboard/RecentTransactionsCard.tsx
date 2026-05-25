@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Pencil, Trash2, Loader2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { EditModal } from "@/components/TransactionCard";
 import type { Transaction, TransactionCategory } from "@/components/TransactionCard";
@@ -89,19 +90,26 @@ export default function RecentTransactionsCard({
 }: RecentTransactionsCardProps) {
   const isDemo = useIsDemo();
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
   const recent = transactions.slice(0, limit);
 
   async function handleDelete(t: Transaction) {
     if (!confirm("Hapus transaksi ini?")) return;
-    setDeletingId(t.id);
-    const res = await fetch(`/api/record/${t.id}`, { method: "DELETE" });
-    if (res.ok) {
-      onDelete(t.id);
+
+    // Optimistic: remove immediately, reconcile via refetch on error.
+    onDelete(t.id);
+
+    try {
+      const res = await fetch(`/api/record/${t.id}`, { method: "DELETE" });
+      if (res.ok) {
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      } else {
+        toast.error("Gagal menghapus transaksi.");
+        emitDataChanged(["transactions", "budget", "accounts"]);
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
       emitDataChanged(["transactions", "budget", "accounts"]);
     }
-    setDeletingId(null);
   }
 
   return (
@@ -206,7 +214,6 @@ export default function RecentTransactionsCard({
                     <button
                       type="button"
                       onClick={() => setEditingTx(t)}
-                      disabled={deletingId === t.id}
                       className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       aria-label="Edit transaksi"
                     >
@@ -215,15 +222,10 @@ export default function RecentTransactionsCard({
                     <button
                       type="button"
                       onClick={() => handleDelete(t)}
-                      disabled={deletingId === t.id}
                       className="flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                       aria-label="Hapus transaksi"
                     >
-                      {deletingId === t.id ? (
-                        <Loader2 className="size-3 animate-spin" />
-                      ) : (
-                        <Trash2 className="size-3" />
-                      )}
+                      <Trash2 className="size-3" />
                     </button>
                   </div>
                 )}

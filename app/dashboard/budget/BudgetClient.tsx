@@ -3,6 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
@@ -171,21 +172,26 @@ export default function BudgetClient({ initialData, categories }: Props) {
     const amount = parseAmount(editAmount);
     if (!amount || amount <= 0) return;
 
-    setSaving(true);
-    setError(null);
+    // Optimistic: close inline editor & update amount immediately.
+    setEditingId(null);
+    setData(prev => ({
+      ...prev,
+      budgets: prev.budgets.map(b => b.id === item.id ? { ...b, budget: amount } : b),
+    }));
+
     try {
       const res = await fetch("/api/budget", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category: item.category, amount, month }),
       });
-      if (!res.ok) throw new Error("Gagal menyimpan budget");
-      setEditingId(null);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menyimpan budget");
-    } finally {
-      setSaving(false);
+      if (!res.ok) {
+        toast.error("Gagal menyimpan budget.");
+        await loadMonth(month);
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
+      await loadMonth(month);
     }
   }
 
@@ -194,55 +200,97 @@ export default function BudgetClient({ initialData, categories }: Props) {
     const amount = parseAmount(newAmount);
     if (!selectedNewCategory || !amount || amount <= 0) return;
 
-    setSaving(true);
-    setError(null);
+    const catObj = categories.find(c => c.name === selectedNewCategory);
+    const tempId = `temp-${Date.now()}`;
+
+    // Optimistic: show new row immediately, clear form.
+    setNewCategory("");
+    setNewAmount("");
+    setData(prev => ({
+      ...prev,
+      budgets: [...prev.budgets, {
+        id: tempId,
+        categoryId: catObj?.id ?? tempId,
+        category: selectedNewCategory,
+        budget: amount,
+        spent: 0,
+        rollover: 0,
+        rolloverEnabled: false,
+        budgetType: catObj?.budgetType ?? "variable",
+      }],
+    }));
+
     try {
       const res = await fetch("/api/budget", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category: selectedNewCategory, amount, month }),
       });
-      if (!res.ok) throw new Error("Gagal menambah budget");
-      setNewCategory("");
-      setNewAmount("");
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menambah budget");
-    } finally {
-      setSaving(false);
+      if (!res.ok) {
+        toast.error("Gagal menambah budget.");
+      }
+      // Always reconcile to replace temp ID with real server ID.
+      await loadMonth(month);
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
+      await loadMonth(month);
     }
   }
 
   async function handleDelete(id: string) {
-    setSaving(true);
-    setError(null);
+    // Optimistic: remove row immediately.
+    setDeletingId(null);
+    setData(prev => ({
+      ...prev,
+      budgets: prev.budgets.filter(b => b.id !== id),
+    }));
+
     try {
       const res = await fetch(`/api/budget/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal hapus budget");
-      setDeletingId(null);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal hapus budget");
-    } finally {
-      setSaving(false);
+      if (!res.ok) {
+        toast.error("Gagal hapus budget.");
+        await loadMonth(month);
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
+      await loadMonth(month);
     }
   }
 
   async function handleToggleRollover(item: BudgetItem) {
-    setSaving(true);
-    setError(null);
+    const nextValue = !item.rolloverEnabled;
+
+    // Optimistic: toggle locally.
+    setData(prev => ({
+      ...prev,
+      budgets: prev.budgets.map(b =>
+        b.id === item.id ? { ...b, rolloverEnabled: nextValue } : b
+      ),
+    }));
+
     try {
       const res = await fetch(`/api/categories/${item.categoryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rolloverEnabled: !item.rolloverEnabled }),
+        body: JSON.stringify({ rolloverEnabled: nextValue }),
       });
-      if (!res.ok) throw new Error("Gagal mengubah rollover");
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal mengubah rollover");
-    } finally {
-      setSaving(false);
+      if (!res.ok) {
+        toast.error("Gagal mengubah rollover.");
+        setData(prev => ({
+          ...prev,
+          budgets: prev.budgets.map(b =>
+            b.id === item.id ? { ...b, rolloverEnabled: item.rolloverEnabled } : b
+          ),
+        }));
+      }
+    } catch {
+      toast.error("Terjadi kesalahan. Coba lagi.");
+      setData(prev => ({
+        ...prev,
+        budgets: prev.budgets.map(b =>
+          b.id === item.id ? { ...b, rolloverEnabled: item.rolloverEnabled } : b
+        ),
+      }));
     }
   }
 

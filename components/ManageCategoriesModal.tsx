@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Loader2, Pencil, Trash2, Plus } from "lucide-react";
+import { useApi } from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -21,9 +22,17 @@ interface Props {
 }
 
 export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
+  const { data: categoriesData, isLoading } = useApi<{ categories: Category[] }>("/api/categories");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+
+  useEffect(() => {
+    if (categoriesData?.categories) {
+      setCategories(categoriesData.categories);
+    }
+  }, [categoriesData]);
+
+  const loading = isLoading && categories.length === 0;
+
   const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
   const [newCatName, setNewCatName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -32,22 +41,6 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const [savingId, setSavingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  async function fetchCategories() {
-    try {
-      const res = await fetch("/api/categories");
-      const data = await res.json();
-      setCategories(data.categories || []);
-    } catch {
-      // Handle error gracefully
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();

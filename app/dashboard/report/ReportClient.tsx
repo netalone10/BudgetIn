@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { Calendar, CalendarRange, Printer, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ const TABS: { id: Variant; label: string; icon: React.ComponentType<{ className?
 
 export default function ReportClient() {
   const [variant, setVariant] = useState<Variant>("monthly");
+  const [, startTransition] = useTransition();
 
   // Tandai <html> sebagai halaman report yang sedang aktif. Saat print,
   // CSS akan menyembunyikan seluruh chrome aplikasi (sidebar, mobile
@@ -82,7 +83,7 @@ export default function ReportClient() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setVariant(tab.id)}
+                onClick={() => startTransition(() => setVariant(tab.id))}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors",
                   active
