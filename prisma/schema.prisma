@@ -24,6 +24,8 @@ model User {
   emailVerified           DateTime? @map("email_verified")
   verificationToken       String?   @unique @map("verification_token")
   verificationTokenExpiry DateTime? @map("verification_token_expiry")
+  resetPasswordToken      String?   @unique @map("reset_password_token")
+  resetPasswordTokenExpiry DateTime? @map("reset_password_token_expiry")
   createdAt               DateTime  @default(now()) @map("created_at")
 
   // Aktivitas terakhir user (throttled heartbeat dari session callback).

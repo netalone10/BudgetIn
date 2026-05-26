@@ -478,7 +478,17 @@ function AuthForm() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">Password</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">Password</span>
+              {tab === "login" && (
+                <Link
+                  href="/auth/forgot-password"
+                  className="text-xs text-muted-foreground hover:text-primary"
+                >
+                  Lupa password?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <Input
                 type={showPass ? "text" : "password"}
