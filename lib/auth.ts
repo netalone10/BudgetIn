@@ -8,6 +8,7 @@ import { isAdmin } from "@/lib/is-admin";
 import { verifyTurnstile } from "@/lib/turnstile";
 import { DEMO_ACCOUNT } from "@/lib/demo-account";
 import { encryptSecret } from "@/lib/crypto";
+import { sendWelcomeEmail } from "@/lib/email";
 import { heartbeat } from "@/lib/user-activity";
 import bcrypt from "bcryptjs";
 
@@ -145,6 +146,8 @@ export const authOptions: NextAuthOptions = {
             data: { sheetsId },
           });
           await seedDefaultCategories(dbUser.id);
+          sendWelcomeEmail(user.email!, user.name ?? "Pengguna")
+            .catch((err) => console.error("[signIn] sendWelcomeEmail error:", err));
         } catch (sheetsError) {
           console.error("[signIn] createGoogleSheet error:", sheetsError);
           return "/auth/error?error=GooglePermissionRequired";
