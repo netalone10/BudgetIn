@@ -244,7 +244,6 @@ export default function RecentTransactionsCard({
           onSaved={(updates) => {
             onUpdate(editingTx.id, updates);
             setEditingTx(null);
-            emitDataChanged(["transactions", "budget", "accounts"]);
           }}
         />
       )}
