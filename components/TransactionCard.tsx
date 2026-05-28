@@ -75,7 +75,7 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
-  const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? "");
+  const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? transaction.fromAccountId ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const categoryType =

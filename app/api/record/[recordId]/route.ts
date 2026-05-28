@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     try {
       // Transfer pair: update kedua row sekaligus via transferId
-      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined || body.category !== undefined)) {
+      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined || body.category !== undefined || body.accountId !== undefined)) {
         await prisma.transaction.updateMany({
           where: { transferId: existing.transferId },
           data: {
@@ -80,6 +80,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             ...(body.amount !== undefined && { amount: body.amount }),
             ...(body.category !== undefined && { category: body.category }),
             ...(body.note !== undefined && { note: body.note }),
+            ...(body.accountId !== undefined && { accountId: body.accountId || null }),
           },
         });
       } else {
