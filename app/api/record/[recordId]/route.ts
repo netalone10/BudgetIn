@@ -71,13 +71,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     try {
       // Transfer pair: update kedua row sekaligus via transferId
-      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined)) {
+      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined || body.category !== undefined)) {
         await prisma.transaction.updateMany({
           where: { transferId: existing.transferId },
           data: {
             ...(body.date !== undefined && { date: body.date }),
             ...(body.time !== undefined && { time: body.time }),
             ...(body.amount !== undefined && { amount: body.amount }),
+            ...(body.category !== undefined && { category: body.category }),
             ...(body.note !== undefined && { note: body.note }),
           },
         });

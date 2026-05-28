@@ -277,7 +277,6 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
     setShowModal(false);
     setJustSaved(true);
     setTimeout(() => setJustSaved(false), 1500);
-    emitDataChanged(["transactions", "budget", "accounts"]);
   }
 
   const isIncome = transaction.type === "income" || transaction.type === "transfer_in";
