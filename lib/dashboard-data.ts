@@ -15,6 +15,7 @@ import { computeAccountBalancesFromTx } from "@/utils/sheets-ledger";
 import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isSavingsTransaction } from "@/lib/savings-utils";
 import { compareTransactionDateTimeDesc, normalizeTransactionTime } from "@/lib/transaction-time";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 import { format } from "date-fns";
@@ -291,7 +292,10 @@ export async function fetchDashboardData(
     .filter((c) => c.isSavings)
     .map((c) => c.name.toLowerCase());
 
-  const lastMonthTotals = computeMonthlyTotals(txLastMonthRaw);
+  const lastMonthTotals = computeMonthlyTotals(
+    txLastMonthRaw,
+    new Set(savingsCategoryNames)
+  );
 
   return {
     transactions,
@@ -309,15 +313,22 @@ export async function fetchDashboardData(
   };
 }
 
-function computeMonthlyTotals(raw: RawTxn[]): MonthlyTotals {
+function computeMonthlyTotals(
+  raw: RawTxn[],
+  savingsCategoryNames: Set<string>
+): MonthlyTotals {
   let income = 0;
   let expense = 0;
   for (const t of raw) {
+    // Sejajar dengan reports/rincian: skip Saldo Awal & tabungan/investasi.
+    if (t.category === "Saldo Awal") continue;
     if (t.type === "income") {
       income += t.amount;
-    } else if (isExpenseTransaction(t)) {
-      expense += t.amount;
+      continue;
     }
+    if (!isExpenseTransaction(t)) continue;
+    if (isSavingsTransaction(t.category, savingsCategoryNames)) continue;
+    expense += t.amount;
   }
   return { income, expense };
 }
@@ -724,7 +735,10 @@ export async function fetchDashboardKPIData(
     .filter((c) => c.isSavings)
     .map((c) => c.name.toLowerCase());
 
-  const lastMonthTotals = computeMonthlyTotals(txLastMonthRaw);
+  const lastMonthTotals = computeMonthlyTotals(
+    txLastMonthRaw,
+    new Set(savingsCategoryNames)
+  );
 
   return {
     accounts,

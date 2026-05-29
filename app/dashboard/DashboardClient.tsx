@@ -24,6 +24,7 @@ import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isSavingsTransaction } from "@/lib/savings-utils";
 import { formatSignedIDR, formatTanggalID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
 import { measureTiming, checkThresholdBreach } from "@/lib/performance";
@@ -405,27 +406,38 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   const currentMonth = todayStr.slice(0, 7);
   const monthlyStats = useMemo(() => {
     const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
-    const income = inMonth
-      .filter((t) => t.type === "income")
-      .reduce((s, t) => s + t.amount, 0);
-    const expense = inMonth
-      .filter(isExpenseTransaction)
-      .reduce((s, t) => s + t.amount, 0);
+    let income = 0;
+    let expense = 0;
+    for (const t of inMonth) {
+      // Sejajar dengan reports/rincian: skip Saldo Awal & tabungan/investasi.
+      if (t.category === "Saldo Awal") continue;
+      if (t.type === "income") {
+        income += t.amount;
+        continue;
+      }
+      if (!isExpenseTransaction(t)) continue;
+      if (isSavingsTransaction(t.category, savingsCategoryNames)) continue;
+      expense += t.amount;
+    }
     const surplus = income - expense;
     const savingsRate = income > 0 ? (surplus / income) * 100 : 0;
     return { income, expense, surplus, savingsRate };
-  }, [transactions, currentMonth]);
+  }, [transactions, currentMonth, savingsCategoryNames]);
 
   const categoryBreakdown = useMemo(() => {
     const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
     const expenseByCat = new Map<string, number>();
     const incomeByCat = new Map<string, number>();
     for (const t of inMonth) {
-      if (isExpenseTransaction(t)) {
-        expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
-      } else if (t.type === "income") {
+      // Sejajar dengan reports/rincian: skip Saldo Awal & tabungan/investasi.
+      if (t.category === "Saldo Awal") continue;
+      if (t.type === "income") {
         incomeByCat.set(t.category, (incomeByCat.get(t.category) ?? 0) + t.amount);
+        continue;
       }
+      if (!isExpenseTransaction(t)) continue;
+      if (isSavingsTransaction(t.category, savingsCategoryNames)) continue;
+      expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
     }
     const toSorted = (m: Map<string, number>) =>
       Array.from(m, ([category, amount]) => ({ category, amount }))
@@ -436,7 +448,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       totalExpense: monthlyStats.expense,
       totalIncome: monthlyStats.income,
     };
-  }, [transactions, currentMonth, monthlyStats.expense, monthlyStats.income]);
+  }, [transactions, currentMonth, savingsCategoryNames, monthlyStats.expense, monthlyStats.income]);
 
   const runway = useMemo(() => {
     const liquid = accounts.reduce((sum, acc) => {
