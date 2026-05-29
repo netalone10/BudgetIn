@@ -11,6 +11,7 @@ import {
   type AccountData,
   type Transaction,
 } from "@/utils/sheets";
+import { isEquityTransaction } from "@/lib/transaction-classification";
 import { sanitizeErrorForProduction } from "@/lib/api-error";
 import { withCacheHeaders, withETag, handleConditionalRequest } from "@/lib/api-helpers";
 import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
@@ -73,9 +74,9 @@ function aggregateSheetsCashflow(
       tx.type === "expense" &&
       fromMatches &&
       !tx.toAccountId &&
-      tx.category !== "Saldo Awal";
+      !isEquityTransaction(tx);
 
-    const isPayment = toMatches && tx.category !== "Saldo Awal";
+    const isPayment = toMatches && !isEquityTransaction(tx);
 
     if (isSpend) totalSpend = totalSpend.plus(amount);
     if (isPayment) totalPayment = totalPayment.plus(amount);

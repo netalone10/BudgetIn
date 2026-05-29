@@ -10,7 +10,7 @@
  * Net surplus = totalIncome - totalExpense (tanpa tabungan), yang merupakan
  * sisa cash yang bisa dialokasikan ke tabungan / investasi / surplus bebas.
  */
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 
 export interface ReportTransactionLike {
@@ -53,7 +53,7 @@ export function aggregatePeriodReport(
   const expense = new Map<string, number>();
 
   for (const tx of transactions) {
-    if (tx.category === "Saldo Awal") continue;
+    if (isEquityTransaction(tx)) continue;
     const amt = Math.abs(Number(tx.amount) || 0);
     if (amt === 0) continue;
 
@@ -95,7 +95,7 @@ export function aggregateYearlyReport(
   const yearStr = String(year);
 
   for (const tx of transactions) {
-    if (tx.category === "Saldo Awal") continue;
+    if (isEquityTransaction(tx)) continue;
     if (!tx.date || tx.date.slice(0, 4) !== yearStr) continue;
     const month = parseInt(tx.date.slice(5, 7), 10) - 1;
     if (month < 0 || month > 11) continue;
@@ -136,4 +136,99 @@ export function daysBetween(fromIso: string, toIso: string): number {
   const to = new Date(toIso + "T00:00:00");
   const ms = to.getTime() - from.getTime();
   return Math.max(1, Math.round(ms / (24 * 60 * 60 * 1000)) + 1);
+}
+
+// ── Statement of Owner's Equity ───────────────────────────────────────────────
+
+export interface OwnerEquityMovements {
+  /** Laba bersih operasional = totalIncome − totalExpense (exclude savings & equity). */
+  netIncome: number;
+  /** Penarikan ke tabungan/investasi (withdrawal yang mengurangi ekuitas). */
+  withdrawals: number;
+  /** Penyesuaian ekuitas (Saldo Awal, Penyesuaian Saldo): income → +, expense → −. */
+  adjustments: number;
+}
+
+/**
+ * Hitung mutasi ekuitas dari aktivitas periode (asset-centric).
+ * `beginningEquity`/`endingEquity` dihitung otoritatif dari saldo as-of di caller;
+ * helper ini hanya memecah perubahan jadi komponen bernama.
+ */
+export function aggregateOwnerEquity(
+  transactions: ReportTransactionLike[],
+  savingsCategoryNames: Set<string>,
+): OwnerEquityMovements {
+  const { income, expense } = aggregatePeriodReport(transactions, savingsCategoryNames);
+  const netIncome = income.reduce((s, r) => s + r.amount, 0) - expense.reduce((s, r) => s + r.amount, 0);
+
+  let withdrawals = 0;
+  let adjustments = 0;
+  for (const tx of transactions) {
+    const amt = Math.abs(Number(tx.amount) || 0);
+    if (amt === 0) continue;
+
+    if (isEquityTransaction(tx)) {
+      adjustments += tx.type === "income" ? amt : -amt;
+      continue;
+    }
+    if (tx.type === "income") continue;
+    if (!isExpenseTransaction(tx)) continue;
+    if (isSavingsTransaction(tx.category, savingsCategoryNames)) {
+      withdrawals += amt;
+    }
+  }
+
+  return { netIncome, withdrawals, adjustments };
+}
+
+// ── Balance Sheet ─────────────────────────────────────────────────────────────
+
+export interface BalanceSheetAccount {
+  name: string;
+  classification: string; // "asset" | "liability"
+  balance: number;
+}
+
+export interface BalanceSheetData {
+  assets: CategoryRow[];
+  liabilities: CategoryRow[];
+  totalAssets: number;
+  totalLiabilities: number;
+  equity: number;
+}
+
+/**
+ * Susun neraca dari saldo per akun. Ekuitas = total aset − total liabilitas,
+ * konsisten dengan `calculateNetWorth` & ringkasan /api/accounts (kekayaan
+ * bersih): liabilitas dijumlah BERTANDA (bukan absolut) agar angka ekuitas
+ * cocok persis dengan "Kekayaan Bersih" di dashboard, dan identitas
+ * Aset = Liabilitas + Ekuitas selalu terpenuhi.
+ */
+export function buildBalanceSheet(accounts: BalanceSheetAccount[]): BalanceSheetData {
+  const assets: CategoryRow[] = [];
+  const liabilities: CategoryRow[] = [];
+  let totalAssets = 0;
+  let totalLiabilities = 0;
+
+  for (const acc of accounts) {
+    const bal = Number(acc.balance) || 0;
+    if (acc.classification === "liability") {
+      liabilities.push({ category: acc.name, amount: bal });
+      totalLiabilities += bal;
+    } else {
+      assets.push({ category: acc.name, amount: bal });
+      totalAssets += bal;
+    }
+  }
+
+  assets.sort(sumDesc);
+  liabilities.sort(sumDesc);
+
+  return {
+    assets,
+    liabilities,
+    totalAssets,
+    totalLiabilities,
+    equity: totalAssets - totalLiabilities,
+  };
 }

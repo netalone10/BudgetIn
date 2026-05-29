@@ -14,6 +14,27 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.13.0",
+    date: "2026-05-29",
+    title: "Laporan Keuangan lengkap & konsistensi akuntansi",
+    description: "Halaman Report kini menyajikan tiga laporan keuangan standar — Income Statement, Statement of Owner's Equity, dan Balance Sheet — di atas fondasi akuntansi yang konsisten: Aset − Liabilitas = Ekuitas. Angka pemasukan/pengeluaran disamakan di seluruh aplikasi, plus menyusulkan fitur lupa password dan welcome email.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.13.0`,
+    changes: [
+      "Menambahkan sub-menu Laporan Keuangan di halaman Report dengan switcher dua level: Income Statement (Laba Rugi), Statement of Owner's Equity (Perubahan Ekuitas), dan Balance Sheet (Neraca).",
+      "Statement of Owner's Equity menampilkan waterfall ekuitas: Modal Awal → + Laba Bersih → − Penarikan (tabungan/investasi) → ± Penyesuaian Ekuitas → Modal Akhir, lengkap dengan baris rekonsiliasi sehingga laporan selalu balance.",
+      "Balance Sheet menyajikan snapshot per tanggal (date picker) dengan kolom Aset vs Liabilitas + Ekuitas dan banner identitas Aset = Liabilitas + Ekuitas.",
+      "Ekuitas pada Balance Sheet dihitung konsisten dengan Kekayaan Bersih di dashboard (total aset − total liabilitas bertanda) sehingga angkanya cocok persis.",
+      "Menyamakan total Pemasukan & Pengeluaran di dashboard dengan halaman Report dan Rincian — setoran tabungan/investasi dan transaksi equity tidak lagi ikut terhitung sebagai pemasukan/pengeluaran.",
+      "Memperlakukan Saldo Awal dan Penyesuaian Saldo sebagai mutasi ekuitas murni (helper isEquityTransaction) — dikecualikan dari laba rugi secara konsisten di dashboard, report, rincian, analyst, dan cashflow.",
+      "Menambahkan saldo akun 'as of date' (getAccountBalancesAsOf) sebagai dasar perhitungan neraca dan ekuitas per periode.",
+      "Menambahkan fitur Lupa Password (forgot password flow) lengkap dengan email reset.",
+      "Mengirim welcome email otomatis saat pengguna pertama kali login via Google.",
+      "Meningkatkan perceived performance dengan klik instan di semua halaman.",
+      "Memperbaiki bug akun transfer yang tidak tersimpan saat mengedit transaksi.",
+    ],
+  },
+  {
     version: "v1.12.0",
     date: "2026-05-13",
     title: "Rincian Pemasukan & Pengeluaran per kategori",

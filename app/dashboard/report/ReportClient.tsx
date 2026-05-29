@@ -2,7 +2,15 @@
 
 import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
-import { Calendar, CalendarRange, Printer, Sparkles } from "lucide-react";
+import {
+  Calendar,
+  CalendarRange,
+  FileText,
+  Printer,
+  Scale,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +26,16 @@ const CustomRangeReport = dynamic(() => import("./CustomRangeReport"), {
 });
 
 const YearlyReport = dynamic(() => import("./YearlyReport"), {
+  ssr: false,
+  loading: () => <ReportSkeleton />,
+});
+
+const OwnerEquityReport = dynamic(() => import("./OwnerEquityReport"), {
+  ssr: false,
+  loading: () => <ReportSkeleton />,
+});
+
+const BalanceSheetReport = dynamic(() => import("./BalanceSheetReport"), {
   ssr: false,
   loading: () => <ReportSkeleton />,
 });
@@ -41,15 +59,29 @@ function ReportSkeleton() {
   );
 }
 
+type Statement = "income" | "equity" | "balance";
 type Variant = "monthly" | "custom" | "yearly";
 
-const TABS: { id: Variant; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+const STATEMENTS: { id: Statement; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "income", label: "Income Statement", icon: TrendingUp },
+  { id: "equity", label: "Owner's Equity", icon: FileText },
+  { id: "balance", label: "Balance Sheet", icon: Scale },
+];
+
+const VARIANTS: { id: Variant; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "monthly", label: "Bulanan", icon: Calendar },
   { id: "custom", label: "Custom Range", icon: CalendarRange },
   { id: "yearly", label: "Tahunan", icon: Sparkles },
 ];
 
+const STATEMENT_TITLE: Record<Statement, string> = {
+  income: "Income Statement (Laba Rugi)",
+  equity: "Statement of Owner's Equity (Perubahan Ekuitas)",
+  balance: "Balance Sheet (Neraca)",
+};
+
 export default function ReportClient() {
+  const [statement, setStatement] = useState<Statement>("income");
   const [variant, setVariant] = useState<Variant>("monthly");
   const [, startTransition] = useTransition();
 
@@ -57,16 +89,17 @@ export default function ReportClient() {
   // CSS akan menyembunyikan seluruh chrome aplikasi (sidebar, mobile
   // topbar, banner) dan hanya menampilkan #report-content.
   // Kelas `print-landscape` ikut diatur agar @page landscape aktif untuk
-  // varian Tahunan.
+  // Income Statement varian Tahunan.
+  const landscape = statement === "income" && variant === "yearly";
   useEffect(() => {
     const root = document.documentElement;
     root.classList.add("printing-report");
-    root.classList.toggle("print-landscape", variant === "yearly");
+    root.classList.toggle("print-landscape", landscape);
     return () => {
       root.classList.remove("printing-report");
       root.classList.remove("print-landscape");
     };
-  }, [variant]);
+  }, [landscape]);
 
   const handlePrint = () => {
     if (typeof window !== "undefined") window.print();
@@ -74,16 +107,17 @@ export default function ReportClient() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between print:hidden">
+      <div className="flex flex-col gap-3 print:hidden">
+        {/* Level 1 — jenis laporan keuangan */}
         <div className="flex flex-wrap gap-1.5 rounded-2xl border border-border bg-muted/30 p-1.5">
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = tab.id === variant;
+          {STATEMENTS.map((s) => {
+            const Icon = s.icon;
+            const active = s.id === statement;
             return (
               <button
-                key={tab.id}
+                key={s.id}
                 type="button"
-                onClick={() => startTransition(() => setVariant(tab.id))}
+                onClick={() => startTransition(() => setStatement(s.id))}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors",
                   active
@@ -93,15 +127,46 @@ export default function ReportClient() {
                 aria-pressed={active}
               >
                 <Icon className="size-4" />
-                {tab.label}
+                {s.label}
               </button>
             );
           })}
         </div>
 
-        <Button variant="outline" size="sm" onClick={handlePrint} className="h-9">
-          <Printer className="size-4 mr-2" /> Print / Simpan PDF
-        </Button>
+        {/* Level 2 — periode (khusus Income Statement) + tombol print */}
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          {statement === "income" ? (
+            <div className="flex flex-wrap gap-1.5 rounded-2xl border border-border bg-muted/30 p-1.5">
+              {VARIANTS.map((tab) => {
+                const Icon = tab.icon;
+                const active = tab.id === variant;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => startTransition(() => setVariant(tab.id))}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                    aria-pressed={active}
+                  >
+                    <Icon className="size-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div />
+          )}
+
+          <Button variant="outline" size="sm" onClick={handlePrint} className="h-9">
+            <Printer className="size-4 mr-2" /> Print / Simpan PDF
+          </Button>
+        </div>
       </div>
 
       <div id="report-content" className="bg-background p-2 rounded-3xl print:p-0 print:bg-white">
@@ -110,11 +175,7 @@ export default function ReportClient() {
           <div className="flex items-end justify-between">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-black/60">BudgetIn — Laporan Keuangan</p>
-              <p className="text-base font-bold text-black">
-                {variant === "monthly" && "Laporan Bulanan"}
-                {variant === "custom" && "Laporan Custom Range"}
-                {variant === "yearly" && "Laporan Tahunan"}
-              </p>
+              <p className="text-base font-bold text-black">{STATEMENT_TITLE[statement]}</p>
             </div>
             <p className="text-[10px] text-black/60">
               Dicetak {new Date().toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" })}
@@ -122,13 +183,15 @@ export default function ReportClient() {
           </div>
         </div>
 
-        {variant === "monthly" && <MonthlyReport />}
-        {variant === "custom" && <CustomRangeReport />}
-        {variant === "yearly" && <YearlyReport />}
+        {statement === "income" && variant === "monthly" && <MonthlyReport />}
+        {statement === "income" && variant === "custom" && <CustomRangeReport />}
+        {statement === "income" && variant === "yearly" && <YearlyReport />}
+        {statement === "equity" && <OwnerEquityReport />}
+        {statement === "balance" && <BalanceSheetReport />}
 
         {/* Print-only footer */}
         <div className="hidden print:block mt-6 pt-3 border-t border-black/30 text-[9px] text-black/50 text-center">
-          BudgetIn · {variant === "monthly" && "Laporan Bulanan"}{variant === "custom" && "Laporan Custom Range"}{variant === "yearly" && "Laporan Tahunan"} · Halaman ini di-generate otomatis
+          BudgetIn · {STATEMENT_TITLE[statement]} · Halaman ini di-generate otomatis
         </div>
       </div>
     </>

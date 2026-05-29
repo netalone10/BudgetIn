@@ -17,3 +17,19 @@ export function isTransferTransaction(tx: TransactionLike): boolean {
 export function isExpenseTransaction(tx: TransactionLike): boolean {
   return tx.type !== "income" && !isTransferTransaction(tx);
 }
+
+/**
+ * Kategori transaksi yang murni menyesuaikan Equity (saldo akun), BUKAN
+ * aktivitas operasional. Secara akuntansi: Assets − Liabilities = Equity, dan
+ * transaksi-transaksi ini langsung memengaruhi Equity tanpa melewati
+ * Income/Expense. Tetap diikutsertakan saat menghitung saldo akun, tetapi
+ * WAJIB di-skip dari total pemasukan/pengeluaran di semua laporan.
+ *
+ *   - "Saldo Awal"        → seeding saldo awal akun
+ *   - "Penyesuaian Saldo" → koreksi/adjustment saldo manual
+ */
+export const EQUITY_CATEGORIES = new Set(["Saldo Awal", "Penyesuaian Saldo"]);
+
+export function isEquityTransaction(tx: TransactionLike): boolean {
+  return !!tx.category && EQUITY_CATEGORIES.has(tx.category);
+}

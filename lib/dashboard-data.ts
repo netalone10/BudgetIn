@@ -14,7 +14,7 @@ import { getFullSheetsLedger, getAccountsWithComputedBalance } from "@/lib/sheet
 import { computeAccountBalancesFromTx } from "@/utils/sheets-ledger";
 import { getAccountBalances } from "@/utils/account-balance";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { compareTransactionDateTimeDesc, normalizeTransactionTime } from "@/lib/transaction-time";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
@@ -320,8 +320,8 @@ function computeMonthlyTotals(
   let income = 0;
   let expense = 0;
   for (const t of raw) {
-    // Sejajar dengan reports/rincian: skip Saldo Awal & tabungan/investasi.
-    if (t.category === "Saldo Awal") continue;
+    // Sejajar dengan reports/rincian: skip transaksi equity & tabungan/investasi.
+    if (isEquityTransaction(t)) continue;
     if (t.type === "income") {
       income += t.amount;
       continue;

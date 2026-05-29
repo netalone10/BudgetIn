@@ -9,7 +9,7 @@
  *   - spentByCategory tidak menyertakan kategori tabungan (agar tidak muncul
  *     di topExpenses / categoryPercentages / over-budget anomalies)
  */
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 
 export interface AnalystTransactionLike {
@@ -38,7 +38,7 @@ export interface AnalystMetrics {
 /**
  * Computes deterministic metrics from a list of transactions.
  * Caller must supply lowercased savings category names (from categories where isSavings=true).
- * Saldo Awal transactions are skipped entirely.
+ * Equity transactions (Saldo Awal, Penyesuaian Saldo) are skipped entirely.
  */
 export function computeAnalystMetrics(
   transactions: AnalystTransactionLike[],
@@ -53,7 +53,7 @@ export function computeAnalystMetrics(
   const expenseDates = new Set<string>();
 
   for (const t of transactions) {
-    if (t.category === "Saldo Awal") continue;
+    if (isEquityTransaction(t)) continue;
     if (t.type === "income") {
       totalIncome += t.amount;
       continue;

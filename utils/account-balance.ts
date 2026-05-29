@@ -90,6 +90,85 @@ export async function getAccountBalances(userId: string): Promise<AccountWithBal
   });
 }
 
+/**
+ * Sama seperti getAccountBalances, tetapi saldo dihitung hanya dari transaksi
+ * dengan `date <= asOf` (inklusif). Tanpa `asOf`, identik dengan all-time.
+ * Dipakai untuk Balance Sheet & Statement of Owner's Equity (snapshot per tanggal).
+ */
+export async function getAccountBalancesAsOf(
+  userId: string,
+  asOf?: string
+): Promise<AccountWithBalance[]> {
+  const [accounts, aggregates] = await Promise.all([
+    prisma.account.findMany({
+      where: { userId, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        currency: true,
+        color: true,
+        note: true,
+        icon: true,
+        isActive: true,
+        initialBalance: true,
+        createdAt: true,
+        updatedAt: true,
+        userId: true,
+        accountTypeId: true,
+        tanggalSettlement: true,
+        tanggalJatuhTempo: true,
+        accountType: {
+          select: {
+            id: true,
+            name: true,
+            classification: true,
+            icon: true,
+            color: true,
+            sortOrder: true,
+            isActive: true,
+            userId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+      orderBy: [
+        { accountType: { sortOrder: "asc" } },
+        { createdAt: "asc" },
+      ],
+    }),
+    prisma.transaction.groupBy({
+      by: ["accountId", "type"],
+      where: {
+        userId,
+        accountId: { not: null },
+        ...(asOf ? { date: { lte: asOf } } : {}),
+      },
+      _sum: { amount: true },
+      _count: true,
+    }),
+  ]);
+
+  return accounts.map((acc) => {
+    let balance = new Decimal(0);
+    let count = 0;
+
+    for (const agg of aggregates) {
+      if (agg.accountId !== acc.id) continue;
+      const sum = new Decimal(agg._sum.amount?.toString() ?? "0");
+      count += agg._count;
+
+      if (agg.type === "income" || agg.type === "transfer_in") {
+        balance = balance.plus(sum);
+      } else if (agg.type === "expense" || agg.type === "transfer_out") {
+        balance = balance.minus(sum);
+      }
+    }
+
+    return { ...acc, currentBalance: balance, transactionCount: count };
+  });
+}
+
 export function calculateNetWorth(accounts: AccountWithBalance[]): NetWorthSummary {
   let assets = new Decimal(0);
   let liabilities = new Decimal(0);

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { formatSignedIDR, formatTanggalID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
@@ -409,8 +409,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     let income = 0;
     let expense = 0;
     for (const t of inMonth) {
-      // Sejajar dengan reports/rincian: skip Saldo Awal & tabungan/investasi.
-      if (t.category === "Saldo Awal") continue;
+      // Sejajar dengan reports/rincian: skip transaksi equity & tabungan/investasi.
+      if (isEquityTransaction(t)) continue;
       if (t.type === "income") {
         income += t.amount;
         continue;
@@ -429,8 +429,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     const expenseByCat = new Map<string, number>();
     const incomeByCat = new Map<string, number>();
     for (const t of inMonth) {
-      // Sejajar dengan reports/rincian: skip Saldo Awal & tabungan/investasi.
-      if (t.category === "Saldo Awal") continue;
+      // Sejajar dengan reports/rincian: skip transaksi equity & tabungan/investasi.
+      if (isEquityTransaction(t)) continue;
       if (t.type === "income") {
         incomeByCat.set(t.category, (incomeByCat.get(t.category) ?? 0) + t.amount);
         continue;

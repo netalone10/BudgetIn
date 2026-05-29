@@ -2,6 +2,28 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.13.0] — 2026-05-29
+
+### Added
+- **Laporan Keuangan lengkap** di `/dashboard/report` dengan switcher dua level (jenis laporan × periode):
+  - **Income Statement (Laba Rugi)** — laporan existing (Bulanan / Custom / Tahunan), kini dikelompokkan di bawah menu jenis laporan.
+  - **Statement of Owner's Equity (Perubahan Ekuitas)** — waterfall `Modal Awal + Laba Bersih − Penarikan (tabungan/investasi) ± Penyesuaian Ekuitas = Modal Akhir`, dengan baris rekonsiliasi agar selalu balance.
+  - **Balance Sheet (Neraca)** — snapshot per tanggal (date picker), kolom Aset vs Liabilitas + Ekuitas, dan banner identitas `Aset = Liabilitas + Ekuitas`.
+- Helper murni `aggregateOwnerEquity()` & `buildBalanceSheet()` di `lib/report-data.ts`, plus `getAccountBalancesAsOf()` di `utils/account-balance.ts` untuk saldo per tanggal.
+- Mode API baru pada `/api/report`: `equity` dan `balance` (reuse perhitungan saldo/net worth existing untuk jalur DB & Google Sheets).
+- **Lupa Password (forgot password flow)** lengkap dengan email reset.
+- **Welcome email** otomatis saat pengguna pertama kali login via Google.
+
+### Changed
+- Menyamakan total Pemasukan & Pengeluaran di dashboard dengan halaman Report & Rincian — setoran tabungan/investasi dan transaksi equity tidak lagi terhitung sebagai pemasukan/pengeluaran.
+- Saldo Awal dan Penyesuaian Saldo diperlakukan sebagai mutasi ekuitas murni via helper `isEquityTransaction` — dikecualikan dari laba rugi secara konsisten di dashboard, report, rincian, analyst, dan cashflow.
+- Ekuitas pada Balance Sheet dihitung `total aset − total liabilitas (bertanda)` agar konsisten dengan Kekayaan Bersih di dashboard dan `/api/accounts`.
+- Perceived performance: klik instan di semua halaman.
+
+### Fixed
+- Akun transfer tidak tersimpan saat mengedit transaksi (EditModal account reset fallback).
+- Duplikasi `emitDataChanged` pada kartu transaksi terbaru.
+
 ## [1.12.0] — 2026-05-13
 
 ### Added

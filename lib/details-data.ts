@@ -3,11 +3,12 @@
  *
  * `aggregateDetails` mengelompokkan transaksi per kategori menjadi `incomeGroups`
  * dan `expenseGroups` dengan rule eksklusi yang sama dengan `aggregatePeriodReport`
- * di `lib/report-data.ts` (Saldo Awal, transfer principal, savings categories
- * di-skip), tetapi juga menyimpan list transaksi mentah per kategori sehingga
- * UI dapat melakukan drill-down ke level transaksi.
+ * di `lib/report-data.ts` (transaksi equity seperti Saldo Awal & Penyesuaian
+ * Saldo, transfer principal, savings categories di-skip), tetapi juga menyimpan
+ * list transaksi mentah per kategori sehingga UI dapat melakukan drill-down ke
+ * level transaksi.
  */
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { compareTransactionDateTimeDesc } from "@/lib/transaction-time";
 import type { ReportTransactionLike } from "@/lib/report-data";
@@ -78,7 +79,7 @@ export function aggregateDetails(
   let expenseTotal = 0;
 
   for (const tx of transactions) {
-    if (tx.category === "Saldo Awal") continue;
+    if (isEquityTransaction(tx)) continue;
     const amt = Math.abs(Number(tx.amount) || 0);
     if (amt === 0) continue;
 
