@@ -2,6 +2,15 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.13.1] — 2026-05-30
+
+### Fixed
+- **Konsistensi label surplus/defisit.** Dashboard dan Analyst sekarang menampilkan "defisit" saat nilai negatif, bukan tetap "surplus". Report sudah benar sebelumnya.
+- **Trend label terpotong di mobile.** KPICard trend text sekarang wrap 2 baris (`line-clamp-2`) instead of terpotong (`truncate`).
+- **Dashboard `Math.abs` amount.** Samakan dengan Report — semua perhitungan expense/income di Dashboard pakai `Math.abs(t.amount)` agar konsisten kalau ada transaksi amount negatif.
+- **Filter "Hari ini" dan "Kemarin" di Google Sheets.** `sheets.ts` tidak punya handler untuk kedua period ini — fallback return semua data. Sekarang difilter dengan benar.
+- **`isEquityTransaction` di Dashboard & Transaksi client-side.** Samakan dengan Report — catch "Saldo Awal" dan "Penyesuaian Saldo".
+
 ## [1.13.0] — 2026-05-29
 
 ### Added

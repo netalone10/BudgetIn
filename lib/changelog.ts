@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.13.1",
+    date: "2026-05-30",
+    title: "Konsistensi angka & label antar halaman",
+    description: "Perbaikan bug di mana Dashboard menampilkan angka berbeda dari Report/Rincian karena perbedaan kalkulasi Math.abs, isEquityTransaction, dan filter period Sheets. Plus perbaikan label surplus/defisit dan text terpotong di mobile.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.13.1`,
+    changes: [
+      "Dashboard dan Analyst sekarang menampilkan 'defisit' saat nilai negatif, bukan tetap 'surplus'.",
+      "KPICard trend text sekarang wrap 2 baris (line-clamp-2) agar tidak terpotong di mobile.",
+      "Samakan Dashboard dengan Report: semua perhitungan pakai Math.abs(t.amount) dan isEquityTransaction.",
+      "Tambah handler 'hari ini' dan 'kemarin' di sheets.ts — sebelumnya fallback return semua data.",
+    ],
+  },
+  {
     version: "v1.13.0",
     date: "2026-05-29",
     title: "Laporan Keuangan lengkap & konsistensi akuntansi",

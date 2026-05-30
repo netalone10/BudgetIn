@@ -447,7 +447,7 @@ export default function AIAnalystPage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Surplus Bersih</span>
+                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{report.netSurplusRate >= 0 ? "Surplus Bersih" : "Defisit Bersih"}</span>
                       <div
                         className={cn(
                           "text-2xl font-bold tabular-nums",
