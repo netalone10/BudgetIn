@@ -9,7 +9,7 @@ import TransactionCard, {
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import { useDataEvent, emitDataChanged } from "@/lib/data-events";
 import { useApi } from "@/lib/hooks/use-api";
-import { isExpenseTransaction, isTransferTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isTransferTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { cn } from "@/lib/utils";
 
@@ -110,12 +110,12 @@ export default function TransactionsClient() {
     const q = searchQuery.trim().toLowerCase();
     return transactions.filter((t) => {
       if (typeFilter === "expense") {
-        if (t.category === "Saldo Awal") return false;
+        if (isEquityTransaction(t)) return false;
         if (!t.amount) return false;
         if (!isExpenseTransaction(t)) return false;
         if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
       } else if (typeFilter === "income") {
-        if (t.category === "Saldo Awal") return false;
+        if (isEquityTransaction(t)) return false;
         if (!t.amount) return false;
         if (t.type !== "income") return false;
       } else if (typeFilter === "transfer") {

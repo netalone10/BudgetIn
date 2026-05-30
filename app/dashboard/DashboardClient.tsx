@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
-import { isExpenseTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { formatSignedIDR, formatTanggalID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
@@ -395,14 +395,14 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   const todayStats = useMemo(() => {
     const todayTxs = transactions.filter((t) => t.date === todayStr);
     const expenseTxs = todayTxs.filter((t) => {
-      if (t.category === "Saldo Awal") return false;
+      if (isEquityTransaction(t)) return false;
       if (!t.amount) return false;
       if (!isExpenseTransaction(t)) return false;
       if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
       return true;
     });
     const incomeTxs = todayTxs.filter(
-      (t) => t.type === "income" && t.category !== "Saldo Awal" && t.amount
+      (t) => t.type === "income" && !isEquityTransaction(t) && t.amount
     );
     const expense = expenseTxs.reduce((s, t) => s + t.amount, 0);
     const income = incomeTxs.reduce((s, t) => s + t.amount, 0);
@@ -415,11 +415,11 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   const monthlyStats = useMemo(() => {
     const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
     const income = inMonth
-      .filter((t) => t.type === "income" && t.category !== "Saldo Awal" && t.amount)
+      .filter((t) => t.type === "income" && !isEquityTransaction(t) && t.amount)
       .reduce((s, t) => s + t.amount, 0);
     const expense = inMonth
       .filter((t) => {
-        if (t.category === "Saldo Awal") return false;
+        if (isEquityTransaction(t)) return false;
         if (!t.amount) return false;
         if (!isExpenseTransaction(t)) return false;
         if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
@@ -436,7 +436,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     const expenseByCat = new Map<string, number>();
     const incomeByCat = new Map<string, number>();
     for (const t of inMonth) {
-      if (t.category === "Saldo Awal" || !t.amount) continue;
+      if (isEquityTransaction(t) || !t.amount) continue;
       if (isExpenseTransaction(t) && !isSavingsTransaction(t.category, savingsCategoryNames)) {
         expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
       } else if (t.type === "income") {
