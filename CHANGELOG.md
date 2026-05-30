@@ -23,6 +23,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 ### Fixed
 - Akun transfer tidak tersimpan saat mengedit transaksi (EditModal account reset fallback).
 - Duplikasi `emitDataChanged` pada kartu transaksi terbaru.
+- Filter "Minggu ini" di Google Sheets sekarang pakai Monday-Sunday calendar week (sama dengan DB). Sebelumnya Sheets user melihat rolling 7 hari terakhir.
 
 ## [1.12.0] — 2026-05-13
 

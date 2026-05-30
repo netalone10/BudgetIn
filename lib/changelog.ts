@@ -32,6 +32,7 @@ export const changelogItems: ChangelogItem[] = [
       "Mengirim welcome email otomatis saat pengguna pertama kali login via Google.",
       "Meningkatkan perceived performance dengan klik instan di semua halaman.",
       "Memperbaiki bug akun transfer yang tidak tersimpan saat mengedit transaksi.",
+      "Filter \"Minggu ini\" di Google Sheets sekarang pakai Monday-Sunday calendar week (sama dengan DB). Sebelumnya Sheets user melihat rolling 7 hari terakhir.",
     ],
   },
   {
