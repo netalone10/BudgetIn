@@ -263,6 +263,15 @@ export async function getTransactions(
     const sundayStr = format(sunday, "yyyy-MM-dd");
     return transactions.filter((t) => t.date >= mondayStr && t.date <= sundayStr);
   }
+  if (period === "hari ini" || period === "today") {
+    return transactions.filter((t) => t.date === todayStr);
+  }
+  if (period === "kemarin" || period === "yesterday") {
+    const yesterday = new Date(jakartaNow);
+    yesterday.setDate(jakartaNow.getDate() - 1);
+    const yesterdayStr = format(yesterday, "yyyy-MM-dd");
+    return transactions.filter((t) => t.date === yesterdayStr);
+  }
   if (/^\d{4}-\d{2}$/.test(period)) {
     return transactions.filter((t) => t.date.startsWith(period));
   }
