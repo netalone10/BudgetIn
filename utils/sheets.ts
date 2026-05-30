@@ -252,11 +252,16 @@ export async function getTransactions(
     return transactions.filter((t) => t.date.startsWith(lastMonth));
   }
   if (period === "minggu ini") {
-    const weekAgo = format(
-      new Date(jakartaNow.getTime() - 7 * 24 * 60 * 60 * 1000),
-      "yyyy-MM-dd"
-    );
-    return transactions.filter((t) => t.date >= weekAgo && t.date <= todayStr);
+    // Calendar week: Monday–Sunday (matches DB version in utils/db-transactions.ts)
+    const day = jakartaNow.getDay(); // 0=Sun, 1=Mon, ...
+    const mondayOffset = (day + 6) % 7; // days since Monday
+    const monday = new Date(jakartaNow);
+    monday.setDate(jakartaNow.getDate() - mondayOffset);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const mondayStr = format(monday, "yyyy-MM-dd");
+    const sundayStr = format(sunday, "yyyy-MM-dd");
+    return transactions.filter((t) => t.date >= mondayStr && t.date <= sundayStr);
   }
   if (/^\d{4}-\d{2}$/.test(period)) {
     return transactions.filter((t) => t.date.startsWith(period));

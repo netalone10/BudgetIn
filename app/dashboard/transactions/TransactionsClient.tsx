@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/dashboard/SectionCard";
 import { useDataEvent, emitDataChanged } from "@/lib/data-events";
 import { useApi } from "@/lib/hooks/use-api";
 import { isExpenseTransaction, isTransferTransaction } from "@/lib/transaction-classification";
+import { isSavingsTransaction } from "@/lib/savings-utils";
 import { cn } from "@/lib/utils";
 
 type Period = "today" | "week" | "month" | "lastMonth" | "custom";
@@ -49,8 +50,15 @@ export default function TransactionsClient() {
   const { data: accountsData } = useApi<{ accounts: Account[] }>("/api/accounts");
   const accounts = accountsData?.accounts ?? [];
 
-  const { data: categoriesData } = useApi<{ categories: { name: string; type: string }[] }>("/api/categories");
+  const { data: categoriesData } = useApi<{ categories: { name: string; type: string; isSavings?: boolean }[] }>("/api/categories");
   const categories: TransactionCategory[] = (categoriesData?.categories ?? []).map(c => ({ name: c.name, type: c.type }));
+  const savingsCategoryNames = useMemo(() => {
+    return new Set(
+      (categoriesData?.categories ?? [])
+        .filter((c) => c.isSavings)
+        .map((c) => c.name.toLowerCase())
+    );
+  }, [categoriesData]);
 
   const fetchTransactions = useCallback(
     async (signal?: AbortSignal) => {
@@ -101,9 +109,18 @@ export default function TransactionsClient() {
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return transactions.filter((t) => {
-      if (typeFilter === "expense" && !isExpenseTransaction(t)) return false;
-      if (typeFilter === "income" && t.type !== "income") return false;
-      if (typeFilter === "transfer" && !isTransferTransaction(t)) return false;
+      if (typeFilter === "expense") {
+        if (t.category === "Saldo Awal") return false;
+        if (!t.amount) return false;
+        if (!isExpenseTransaction(t)) return false;
+        if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
+      } else if (typeFilter === "income") {
+        if (t.category === "Saldo Awal") return false;
+        if (!t.amount) return false;
+        if (t.type !== "income") return false;
+      } else if (typeFilter === "transfer") {
+        if (!isTransferTransaction(t)) return false;
+      }
       if (categoryFilter && t.category !== categoryFilter) return false;
       if (accountFilter) {
         const matchAccount =
@@ -118,7 +135,7 @@ export default function TransactionsClient() {
       }
       return true;
     });
-  }, [transactions, typeFilter, categoryFilter, accountFilter, searchQuery]);
+  }, [transactions, typeFilter, categoryFilter, accountFilter, searchQuery, savingsCategoryNames]);
 
   const categoryOptions = useMemo(() => {
     const set = new Set<string>();

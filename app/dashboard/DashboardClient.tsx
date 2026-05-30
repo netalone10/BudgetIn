@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
-import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
+import { isExpenseTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { formatSignedIDR, formatTanggalID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
@@ -394,31 +394,38 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
   const todayStats = useMemo(() => {
     const todayTxs = transactions.filter((t) => t.date === todayStr);
-    const expenseTxs = todayTxs.filter(isExpenseTransaction);
-    const incomeTxs = todayTxs.filter((t) => t.type === "income");
+    const expenseTxs = todayTxs.filter((t) => {
+      if (t.category === "Saldo Awal") return false;
+      if (!t.amount) return false;
+      if (!isExpenseTransaction(t)) return false;
+      if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
+      return true;
+    });
+    const incomeTxs = todayTxs.filter(
+      (t) => t.type === "income" && t.category !== "Saldo Awal" && t.amount
+    );
     const expense = expenseTxs.reduce((s, t) => s + t.amount, 0);
     const income = incomeTxs.reduce((s, t) => s + t.amount, 0);
     const count = expenseTxs.length;
     const incomeCount = incomeTxs.length;
     return { expense, income, count, incomeCount };
-  }, [transactions, todayStr]);
+  }, [transactions, todayStr, savingsCategoryNames]);
 
   const currentMonth = todayStr.slice(0, 7);
   const monthlyStats = useMemo(() => {
     const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
-    let income = 0;
-    let expense = 0;
-    for (const t of inMonth) {
-      // Sejajar dengan reports/rincian: skip transaksi equity & tabungan/investasi.
-      if (isEquityTransaction(t)) continue;
-      if (t.type === "income") {
-        income += t.amount;
-        continue;
-      }
-      if (!isExpenseTransaction(t)) continue;
-      if (isSavingsTransaction(t.category, savingsCategoryNames)) continue;
-      expense += t.amount;
-    }
+    const income = inMonth
+      .filter((t) => t.type === "income" && t.category !== "Saldo Awal" && t.amount)
+      .reduce((s, t) => s + t.amount, 0);
+    const expense = inMonth
+      .filter((t) => {
+        if (t.category === "Saldo Awal") return false;
+        if (!t.amount) return false;
+        if (!isExpenseTransaction(t)) return false;
+        if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
+        return true;
+      })
+      .reduce((s, t) => s + t.amount, 0);
     const surplus = income - expense;
     const savingsRate = income > 0 ? (surplus / income) * 100 : 0;
     return { income, expense, surplus, savingsRate };
@@ -429,15 +436,12 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     const expenseByCat = new Map<string, number>();
     const incomeByCat = new Map<string, number>();
     for (const t of inMonth) {
-      // Sejajar dengan reports/rincian: skip transaksi equity & tabungan/investasi.
-      if (isEquityTransaction(t)) continue;
-      if (t.type === "income") {
+      if (t.category === "Saldo Awal" || !t.amount) continue;
+      if (isExpenseTransaction(t) && !isSavingsTransaction(t.category, savingsCategoryNames)) {
+        expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
+      } else if (t.type === "income") {
         incomeByCat.set(t.category, (incomeByCat.get(t.category) ?? 0) + t.amount);
-        continue;
       }
-      if (!isExpenseTransaction(t)) continue;
-      if (isSavingsTransaction(t.category, savingsCategoryNames)) continue;
-      expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
     }
     const toSorted = (m: Map<string, number>) =>
       Array.from(m, ([category, amount]) => ({ category, amount }))
@@ -448,7 +452,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       totalExpense: monthlyStats.expense,
       totalIncome: monthlyStats.income,
     };
-  }, [transactions, currentMonth, savingsCategoryNames, monthlyStats.expense, monthlyStats.income]);
+  }, [transactions, currentMonth, monthlyStats.expense, monthlyStats.income, savingsCategoryNames]);
 
   const runway = useMemo(() => {
     const liquid = accounts.reduce((sum, acc) => {
