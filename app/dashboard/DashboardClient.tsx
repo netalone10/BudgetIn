@@ -404,8 +404,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     const incomeTxs = todayTxs.filter(
       (t) => t.type === "income" && !isEquityTransaction(t) && t.amount
     );
-    const expense = expenseTxs.reduce((s, t) => s + t.amount, 0);
-    const income = incomeTxs.reduce((s, t) => s + t.amount, 0);
+    const expense = expenseTxs.reduce((s, t) => s + Math.abs(t.amount), 0);
+    const income = incomeTxs.reduce((s, t) => s + Math.abs(t.amount), 0);
     const count = expenseTxs.length;
     const incomeCount = incomeTxs.length;
     return { expense, income, count, incomeCount };
@@ -416,7 +416,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
     const income = inMonth
       .filter((t) => t.type === "income" && !isEquityTransaction(t) && t.amount)
-      .reduce((s, t) => s + t.amount, 0);
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
     const expense = inMonth
       .filter((t) => {
         if (isEquityTransaction(t)) return false;
@@ -425,7 +425,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
         if (isSavingsTransaction(t.category, savingsCategoryNames)) return false;
         return true;
       })
-      .reduce((s, t) => s + t.amount, 0);
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
     const surplus = income - expense;
     const savingsRate = income > 0 ? (surplus / income) * 100 : 0;
     return { income, expense, surplus, savingsRate };
@@ -438,9 +438,9 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     for (const t of inMonth) {
       if (isEquityTransaction(t) || !t.amount) continue;
       if (isExpenseTransaction(t) && !isSavingsTransaction(t.category, savingsCategoryNames)) {
-        expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + t.amount);
+        expenseByCat.set(t.category, (expenseByCat.get(t.category) ?? 0) + Math.abs(t.amount));
       } else if (t.type === "income") {
-        incomeByCat.set(t.category, (incomeByCat.get(t.category) ?? 0) + t.amount);
+        incomeByCat.set(t.category, (incomeByCat.get(t.category) ?? 0) + Math.abs(t.amount));
       }
     }
     const toSorted = (m: Map<string, number>) =>
