@@ -84,7 +84,7 @@ export default function KPICard({
           )}
         >
           {trend?.icon}
-          <span className="truncate">{trendLabel ?? trend?.label}</span>
+          <span className="line-clamp-2">{trendLabel ?? trend?.label}</span>
         </div>
       )}
     </div>

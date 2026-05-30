@@ -964,7 +964,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             label="Savings Rate"
             value={monthlyStats.savingsRate}
             suffix="%"
-            trendLabel={`${formatSignedIDR(monthlyStats.surplus, "+")} surplus bulan ini`}
+            trendLabel={`${formatSignedIDR(monthlyStats.surplus, "+")} ${monthlyStats.surplus >= 0 ? "surplus" : "defisit"} bulan ini`}
           />
         </div>
       )}
