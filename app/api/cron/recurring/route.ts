@@ -57,16 +57,21 @@ export async function GET(request: NextRequest) {
   }
 
   // ── 2. Auto-record ────────────────────────────────────────────────────────────
-  const itemsDueToday = await prisma.recurringTransaction.findMany({
+  // Tangkap item yang jatuh tempo hari ini ATAU sudah lewat (overdue). Tanpa ini,
+  // item yang due date-nya terlewat (mis. cron gagal sehari, atau due sebelum
+  // di-deploy) tidak pernah tertangkap lagi dan jadi terlantar — tidak pernah
+  // tercatat. runRecurringOccurrence mencatat satu occurrence lalu memajukan
+  // nextDueDate, jadi aman dari pencatatan ganda.
+  const itemsDue = await prisma.recurringTransaction.findMany({
     where: {
       isActive: true,
-      nextDueDate: { gte: today, lt: addDays(today, 1) },
+      nextDueDate: { lt: addDays(today, 1) },
       OR: [{ endDate: null }, { endDate: { gte: today } }],
     },
     select: { id: true, user: { select: { email: true } } },
   });
 
-  for (const { id, user } of itemsDueToday) {
+  for (const { id, user } of itemsDue) {
     try {
       const result = await runRecurringOccurrence(id, today);
       if (!result.ok) {

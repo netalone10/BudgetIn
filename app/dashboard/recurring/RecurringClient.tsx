@@ -55,7 +55,12 @@ export default function RecurringClient() {
         fetch("/api/recurring"),
         fetch(`/api/recurring/summary?period=${format(new Date(), "yyyy-MM")}`),
       ]);
-      if (itemsRes.ok) setItems(await itemsRes.json());
+      if (itemsRes.ok) {
+        // /api/recurring mengembalikan { data, pagination }. Toleransi juga
+        // bentuk array lama agar tidak crash ("items.filter is not a function").
+        const json = await itemsRes.json();
+        setItems(Array.isArray(json) ? json : (json?.data ?? []));
+      }
       if (summaryRes.ok) setSummary(await summaryRes.json());
     } finally {
       setLoading(false);
