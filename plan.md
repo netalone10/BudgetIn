@@ -71,24 +71,21 @@ Dokumen ini adalah working plan konkret — bukan dokumen strategis seperti ROAD
 
 ---
 
-### C1 — Export CSV Transaksi `[P1]`
+### C1 — Export CSV Transaksi `[P1]`  ✅ SELESAI (2026-06-01)
 
 **Problem**: User tidak bisa download transaksi untuk arsip atau pelaporan eksternal.
 
-**Scope**:
-- Tambah endpoint `GET /api/export/csv?period=...`
-- Export mencerminkan angka yang sama dengan dashboard (transfer excluded dari expense)
-- Batasi maksimal 1000 baris per export
-- Tambah tombol di halaman transaksi atau report
-
-**File yang terpengaruh**:
-- `app/api/export/csv/route.ts` — buat baru
-- `app/dashboard/transactions/page.tsx` — tambah tombol export
-- `lib/transaction-classification.ts` — reuse classifier
+**Implementasi**:
+- `lib/csv.ts` — utilitas CSV pure (escape RFC 4180, BOM UTF-8, builder transaksi) + `lib/__tests__/csv.test.ts` (16 kasus)
+- `app/api/export/csv/route.ts` — `GET /api/export/csv?period=...&from=...&to=...`, auth per-session, cap 5000 baris, header `text/csv` + `Content-Disposition` attachment. Mendukung DB user (resolve nama akun via prisma) & Sheets user (token + nama akun dari ledger). Periode memakai parser yang sama dengan `/api/record`.
+- `app/dashboard/transactions/TransactionsClient.tsx` — tombol "Export CSV" di header; export mengikuti periode aktif (bukan filter client, sehingga tidak terbatas 200 baris tampilan).
 
 **Kriteria selesai**:
-- File CSV bisa didownload dan dibuka di Excel/Google Sheets
-- Tidak ada data user lain yang ikut
+- ✅ File CSV bisa didownload (kolom: Tanggal, Waktu, Tipe, Kategori, Nominal, Akun, Akun Tujuan, Catatan); BOM UTF-8 agar rapi di Excel
+- ✅ Hanya transaksi milik session user (query selalu di-scope `userId`)
+- ✅ Nominal angka mentah; transfer ditandai eksplisit lewat kolom Tipe
+
+**Catatan**: Export per-periode menulis semua baris transaksi (termasuk transfer & equity) apa adanya — bukan agregat. Kolom Tipe membedakannya, jadi tidak ada angka menyesatkan.
 
 ---
 

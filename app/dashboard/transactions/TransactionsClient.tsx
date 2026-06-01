@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Download, Search, X } from "lucide-react";
 import TransactionCard, {
   type Transaction,
   type TransactionCategory,
@@ -159,6 +159,31 @@ export default function TransactionsClient() {
     emitDataChanged(["transactions", "budget", "accounts"]);
   }
 
+  /** Bangun URL export CSV untuk periode yang sedang aktif. Null jika
+   * custom range belum lengkap. Export mengikuti periode (bukan filter
+   * client) sehingga semua transaksi periode tsb ikut, bukan hanya 200 teratas. */
+  function buildExportUrl(): string | null {
+    if (period === "custom") {
+      if (!customFrom || !customTo) return null;
+      return `/api/export/csv?period=custom&from=${customFrom}&to=${customTo}`;
+    }
+    const opt = PERIOD_OPTIONS.find((o) => o.key === period);
+    return `/api/export/csv?period=${encodeURIComponent(opt?.apiPeriod ?? "bulan ini")}`;
+  }
+
+  function handleExport() {
+    const url = buildExportUrl();
+    if (!url) return;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  const canExport = !loading && transactions.length > 0 && !(period === "custom" && (!customFrom || !customTo));
+
   const hasActiveFilters =
     typeFilter !== "all" || categoryFilter !== "" || accountFilter !== "" || searchQuery !== "";
 
@@ -184,6 +209,16 @@ export default function TransactionsClient() {
                 : `${filtered.length} dari ${transactions.length} transaksi${hasActiveFilters ? " (terfilter)" : ""}`}
             </p>
           </div>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!canExport}
+            title="Export semua transaksi periode ini ke CSV"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="size-3.5" />
+            Export CSV
+          </button>
         </div>
 
         <SectionCard eyebrow="Filter" title="Cari & saring" dense className="mb-4">
