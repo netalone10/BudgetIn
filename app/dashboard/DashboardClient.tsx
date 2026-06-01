@@ -715,17 +715,29 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     e?.preventDefault();
     if (!prompt.trim() || loading) return;
 
+    const promptText = prompt.trim();
     setLoading(true);
     setResponse(null);
+    setPrompt(""); // Clear input immediately for fast feel
     const stopTiming = measureTiming("transaction-create");
 
-    // Snapshot current state for rollback on error (optimistic update support)
-    const prevTransactions = transactions;
-    const prevBudgetData = budgetData;
-    const prevAccounts = accounts;
+    // ── Optimistic: show temp transaction instantly ──────────────────────
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const tempTx: Transaction = {
+      id: tempId,
+      date: todayStr,
+      time: format(toZonedTime(new Date(), "Asia/Jakarta"), "HH:mm"),
+      amount: 0,
+      category: "Processing...",
+      note: promptText,
+      type: "expense",
+      accountId: null,
+      created_at: new Date().toISOString(),
+    };
+    setTransactions((prev) => [tempTx, ...prev]);
 
     try {
-      const res = await submitRecord({ prompt: prompt.trim() });
+      const res = await submitRecord({ prompt: promptText });
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -735,7 +747,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         } catch {
           // ignore
         }
+        // Rollback: remove temp transaction
+        setTransactions((prev) => prev.filter((tx) => tx.id !== tempId));
         setResponse({ error: errMsg });
+        setPrompt(promptText); // Restore prompt so user can retry
+        textareaRef.current?.focus();
         return;
       }
 
@@ -743,30 +759,29 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       setResponse(data);
 
       if ((data.intent === "transaksi" || data.intent === "pemasukan") && data.transaction) {
-        // Optimistic update: immediately add the transaction to local state
-        setTransactions((prev) => [data.transaction, ...prev]);
-        // Background refetch budget and accounts (SWR: no loading spinners)
-        // These run in background — if they fail, stale data remains visible
-        fetchBudget().catch(() => {
-          // Rollback not needed for budget — stale data is acceptable
-        });
-        fetchAccounts().catch(() => {
-          // Rollback not needed for accounts — stale data is acceptable
-        });
+        // Replace temp transaction with real one from server
+        setTransactions((prev) =>
+          prev.map((tx) => (tx.id === tempId ? data.transaction : tx))
+        );
+        fetchBudget().catch(() => {});
+        fetchAccounts().catch(() => {});
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "transaksi_bulk" && data.transactions?.length) {
-        // Optimistic update: immediately add all transactions to local state
-        setTransactions((prev) => [...data.transactions, ...prev]);
-        // Background refetch (SWR: silent, no loading spinners)
+        // Replace temp + add all bulk transactions
+        setTransactions((prev) => {
+          const withoutTemp = prev.filter((tx) => tx.id !== tempId);
+          return [...data.transactions, ...withoutTemp];
+        });
         fetchBudget().catch(() => {});
         fetchAccounts().catch(() => {});
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
 
       if (data.intent === "transfer") {
-        // For transfers, we need fresh data — refetch in background (SWR: silent)
+        // Replace temp with transfer transactions
+        setTransactions((prev) => prev.filter((tx) => tx.id !== tempId));
         fetchTransactions().catch(() => {});
         fetchBudget().catch(() => {});
         fetchAccounts().catch(() => {});
@@ -774,20 +789,32 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       }
 
       if (data.intent === "budget_setting") {
-        // Background refetch (SWR: silent, no loading spinners)
+        // Remove temp (wasn't a transaction)
+        setTransactions((prev) => prev.filter((tx) => tx.id !== tempId));
         fetchBudget().catch(() => {});
         emitDataChanged(["budget", "categories"]);
         fetchCategories();
       }
 
+      if (data.intent === "unknown") {
+        // Remove temp (wasn't a real transaction)
+        setTransactions((prev) => prev.filter((tx) => tx.id !== tempId));
+      }
+
       if (data.intent !== "unknown") setPrompt("");
       textareaRef.current?.focus();
-    } catch {
-      // Network error — rollback optimistic updates
-      setTransactions(prevTransactions);
-      setBudgetData(prevBudgetData);
-      setAccounts(prevAccounts);
-      setResponse({ error: "Koneksi gagal. Coba lagi." });
+    } catch (err) {
+      // Network error — rollback temp transaction
+      setTransactions((prev) => prev.filter((tx) => tx.id !== tempId));
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setResponse({ error: "Koneksi lambat — coba lagi." });
+      } else if (err instanceof TypeError && err.message.includes("fetch")) {
+        setResponse({ error: "Koneksi terputus — coba lagi." });
+      } else {
+        setResponse({ error: "Koneksi gagal. Coba lagi." });
+      }
+      setPrompt(promptText); // Restore prompt so user can retry
+      textareaRef.current?.focus();
     } finally {
       const duration = stopTiming();
       const breach = checkThresholdBreach("transaction-create", duration);

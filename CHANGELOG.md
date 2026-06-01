@@ -2,6 +2,27 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.14.0] — 2026-06-02
+
+### Added
+- **LocalStorage cache provider untuk SWR.** Data dashboard di-cache ke `localStorage` sehingga repeat visits menampilkan data secara instan sebelum API respond. Cache di-persist saat `beforeunload`, SSR-safe, dan auto-fallback ke in-memory jika localStorage penuh.
+- **Optimistic UI updates untuk semua transaksi.** Ketik "ngopi 42rb" → transaksi langsung muncul di list tanpa menunggu server. Server sync di background. Rollback otomatis + toast error jika gagal (server error, timeout, offline). Input langsung clear untuk feel yang lebih cepat.
+- **Error handling granular** untuk optimistic updates: timeout (15s), network offline, server error (4xx/5xx), race condition antar transaksi.
+
+### Changed
+- **Dashboard: client-side data fetching.** `page.tsx` menjadi thin auth wrapper (17 baris, turun dari 95 baris). Semua data fetching pindah ke `DashboardClient` via API endpoints. Shell (sidebar + greeting + layout) render instant, data populate via SWR di background.
+- **Hapus `loading.tsx` skeleton.** Tidak perlu lagi — shell render instant dari client-side.
+- **Sidebar modals: dynamic import.** `ManageCategoriesModal`, `ChangePasswordModal`, `OnboardingModal`, `CalculatorModal` sekarang lazy-loaded via `dynamic()` — mengurangi initial bundle size.
+
+### Removed
+- **`@tanstack/react-virtual`** — dead dependency (0 imports, tidak digunakan di manapun).
+
+### Performance
+- Edge cache `revalidate = 30` dihapus (tidak relevan dengan client-side fetching).
+- Hapus Suspense wrappers + fallback components (data sudah di-resolve di parent).
+- Optimistic update: input clear + temp transaction tampil dalam <50ms.
+- Bundle size berkurang: Sidebar modals lazy-loaded, @tanstack/react-virtual dihapus.
+
 ## [1.13.4] — 2026-06-01
 
 ### Fixed

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
 import * as m from "framer-motion/m";
 import { LazyMotion, domAnimation } from "framer-motion";
 import {
@@ -39,10 +40,10 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
-import ManageCategoriesModal from "@/components/ManageCategoriesModal";
-import ChangePasswordModal from "@/components/ChangePasswordModal";
-import OnboardingModal from "@/components/OnboardingModal";
-import CalculatorModal from "@/components/CalculatorModal";
+const ManageCategoriesModal = dynamic(() => import("@/components/ManageCategoriesModal"), { ssr: false });
+const ChangePasswordModal = dynamic(() => import("@/components/ChangePasswordModal"), { ssr: false });
+const OnboardingModal = dynamic(() => import("@/components/OnboardingModal"), { ssr: false });
+const CalculatorModal = dynamic(() => import("@/components/CalculatorModal"), { ssr: false });
 
 type NavItem = {
   name: string;
