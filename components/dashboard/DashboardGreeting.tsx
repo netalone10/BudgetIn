@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { toZonedTime } from "date-fns-tz";
 import { ArrowDown, ArrowUp, ArrowLeftRight, RefreshCw, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatSignedIDR, formatTanggalLengkapID } from "@/lib/format";
-
-const TIMEZONE = "Asia/Jakarta";
+import { formatSignedIDR } from "@/lib/format";
 
 type TodayStats = {
   expense: number;
@@ -17,7 +13,6 @@ type TodayStats = {
 };
 
 export interface DashboardGreetingProps {
-  userName?: string | null;
   todayStats: TodayStats;
   onQuickAction: (kind: "expense" | "income" | "transfer") => void;
   onRefresh: () => void;
@@ -26,32 +21,19 @@ export interface DashboardGreetingProps {
   isRevalidating?: boolean;
 }
 
-function pickGreeting(hour: number): string {
-  if (hour < 5) return "Selamat malam";
-  if (hour < 11) return "Selamat pagi";
-  if (hour < 15) return "Selamat siang";
-  if (hour < 18) return "Selamat sore";
-  return "Selamat malam";
-}
-
+/**
+ * Action bar di bawah greeting header. Greeting heading + tanggal kini dirender
+ * server-side di app/dashboard/page.tsx (di luar Suspense) sebagai elemen LCP
+ * yang tercat instan; komponen ini hanya memuat ringkasan "hari ini" + tombol
+ * aksi cepat yang butuh data/interaktivitas client.
+ */
 export default function DashboardGreeting({
-  userName,
   todayStats,
   onQuickAction,
   onRefresh,
   refreshing = false,
   isRevalidating = false,
 }: DashboardGreetingProps) {
-  const [greeting, setGreeting] = useState("Halo");
-  const [dateLabel, setDateLabel] = useState("");
-
-  useEffect(() => {
-    const now = toZonedTime(new Date(), TIMEZONE);
-    setGreeting(pickGreeting(now.getHours()));
-    setDateLabel(formatTanggalLengkapID(now));
-  }, []);
-
-  const firstName = userName?.split(" ")[0]?.trim();
   const todayPill = (() => {
     const parts: string[] = [];
     if (todayStats.expense > 0) {
@@ -68,67 +50,55 @@ export default function DashboardGreeting({
   })();
 
   return (
-    <header className="relative rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow-sm md:p-6">
-      {/* Background revalidation indicator — subtle dot, only during SWR silent refetch */}
-      {isRevalidating && (
-        <span
-          className="absolute top-3 right-3 flex size-2 items-center justify-center opacity-50"
-          title="Memperbarui data di background…"
-          aria-label="Memperbarui data"
-          aria-live="polite"
-        >
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-75" />
-          <span className="relative inline-flex size-2 rounded-full bg-primary" />
-        </span>
-      )}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="min-w-0 space-y-1.5">
-          <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-            {greeting}
-            {firstName ? `, ${firstName}` : ""}! <span aria-hidden>👋</span>
-          </h1>
-          <p className="text-[13px] font-medium text-muted-foreground">
-            {dateLabel || " "}
-          </p>
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[12px] font-medium text-foreground/80">
-            <BarChart3 className="size-3.5 text-muted-foreground" />
-            <span>Hari ini: {todayPill}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          <QuickAction
-            label="Pengeluaran"
-            tone="expense"
-            icon={<ArrowDown className="size-3.5" />}
-            onClick={() => onQuickAction("expense")}
-          />
-          <QuickAction
-            label="Pemasukan"
-            tone="income"
-            icon={<ArrowUp className="size-3.5" />}
-            onClick={() => onQuickAction("income")}
-          />
-          <QuickAction
-            label="Transfer"
-            tone="transfer"
-            icon={<ArrowLeftRight className="size-3.5" />}
-            onClick={() => onQuickAction("transfer")}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            onClick={onRefresh}
-            disabled={refreshing}
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[12px] font-medium text-foreground/80">
+        <BarChart3 className="size-3.5 text-muted-foreground" />
+        <span>Hari ini: {todayPill}</span>
+        {isRevalidating && (
+          <span
+            className="relative ml-1 flex size-2 items-center justify-center opacity-50"
+            title="Memperbarui data di background"
+            aria-label="Memperbarui data"
+            aria-live="polite"
           >
-            <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
-            Refresh
-          </Button>
-        </div>
+            <span className="absolute inline-flex size-2 animate-ping rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex size-2 rounded-full bg-primary" />
+          </span>
+        )}
       </div>
-    </header>
+
+      <div className="flex flex-wrap items-center gap-1.5">
+        <QuickAction
+          label="Pengeluaran"
+          tone="expense"
+          icon={<ArrowDown className="size-3.5" />}
+          onClick={() => onQuickAction("expense")}
+        />
+        <QuickAction
+          label="Pemasukan"
+          tone="income"
+          icon={<ArrowUp className="size-3.5" />}
+          onClick={() => onQuickAction("income")}
+        />
+        <QuickAction
+          label="Transfer"
+          tone="transfer"
+          icon={<ArrowLeftRight className="size-3.5" />}
+          onClick={() => onQuickAction("transfer")}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full"
+          onClick={onRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
+          Refresh
+        </Button>
+      </div>
+    </div>
   );
 }
 

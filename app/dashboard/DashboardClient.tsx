@@ -933,7 +933,6 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       {/* Greeting — always first for warm welcome */}
       {renderMode !== "secondary-only" && (
         <DashboardGreeting
-          userName={initialData.user?.name}
           todayStats={todayStats}
           onQuickAction={focusAIWithIntent}
           onRefresh={handleManualRefresh}
