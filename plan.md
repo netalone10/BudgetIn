@@ -49,108 +49,21 @@ Dokumen ini adalah working plan konkret — bukan dokumen strategis seperti ROAD
 
 ---
 
-## Bagian B — Fitur Near-Term (P0/P1)
+## Bagian B — Fitur Near-Term (P0/P1)  ✅ SELESAI / DITUTUP (verifikasi 2026-06-01)
 
----
+> **Catatan revisi**: Sama seperti Bagian A, verifikasi ke kode aktual menunjukkan
+> hampir seluruh item Bagian B **sudah terimplementasi**. plan.md awalnya disusun
+> dari ROADMAP/PRD yang tertinggal versi (PRD v1.8, ROADMAP v1.6.5, padahal produk
+> sudah v1.13). Satu-satunya gap nyata (B4 lint) diputuskan untuk **tidak dikerjakan**
+> oleh user — validasi tetap memakai `tsc --noEmit` + jest.
 
-### B1 — Rate Limiting Endpoint AI/Prompt `[P0]`
-
-**Problem**: `POST /api/record`, `GET /api/analyst`, dan `GET /api/prediction` memanggil Groq API tanpa batas — bisa disalahgunakan atau menyebabkan cost spike.
-
-**Solusi**: Rate limit berbasis `userId` di session. Vercel Edge Middleware atau in-memory counter per user per window.
-
-**File yang terpengaruh**:
-- `app/api/record/route.ts` — limit prompt NLP (saran: 30 req/menit)
-- `app/api/analyst/route.ts` — limit analyst (saran: 10 req/menit)
-- `app/api/prediction/route.ts` — limit prediction (saran: 10 req/menit)
-- `lib/rate-limit.ts` — buat helper baru
-
-**Kriteria selesai**:
-- Endpoint AI mengembalikan `429 Too Many Requests` dengan pesan ramah user saat limit tercapai
-- Transaksi manual (bukan prompt AI) tidak terpengaruh rate limit
-- `npx tsc --noEmit` bersih
-
----
-
-### B2 — Test Coverage: Bills & Backup/Restore `[P0]`
-
-**Problem**: Bills (pay/skip/summary) dan backup/restore menyentuh data penting tapi belum punya focused test suite.
-
-**Scope**:
-- Unit tests untuk `utils/bill-utils.ts`: pay, skip, due date calculation
-- Tests untuk `app/api/backup/export`: schema normalization, tidak ada secrets di output
-- Tests untuk `app/api/backup/preview`: validation logic
-- Tests untuk restore edge cases (DB target vs Sheets-compatible)
-
-**File yang terpengaruh**:
-- `lib/__tests__/bills.test.ts` — buat baru
-- `lib/__tests__/backup.test.ts` — buat baru
-- `utils/bill-utils.ts`
-- `lib/backup.ts`
-
-**Kriteria selesai**:
-- Core bill behavior (pay, skip, summary calculation) punya Jest coverage
-- Backup export tidak pernah menyertakan `googleAccessToken`, `googleRefreshToken`, password hash
-- Semua tests pass
-
----
-
-### B3 — Transaction Regression Suite `[P0]`
-
-**Problem**: Core finance logic (transfer exclusion, signed amounts, savings contribution) berubah cepat dan tidak punya regression tests yang memadai.
-
-**Scope**:
-- Tests transfer exclusion dari expense aggregation (dashboard + budget)
-- Tests signed expense/income untuk koreksi/refund
-- Tests account balance calculation edge cases
-- Tests savings contribution lifecycle (create → progress → complete)
-- Tests date/time sorting konsistensi
-
-**File yang terpengaruh**:
-- `lib/__tests__/transactions.regression.test.ts` — buat baru
-- `lib/transaction-classification.ts`
-- `utils/account-balance.ts`
-- `lib/transaction-time.ts`
-
-**Kriteria selesai**:
-- Transfer principal tidak masuk expense di semua aggregation path
-- Regression suite bisa dijalankan dengan `npx jest lib/__tests__/transactions.regression`
-
----
-
-### B4 — Fix Lint Script `[P1]`
-
-**Problem**: `npm run lint` bermasalah dengan Next.js CLI saat ini (menginterpretasi `lint` sebagai project directory).
-
-**Solusi**: Update `package.json` scripts agar kompatibel. Kemungkinan ganti ke `next lint --dir .` atau fallback ESLint langsung.
-
-**File yang terpengaruh**:
-- `package.json` — update script `lint`
-
-**Kriteria selesai**:
-- `npm run lint` bisa dijalankan tanpa error atau clearly documented alternative
-- Tidak mengganggu `build` dan `typecheck`
-
----
-
-### B5 — Google Token Recovery UX `[P0]`
-
-**Problem**: Google user yang tokennya expired atau scope belum lengkap kadang tidak mendapat pesan yang cukup jelas untuk reconnect.
-
-**Scope**:
-- Perjelas copy pada `app/auth/error/AuthErrorContent.tsx`
-- Tambah CTA reconnect konsisten di `app/dashboard/GoogleSetupRecovery.tsx`
-- Pastikan state `google_setup_required` menampilkan pesan bukan blank/loading
-- Pastikan migration preview/execute punya loading dan error state eksplisit
-
-**File yang terpengaruh**:
-- `app/auth/error/AuthErrorContent.tsx`
-- `app/dashboard/GoogleSetupRecovery.tsx`
-- `app/api/google-setup-migration/route.ts`
-
-**Kriteria selesai**:
-- User tahu kenapa perlu reconnect dan langkah selanjutnya
-- Recovery flow tidak terasa seperti data hilang
+| Item | Status | Bukti / Keputusan |
+|---|---|---|
+| **B1** Rate limiting AI/prompt | ✅ Done | `lib/rate-limit.ts` (sliding window, preset PROMPT 30/m, ANALYST & PREDICTION 10/m, ACCOUNT_MUTATION 10/m). `checkRateLimit` terpasang & return 429 di `app/api/record/route.ts:82`, `app/api/analyst/route.ts:28`, `app/api/prediction/route.ts:30`. Tes: `lib/__tests__/rate-limit.test.ts` (22 kasus). |
+| **B2** Test coverage bills & backup | ✅ Done | `lib/__tests__/recurring-utils.test.ts` (17 kasus, bills/recurring) + `lib/__tests__/backup-schema.test.ts` (14 kasus). |
+| **B3** Transaction regression suite | ✅ Done | `lib/__tests__/transaction-regression.test.ts` (35 kasus) + suite pendukung (double-entry, transaction-classification, sheets-balance, savings, dll). |
+| **B4** Fix lint script | ⏭️ Ditutup (won't-do) | `next lint` rusak di Next 16. Solusi flat-config `eslint .` berhasil dibuat & terbukti jalan, tapi memunculkan 64 error pre-existing (mayoritas rule RC eksperimental react-hooks v6). **User memutuskan tidak memakai lint.** Perubahan di-revert. Validasi tetap `tsc --noEmit` + jest (sesuai catatan PRD §18). |
+| **B5** Google token recovery UX | ✅ Done | `AuthErrorContent.tsx` (copy jelas + langkah bernomor + catatan keamanan + CTA reconnect untuk `GooglePermissionRequired`/`OnboardingFailed`). `GoogleSetupRecovery.tsx` (mode reconnect/migrate, loading + error state eksplisit, jaminan "data tidak akan hilang", penjelasan aksi migrate vs mark-complete). |
 
 ---
 
