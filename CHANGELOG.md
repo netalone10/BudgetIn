@@ -2,6 +2,15 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.13.4] — 2026-06-01
+
+### Fixed
+- **Transaksi berulang tidak sinkron untuk pengguna Google Sheets.** `runRecurringOccurrence` (cron auto-record + tombol "Catat") sebelumnya selalu menulis ke `prisma.transaction` (Postgres), padahal ledger pengguna Google ada di Google Sheets — sehingga transaksi recurring tidak pernah muncul di dashboard/laporan. Sekarang bercabang: pengguna Sheets ditulis via `appendTransaction` ke Sheets (expense/income/transfer), occurrence tetap dicatat di DB sebagai metadata; pengguna email tetap ke Postgres.
+- Dashboard cache di-invalidate (`invalidateDashboardCache`) setiap occurrence tercatat, sehingga ringkasan langsung ikut ter-update.
+
+### Catatan
+- Kontribusi tabungan (savingsGoalId) untuk pengguna Sheets di-skip pada auto-record karena memerlukan FK ke transaksi DB; transaksinya tetap tercatat di Sheets.
+
 ## [1.13.3] — 2026-06-01
 
 ### Added

@@ -14,6 +14,19 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.13.4",
+    date: "2026-06-01",
+    title: "Transaksi Berulang Tersinkron untuk Pengguna Google Sheets",
+    description: "Memperbaiki bug di mana transaksi berulang (otomatis maupun tombol Catat) pengguna Google Sheets tertulis ke database internal, bukan ke Google Sheets — sehingga tidak pernah muncul di dashboard dan laporan.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.13.4`,
+    changes: [
+      "Transaksi berulang pengguna Google Sheets kini ditulis langsung ke Google Sheets (sebelumnya hanya ke database internal sehingga tidak tampil di dashboard/laporan).",
+      "Tombol \"Catat\" pada item berulang kini benar-benar mencatat transaksi ke ledger yang tepat (Sheets untuk pengguna Google, database untuk pengguna email).",
+      "Dashboard otomatis di-refresh (cache di-invalidate) setiap kali transaksi berulang tercatat, baik via cron maupun manual.",
+    ],
+  },
+  {
     version: "v1.13.3",
     date: "2026-06-01",
     title: "Peringatan Budget, Insight Tahan Gangguan & Dashboard Lebih Cepat",

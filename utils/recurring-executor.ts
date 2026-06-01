@@ -3,6 +3,10 @@ import { format, startOfDay } from "date-fns";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { calcNextOccurrence, occurrenceKey } from "@/utils/recurring-utils";
+import { getValidToken } from "@/utils/token";
+import { appendTransaction } from "@/utils/sheets";
+import { currentJakartaTime } from "@/lib/transaction-time";
+import { invalidateDashboardCache } from "@/lib/cache";
 
 type RecurringWithRefs = Awaited<ReturnType<typeof loadForExecution>>;
 
@@ -57,6 +61,95 @@ export async function runRecurringOccurrence(
 
   const nextDueDate = calcNextOccurrence(r.frequency as "daily" | "weekly" | "monthly" | "yearly", r.interval, r.startDate, occurredDay);
 
+  // ── GOOGLE SHEETS PATH ──────────────────────────────────────────────────────
+  // User Google Sheets: ledger ada di Sheets, bukan Postgres. Tanpa cabang ini
+  // transaksi recurring tertulis ke DB tapi tak pernah muncul di dashboard/report
+  // (yang membaca dari Sheets). Tulis ke Sheets, occurrence tetap dicatat di DB.
+  const user = await prisma.user.findUnique({
+    where: { id: r.userId },
+    select: { sheetsId: true },
+  });
+
+  if (user?.sheetsId) {
+    let accessToken: string;
+    try {
+      accessToken = await getValidToken(r.userId);
+    } catch {
+      return { ok: false, error: "Sesi Google expired. Hubungkan ulang Google untuk mencatat.", status: 401 };
+    }
+
+    const time = currentJakartaTime();
+    const amountNum = amount.toNumber();
+    let sheetsTxId: string | null = null;
+    let sheetsTransferId: string | null = null;
+
+    try {
+      if (r.type === "expense" || r.type === "income") {
+        const appended = await appendTransaction(user.sheetsId, accessToken, {
+          date: dateStr,
+          time,
+          amount: amountNum,
+          category: r.category?.name ?? (r.type === "income" ? "Pendapatan" : "Tagihan"),
+          note,
+          type: r.type,
+          ...(r.type === "expense"
+            ? { fromAccountId: r.accountId ?? undefined, fromAccountName: r.account?.name }
+            : { toAccountId: r.accountId ?? undefined, toAccountName: r.account?.name }),
+        });
+        sheetsTxId = appended.id;
+      } else if (r.type === "transfer") {
+        // Transfer = 1 row "Transfer" dengan akun asal+tujuan (sama seperti input manual).
+        const appended = await appendTransaction(user.sheetsId, accessToken, {
+          date: dateStr,
+          time,
+          amount: amountNum,
+          category: "Transfer",
+          note,
+          type: "expense",
+          fromAccountId: r.accountId ?? undefined,
+          fromAccountName: r.account?.name,
+          toAccountId: r.toAccountId ?? undefined,
+          toAccountName: r.toAccount?.name,
+        });
+        sheetsTransferId = appended.id;
+        sheetsTxId = appended.id;
+      }
+    } catch (error) {
+      console.error("[recurring-executor] Sheets append gagal:", error);
+      return { ok: false, error: "Gagal menulis ke Google Sheets. Coba lagi.", status: 502 };
+    }
+
+    if (r.savingsGoalId) {
+      // Kontribusi tabungan butuh FK ke Transaction DB; user Sheets tidak punya
+      // baris DB. Transaksi tetap tercatat di Sheets, progres goal tidak auto-update.
+      console.warn(
+        `[recurring-executor] savingsGoalId di-skip untuk user Sheets (recurring=${r.id})`
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.recurringOccurrence.create({
+        data: {
+          recurringId: r.id,
+          transactionId: sheetsTxId,
+          transferId: sheetsTransferId,
+          occurredAt: occurredDay,
+          amount,
+          occurrenceKey: key,
+          note,
+        },
+      });
+      await tx.recurringTransaction.update({
+        where: { id: r.id },
+        data: { lastRunAt: occurredDay, nextDueDate },
+      });
+    });
+
+    invalidateDashboardCache(r.userId);
+    return { ok: true, alreadyRan: false, nextDueDate, recurring: r, occurredDay, amount };
+  }
+
+  // ── POSTGRES PATH (user email/password) ──────────────────────────────────────
   let createdTxId: string | null = null;
   let createdTransferId: string | null = null;
 
@@ -149,6 +242,7 @@ export async function runRecurringOccurrence(
     });
   });
 
+  invalidateDashboardCache(r.userId);
   return { ok: true, alreadyRan: false, nextDueDate, recurring: r, occurredDay, amount };
 }
 
