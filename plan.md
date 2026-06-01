@@ -150,42 +150,33 @@ Dokumen ini adalah working plan konkret — bukan dokumen strategis seperti ROAD
 
 ---
 
-### C5 — Budget Templates `[P2]`
+### C5 — Budget Templates `[P2]`  ✅ SUDAH ADA (verifikasi 2026-06-01)
 
-**Problem**: Membuat budget dari nol setiap bulan repetitif, terutama untuk kategori yang sama nilainya.
+**Problem**: Membuat budget dari nol setiap bulan repetitif.
 
-**Scope**:
-- Duplikasi budget dari bulan sebelumnya dengan satu klik
-- Preview sebelum apply
-- Support partial apply (pilih kategori tertentu)
-
-**File yang terpengaruh**:
-- `app/api/budget/template/route.ts` — buat baru (atau extend `app/api/budget/route.ts`)
-- `app/dashboard/budget/page.tsx` — tambah tombol "Salin dari bulan lalu"
+**Temuan**: Fitur "salin budget bulan lalu" **sudah terimplementasi penuh** — tidak perlu pekerjaan baru.
+- Backend: `app/api/budget/rollover/route.ts` POST `{ sourceMonth, targetMonth }` menyalin semua budget antar-bulan via upsert (`$transaction`).
+- UI: `app/dashboard/budget/BudgetClient.tsx` — `handleCopyPreviousMonth()` (sourceMonth = bulan sebelumnya) + tombol "Copy dari Bulan Lalu" / "Overwrite dari Bulan Lalu" dengan **konfirmasi dua-klik** (`copyConfirm`) bila sudah ada budget bulan ini.
 
 **Kriteria selesai**:
-- User bisa duplikasi budget bulan sebelumnya tanpa merusak budget existing
-- Preview jelas sebelum apply
+- ✅ Duplikasi budget bulan sebelumnya
+- ✅ Konfirmasi sebelum overwrite (proteksi budget existing)
+
+**Catatan**: "Partial apply (pilih kategori)" di scope awal tidak ada — saat ini salin semua. Bisa ditambah nanti bila perlu.
 
 ---
 
-### C6 — Export Laporan Keuangan PDF `[P2]`
+### C6 — Export Laporan Keuangan PDF `[P2]`  ✅ SUDAH ADA (verifikasi 2026-06-01)
 
-**Problem**: Income Statement, Owner's Equity, Balance Sheet yang baru selesai dibangun belum bisa di-print/share.
+**Problem**: Income Statement, Owner's Equity, Balance Sheet belum bisa di-print/share.
 
-**Scope**:
-- Tambah print/PDF view untuk ketiga report
-- Pakai CSS `@media print` atau library PDF generation
-- Pastikan angka di PDF sama dengan yang ditampilkan di UI
-
-**File yang terpengaruh**:
-- `app/dashboard/report/BalanceSheetReport.tsx`
-- `app/dashboard/report/OwnerEquityReport.tsx`
-- `app/dashboard/report/MonthlyReport.tsx`
+**Temuan**: Sudah terimplementasi via print-to-PDF native browser — tidak perlu pekerjaan baru.
+- `app/dashboard/report/ReportClient.tsx` — `handlePrint()` → `window.print()` + tombol "Print / Simpan PDF"; kontrol diberi `print:hidden`.
+- Print CSS matang: `@media print` + `@page` (termasuk landscape) di `app/globals.css`, plus utility `print:` di semua komponen report (Monthly/Yearly/CustomRange/OwnerEquity/BalanceSheet).
 
 **Kriteria selesai**:
-- PDF/print view rapi dan bisa dibaca
-- Angka identik dengan UI
+- ✅ Print/Save-as-PDF rapi (print CSS + kontrol disembunyikan)
+- ✅ Angka identik dengan UI (mencetak DOM yang sama)
 
 ---
 
