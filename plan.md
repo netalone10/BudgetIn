@@ -89,25 +89,21 @@ Dokumen ini adalah working plan konkret — bukan dokumen strategis seperti ROAD
 
 ---
 
-### C2 — Budget Limit Alerts `[P1]`
+### C2 — Budget Limit Alerts `[P1]`  ✅ SELESAI (2026-06-01)
 
 **Problem**: User tidak tahu ketika budget kategori mendekati atau melebihi limit sebelum akhir bulan.
 
-**Scope**:
-- Tambah alert card di dashboard saat kategori mencapai 80% budget
-- Tambah alert state untuk kategori yang sudah over-budget
-- Hitung spending dengan transfer exclusion (reuse `transaction-classification.ts`)
-- Opsional: email alert (pakai Resend yang sudah ada)
-
-**File yang terpengaruh**:
-- `lib/budget-data.ts` — tambah alert threshold calculation
-- `app/dashboard/DashboardClient.tsx` atau komponen baru — alert cards
-- `app/api/budget/route.ts` — sertakan alert data di response
+**Implementasi**:
+- `lib/budget-alerts.ts` — helper murni `computeBudgetAlerts(budgets, warnThreshold=0.8)` → level `warn` (≥80%) / `over` (≥100%), pakai effective budget (budget + rollover), urut rasio tertinggi. + `lib/__tests__/budget-alerts.test.ts` (10 kasus)
+- `components/dashboard/BudgetAlertCard.tsx` — kartu di sidebar dashboard, hanya muncul saat ada alert; progress bar + persentase + link ke /dashboard/budget
+- `app/dashboard/DashboardClient.tsx` — render BudgetAlertCard di atas sidebar, pakai `budgetData?.budgets` (tanpa API baru)
 
 **Kriteria selesai**:
-- Alert muncul di dashboard saat spending ≥ 80% budget per kategori
-- Alert memakai angka yang sama dengan halaman budget
-- Transfer principal tidak masuk hitungan spending
+- ✅ Alert muncul saat spending ≥ 80% budget per kategori (warn) dan ≥100% (over)
+- ✅ Angka identik dengan halaman Budget (effective budget = budget + rollover)
+- ✅ Transfer/equity tidak masuk hitungan (spent dihitung via isExpenseTransaction di hulu)
+
+**Catatan**: Email alert (opsional di plan) di-skip — fokus ke dashboard card. Bisa disusulkan via cron + dedup state bila diperlukan.
 
 ---
 

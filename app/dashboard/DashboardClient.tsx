@@ -32,6 +32,7 @@ import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import KPICard from "@/components/dashboard/KPICard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import RunwayKasCard from "@/components/dashboard/RunwayKasCard";
+import BudgetAlertCard from "@/components/dashboard/BudgetAlertCard";
 
 // ---------------------------------------------------------------------------
 // SWR (Stale-While-Revalidate) utilities for client-side fetching
@@ -1342,6 +1343,7 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             </div>
 
             <div className="flex min-w-0 flex-col gap-5 md:gap-6">
+              <BudgetAlertCard budgets={budgetData?.budgets} />
               <MiniCashflowCard
                 transactions={transactions}
                 monthlyIncome={monthlyStats.income}
