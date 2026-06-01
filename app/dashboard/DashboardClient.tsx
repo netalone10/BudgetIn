@@ -25,7 +25,7 @@ import { toZonedTime } from "date-fns-tz";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import { isExpenseTransaction, isEquityTransaction } from "@/lib/transaction-classification";
 import { isSavingsTransaction } from "@/lib/savings-utils";
-import { formatSignedIDR, formatTanggalID } from "@/lib/format";
+import { formatSignedIDR, formatTanggalID, formatTanggalLengkapID } from "@/lib/format";
 import type { DashboardInitialData } from "@/lib/dashboard-data";
 import { measureTiming, checkThresholdBreach } from "@/lib/performance";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
@@ -343,24 +343,32 @@ const PROMPT_EXAMPLES = [
 ];
 
 interface DashboardClientProps {
-  initialData: DashboardInitialData;
-  /** Controls which sections to render for streaming Suspense boundaries.
-   * - "kpi-only": Renders KPI cards (net worth, income, expense, savings rate) — streams first
-   * - "secondary-only": Renders greeting, input, transactions, budget sidebar — streams after
-   * - undefined: Renders everything (fallback for non-streaming usage)
-   */
-  renderMode?: "kpi-only" | "secondary-only";
+  initialData?: DashboardInitialData;
 }
 
-export default function DashboardClient({ initialData, renderMode }: DashboardClientProps) {
+/** Default empty state — fetched client-side when no server data provided */
+const EMPTY_DATA: DashboardInitialData = {
+  transactions: [],
+  budgetData: null,
+  accounts: [],
+  categories: [],
+  savingsCategoryNames: [],
+  lastMonthTotals: { income: 0, expense: 0 },
+  activeSavingsGoal: null,
+  user: null,
+};
+
+export default function DashboardClient({ initialData }: DashboardClientProps) {
+  const data = initialData ?? EMPTY_DATA;
+  const isClientFetch = !initialData;
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<ResponseData | null>(null);
 
-  const [transactions, setTransactions] = useState<Transaction[]>(initialData.transactions);
+  const [transactions, setTransactions] = useState<Transaction[]>(data.transactions);
   const [txLoading, setTxLoading] = useState(false);
 
-  const [budgetData, setBudgetData] = useState<BudgetData | null>(initialData.budgetData);
+  const [budgetData, setBudgetData] = useState<BudgetData | null>(data.budgetData);
   const [budgetLoading, setBudgetLoading] = useState(false);
 
   // Background revalidation indicator — true only during silent SWR refetches
@@ -369,10 +377,10 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   const revalidatingCountRef = useRef(0);
 
   const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(() =>
-    initialData.categories.map((c) => ({ name: c.name, type: c.type }))
+    data.categories.map((c) => ({ name: c.name, type: c.type }))
   );
   const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(() =>
-    new Set(initialData.savingsCategoryNames)
+    new Set(data.savingsCategoryNames)
   );
   const [accounts, setAccounts] = useState<
     {
@@ -382,10 +390,11 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       accountType: { name: string; classification: string };
       currentBalance?: string | null;
     }[]
-  >(initialData.accounts);
+  >(data.accounts);
   const [accountVersion, setAccountVersion] = useState(0);
   const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
   const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
+  const [user, setUser] = useState(data.user);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -393,6 +402,10 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
   const etagStoreRef = useRef<ETagStore>({});
 
   const todayStr = format(toZonedTime(new Date(), "Asia/Jakarta"), "yyyy-MM-dd");
+  const now = toZonedTime(new Date(), "Asia/Jakarta");
+  const hour = now.getHours();
+  const greetingText = hour < 5 ? "Selamat malam" : hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam";
+  const dateLabel = formatTanggalLengkapID(now);
   const todayStats = useMemo(() => {
     const todayTxs = transactions.filter((t) => t.date === todayStr);
     const expenseTxs = todayTxs.filter((t) => {
@@ -466,16 +479,16 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
     }, 0);
 
     const currentExpense = monthlyStats.expense;
-    const lastExpense = initialData.lastMonthTotals.expense;
+    const lastExpense = data.lastMonthTotals.expense;
     const avgBurn = (currentExpense + lastExpense) / 2;
     const months =
       avgBurn > 0 ? liquid / avgBurn : Number.POSITIVE_INFINITY;
 
     return { liquid, avgBurn, months };
-  }, [accounts, monthlyStats.expense, initialData.lastMonthTotals.expense]);
+  }, [accounts, monthlyStats.expense, data.lastMonthTotals.expense]);
 
-  const incomeDelta = monthlyStats.income - initialData.lastMonthTotals.income;
-  const expenseDelta = monthlyStats.expense - initialData.lastMonthTotals.expense;
+  const incomeDelta = monthlyStats.income - data.lastMonthTotals.income;
+  const expenseDelta = monthlyStats.expense - data.lastMonthTotals.expense;
 
   function focusAIWithIntent(kind: "expense" | "income" | "transfer") {
     const presets: Record<typeof kind, string> = {
@@ -490,6 +503,42 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
       if (el) el.setSelectionRange(el.value.length, el.value.length);
     });
   }
+
+  // ── Client-side data fetch (when no server-provided initialData) ──────
+  // Instant shell render: greeting + sidebar appear immediately.
+  // Data populates via SWR fetch in background — no loading skeleton.
+  useEffect(() => {
+    if (!isClientFetch) return;
+
+    // Fetch user profile for greeting name
+    fetch("/api/user")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.user) {
+          setUser(d.user);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch all dashboard data in parallel
+    Promise.all([
+      fetch("/api/record?period=bulan+ini").then((r) => (r.ok ? r.json() : { transactions: [] })),
+      fetch("/api/budget").then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/accounts").then((r) => (r.ok ? r.json() : { accounts: [] })),
+      fetch("/api/categories").then((r) => (r.ok ? r.json() : { categories: [] })),
+    ])
+      .then(([txData, budgetResult, acctData, catData]) => {
+        if (txData?.transactions) setTransactions(txData.transactions);
+        if (budgetResult) setBudgetData(budgetResult);
+        if (acctData?.accounts) setAccounts(acctData.accounts);
+        if (catData?.categories) {
+          const cats = catData.categories;
+          setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
+          setSavingsCategoryNames(new Set(cats.filter((c: { isSavings?: boolean }) => c.isSavings).map((c: { name: string }) => c.name.toLowerCase())));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Measure Dashboard Time to Interactive (TTI)
@@ -931,8 +980,15 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
 
   return (
     <div className="flex min-w-0 flex-col gap-6 md:gap-8 lg:gap-10">
-      {/* Greeting — always first for warm welcome */}
-      {renderMode !== "secondary-only" && (
+      {/* Greeting header — rendered client-side from browser time (instant shell) */}
+      <header className="relative overflow-hidden rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow-sm md:p-6">
+        <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+          {greetingText}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}! <span aria-hidden>👋</span>
+        </h1>
+        <p className="mt-1.5 text-[13px] font-medium text-muted-foreground">{dateLabel}</p>
+      </header>
+
+      {/* Action bar + today stats */}
         <DashboardGreeting
           todayStats={todayStats}
           onQuickAction={focusAIWithIntent}
@@ -940,10 +996,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
           refreshing={dataLoading}
           isRevalidating={isRevalidating && !txLoading && !budgetLoading}
         />
-      )}
 
       {/* KPI Section: KPI cards grid — streams first */}
-      {renderMode !== "secondary-only" && (
         <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
           <NetWorthSummaryCard refreshTrigger={accountVersion} compact />
           <KPICard
@@ -967,11 +1021,8 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
             trendLabel={`${formatSignedIDR(monthlyStats.surplus, "+")} ${monthlyStats.surplus >= 0 ? "surplus" : "defisit"} bulan ini`}
           />
         </div>
-      )}
 
-      {/* Secondary Section: Input + Transactions + Budget — streams progressively */}
-      {renderMode !== "kpi-only" && (
-        <>
+      {/* Secondary Section: Input + Transactions + Budget */}
           <div className="grid min-w-0 items-start gap-5 md:gap-6 lg:grid-cols-[1.62fr_1fr]">
             <div className="flex min-w-0 flex-col gap-5 md:gap-6">
               <SectionCard
@@ -1362,11 +1413,10 @@ export default function DashboardClient({ initialData, renderMode }: DashboardCl
                 loading={budgetLoading}
                 categoryBreakdown={categoryBreakdown}
               />
-              <SavingsGoalMiniCard goal={initialData.activeSavingsGoal} />
+              <SavingsGoalMiniCard goal={data.activeSavingsGoal} />
             </div>
           </div>
-        </>
-      )}
+      {/* End Secondary Section */}
     </div>
   );
 }
