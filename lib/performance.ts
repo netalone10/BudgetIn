@@ -69,8 +69,9 @@ export function checkThresholdBreach(
   metricName: string,
   measuredMs: number
 ): ThresholdBreachWarning | null {
+  if (!Object.prototype.hasOwnProperty.call(THRESHOLDS, metricName)) return null;
   const threshold = THRESHOLDS[metricName];
-  if (!threshold || measuredMs <= threshold) return null;
+  if (measuredMs <= threshold) return null;
 
   return {
     metricName,
