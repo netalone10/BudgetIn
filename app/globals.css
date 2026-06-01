@@ -7,8 +7,7 @@
 @theme inline {
   --font-sans: var(--font-poppins);
   --font-mono: var(--font-fira-code);
-  --font-serif: var(--font-lora);
-  
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fira_Code, Lora, Poppins } from "next/font/google";
+import { Fira_Code, Poppins } from "next/font/google";
 import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import Providers from "@/components/Providers";
@@ -18,13 +18,6 @@ const poppins = Poppins({
 const firaCode = Fira_Code({
   subsets: ["latin"],
   variable: "--font-fira-code",
-  display: "swap",
-});
-
-const lora = Lora({
-  subsets: ["latin"],
-  variable: "--font-lora",
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -86,7 +79,7 @@ export default function RootLayout({
     <html
       lang="id"
       suppressHydrationWarning
-      className={cn(poppins.variable, firaCode.variable, lora.variable)}
+      className={cn(poppins.variable, firaCode.variable)}
     >
       <body className="antialiased">
         <Providers>
