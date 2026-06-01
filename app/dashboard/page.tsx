@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { toZonedTime } from "date-fns-tz";
@@ -7,11 +6,9 @@ import { getCachedDashboardData } from "@/lib/cache";
 import { prisma } from "@/lib/prisma";
 import { formatTanggalLengkapID } from "@/lib/format";
 import DashboardClient from "./DashboardClient";
-import {
-  KPISectionFallback,
-  SecondarySectionFallback,
-} from "./DashboardSuspenseFallback";
 import GoogleSetupRecovery from "./GoogleSetupRecovery";
+
+export const revalidate = 30;
 
 const TIMEZONE = "Asia/Jakarta";
 
@@ -28,14 +25,16 @@ export default async function DashboardPage() {
   if (!session?.userId) redirect("/");
   const userId = session.userId;
 
-  const { state: setupState, name } = await getGoogleSetupState(userId);
+  // Parallelize: fetch setup state + dashboard data concurrently
+  // instead of sequential (setup state first, then dashboard data).
+  // This eliminates ~200-500ms of unnecessary sequential wait.
+  const [{ state: setupState, name }, initialData] = await Promise.all([
+    getGoogleSetupState(userId),
+    getCachedDashboardData(userId),
+  ]);
   if (setupState === "reconnect") return <GoogleSetupRecovery mode="reconnect" />;
   if (setupState === "migrate") return <GoogleSetupRecovery mode="migrate" />;
 
-  // Greeting dirender server-side (di luar Suspense) agar tercat instan sebagai
-  // elemen LCP — tidak perlu menunggu fetch data dashboard yang berat. Ini
-  // menurunkan LCP /dashboard secara signifikan (sebelumnya konten LCP baru
-  // muncul setelah getCachedDashboardData selesai).
   const now = toZonedTime(new Date(), TIMEZONE);
   const greeting = pickGreeting(now.getHours());
   const firstName = name?.split(" ")[0]?.trim();
@@ -53,56 +52,21 @@ export default async function DashboardPage() {
           <p className="mt-1.5 text-[13px] font-medium text-muted-foreground">{dateLabel}</p>
         </header>
 
-        {/* KPI/summary data (today's summary, net worth) streams first
-            with its own Suspense boundary — reduced TTFB for critical metrics.
-            Uses the cached dashboard data which resolves quickly from the
-            cross-request TTL cache on subsequent loads. */}
-        <Suspense fallback={<KPISectionFallback />}>
-          <DashboardKPIData userId={userId} />
-        </Suspense>
+        {/* KPI/summary: data already resolved above via Promise.all.
+            Pass directly — no Suspense needed, no re-fetch. */}
+        <DashboardClient
+          initialData={initialData}
+          renderMode="kpi-only"
+        />
 
-        {/* Transaction history and budget details stream progressively
-            with a separate Suspense boundary. The full interactive dashboard
-            content renders here after the KPI section has already flushed. */}
-        <Suspense fallback={<SecondarySectionFallback />}>
-          <DashboardSecondaryData userId={userId} />
-        </Suspense>
+        {/* Transaction history and budget details.
+            Data already resolved — pass directly. */}
+        <DashboardClient
+          initialData={initialData}
+          renderMode="secondary-only"
+        />
       </div>
     </div>
-  );
-}
-
-/**
- * KPI/summary async component — streams first.
- * Fetches the cached dashboard data and renders DashboardClient in "kpi-only"
- * mode, showing only the greeting and KPI cards. This lightweight render
- * flushes to the client quickly, giving users immediate feedback on their
- * financial summary while heavier data loads below.
- */
-async function DashboardKPIData({ userId }: { userId: string }) {
-  const initialData = await getCachedDashboardData(userId);
-  return (
-    <DashboardClient
-      initialData={initialData}
-      renderMode="kpi-only"
-    />
-  );
-}
-
-/**
- * Secondary data async component — streams progressively after KPI.
- * Fetches the same cached data (deduplicated by React cache() within the
- * same server render) and renders DashboardClient in "secondary-only" mode
- * with the interactive content: AI input, transaction history, budget sidebar.
- * Below-the-fold components continue using dynamic imports with skeleton placeholders.
- */
-async function DashboardSecondaryData({ userId }: { userId: string }) {
-  const initialData = await getCachedDashboardData(userId);
-  return (
-    <DashboardClient
-      initialData={initialData}
-      renderMode="secondary-only"
-    />
   );
 }
 
