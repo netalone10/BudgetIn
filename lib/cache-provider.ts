@@ -1,5 +1,7 @@
 "use client";
 
+import type { Cache } from "swr";
+
 /**
  * localStorage-backed SWR cache provider.
  *
@@ -9,14 +11,17 @@
  * immediately while SWR revalidates in the background.
  *
  * Safety:
- * - SSR-safe: returns empty Map on server (typeof window check)
+ * - SSR-safe: returns the default cache on server (typeof window check)
  * - Debounced write: only persists on beforeunload to avoid localStorage thrashing
  * - Size-aware: if localStorage is full (QuotaExceededError), silently falls back
  *   to in-memory Map (no crash, no data loss — just loses persistence)
  */
 
-export function localStorageProvider(): Map<string, unknown> {
-  if (typeof window === "undefined") return new Map();
+// SWR provider type: receives default cache, returns a cache-compatible Map
+type ProviderFn = (cache: Readonly<Cache<unknown>>) => Cache<unknown>;
+
+export const localStorageProvider: ProviderFn = (cache) => {
+  if (typeof window === "undefined") return cache;
 
   // Hydrate from localStorage on client mount
   let map: Map<string, unknown>;
@@ -41,5 +46,5 @@ export function localStorageProvider(): Map<string, unknown> {
     }
   });
 
-  return map;
-}
+  return map as unknown as Cache<unknown>;
+};
