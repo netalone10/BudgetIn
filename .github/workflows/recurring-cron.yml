@@ -1,0 +1,39 @@
+name: Recurring transactions cron
+
+# Pengganti Vercel Cron untuk memicu /api/cron/recurring tiap hari.
+# Endpoint tetap berjalan di Vercel; workflow ini hanya pemicunya.
+#
+# Prasyarat:
+#   1. Set repo secret `CRON_SECRET` (Settings → Secrets and variables →
+#      Actions → New repository secret). Nilainya HARUS sama persis dengan
+#      env `CRON_SECRET` di Vercel Production (yang divalidasi endpoint).
+#   2. (Opsional) Sesuaikan APP_URL di bawah bila domain berubah.
+
+on:
+  schedule:
+    # 00:00 UTC = 07:00 WIB setiap hari. GitHub cron memakai UTC.
+    - cron: "0 0 * * *"
+  workflow_dispatch: {} # bisa dipicu manual dari tab Actions untuk tes
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger recurring cron endpoint
+        env:
+          APP_URL: https://budget.amuharr.com
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Secret CRON_SECRET belum di-set di repo. Tambahkan di Settings → Secrets → Actions."
+            exit 1
+          fi
+          code=$(curl -sS -m 60 -o /tmp/cron-out.txt -w "%{http_code}" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${APP_URL}/api/cron/recurring")
+          echo "HTTP ${code}"
+          echo "--- response ---"
+          cat /tmp/cron-out.txt || true
+          echo
+          # Gagalkan job jika bukan 200 supaya kamu dapat notifikasi GitHub.
+          test "${code}" = "200"
