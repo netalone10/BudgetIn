@@ -14,6 +14,19 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.13.2",
+    date: "2026-06-01",
+    title: "Perbaikan Transaksi Berulang & Export CSV",
+    description: "Memperbaiki halaman Berulang yang error tidak bisa dibuka, serta transaksi berulang yang sudah lewat jatuh tempo (overdue) tidak pernah tercatat otomatis. Menambahkan fitur export transaksi ke CSV di halaman Transaksi.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.13.2`,
+    changes: [
+      "Memperbaiki halaman Berulang yang gagal terbuka (\"Terjadi kesalahan\") akibat perubahan format respons API menjadi { data, pagination }.",
+      "Transaksi berulang yang sudah lewat jatuh tempo (overdue) kini ikut tercatat otomatis saat cron berjalan — sebelumnya hanya item yang jatuh tempo tepat hari ini yang ditangkap, sehingga item terlambat terlantar.",
+      "Menambahkan tombol Export CSV di halaman Transaksi untuk mengunduh transaksi periode aktif (kolom Tanggal, Waktu, Tipe, Kategori, Nominal, Akun, Akun Tujuan, Catatan).",
+    ],
+  },
+  {
     version: "v1.13.1",
     date: "2026-05-30",
     title: "Konsistensi angka & label antar halaman",

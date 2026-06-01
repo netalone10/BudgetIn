@@ -2,6 +2,18 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.13.2] — 2026-06-01
+
+### Added
+- **Export CSV transaksi.** Tombol "Export CSV" di halaman Transaksi mengunduh seluruh transaksi periode aktif (`GET /api/export/csv`) dengan kolom Tanggal, Waktu, Tipe, Kategori, Nominal, Akun, Akun Tujuan, Catatan. BOM UTF-8 agar rapi di Excel.
+
+### Fixed
+- **Halaman Berulang error tidak bisa dibuka** (`items.filter is not a function`). `GET /api/recurring` berubah mengembalikan `{ data, pagination }` sejak penambahan pagination, tapi client masih membacanya sebagai array. Sekarang membaca `.data`.
+- **Transaksi berulang overdue tidak tercatat.** Query auto-record cron hanya menangkap item yang jatuh tempo tepat hari ini; item yang sudah lewat jatuh tempo terlantar dan tidak pernah tercatat. Sekarang menangkap due hari ini + overdue (catch-up), aman dari pencatatan ganda via dedup `occurrenceKey`.
+
+### Changed
+- Trigger cron `/api/cron/recurring` dipindah ke GitHub Actions (`.github/workflows/recurring-cron.yml`); entri cron tersebut dihapus dari `vercel.json` (menyisakan `sync-sheets-counts`).
+
 ## [1.13.1] — 2026-05-30
 
 ### Fixed
