@@ -262,23 +262,33 @@ ${topCategories || "(belum ada pengeluaran non-tabungan)"}
 ANOMALI OVER-BUDGET (hanya ini yang boleh masuk field anomalies):
 ${anomaliText}`;
 
-    const summaryRes = await callWithRotation((client) =>
-      client.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        response_format: { type: "json_object" },
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-      })
-    );
-
-    const jsonString = summaryRes.choices[0]?.message?.content ?? "{}";
-    const narrative = JSON.parse(jsonString);
+    // Panggilan AI dibungkus terpisah: jika Groq gagal/timeout, insight
+    // deterministik (health score, breakdown, top expenses, rekomendasi
+    // otomatis) tetap dikembalikan — tidak lagi men-500-kan seluruh response.
+    let narrative: { summary?: string; anomalies?: string[]; recommendations?: string[] } = {};
+    let aiUnavailable = false;
+    try {
+      const summaryRes = await callWithRotation((client) =>
+        client.chat.completions.create({
+          model: "llama-3.1-8b-instant",
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+        })
+      );
+      const jsonString = summaryRes.choices[0]?.message?.content ?? "{}";
+      narrative = JSON.parse(jsonString);
+    } catch (aiError) {
+      console.error("[analyst endpoint] AI narrative gagal — mengembalikan insight deterministik saja:", aiError);
+      aiUnavailable = true;
+    }
 
     return NextResponse.json({
       summary: narrative.summary ?? "",
+      aiUnavailable,
       healthScore,
       anomalies: narrative.anomalies ?? [],
       recommendations: narrative.recommendations ?? [],

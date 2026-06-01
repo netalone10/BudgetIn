@@ -17,6 +17,8 @@ interface Transaction {
 
 interface AIReport {
   summary: string;
+  /** True bila narasi AI (Groq) gagal — insight deterministik tetap tersedia. */
+  aiUnavailable?: boolean;
   healthScore: number;
   anomalies: string[];
   recommendations: string[];
@@ -309,26 +311,40 @@ export default function AIAnalystPage() {
             
             {/* Main Content */}
             <div className="space-y-6">
-              {/* Summary */}
-              <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
-                <span className="label-mono text-muted-foreground mb-3 block">01 / Rangkuman Eksekutif</span>
-                <p className="text-lg leading-relaxed text-foreground font-medium">
-                  {report.summary}
-                </p>
-              </section>
+              {/* AI unavailable notice — insight deterministik tetap akurat */}
+              {report.aiUnavailable && (
+                <div className="rounded-[24px] border border-yellow-500/25 bg-yellow-500/5 p-4 flex items-start gap-3">
+                  <AlertTriangle className="size-5 text-yellow-600 dark:text-yellow-400 shrink-0 mt-0.5" />
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                    Narasi AI sedang tidak tersedia. Insight di bawah tetap akurat — dihitung langsung dari data transaksi Anda.
+                  </p>
+                </div>
+              )}
 
-              {/* Recommendations */}
-              <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
-                <span className="label-mono text-muted-foreground mb-4 block">02 / Rekomendasi Hemat</span>
-                <ul className="space-y-4">
-                  {report.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="size-5 text-primary shrink-0 mt-0.5" />
-                      <span className="text-[15px] leading-relaxed text-foreground">{rec}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              {/* Summary — hanya tampil bila ada narasi AI */}
+              {report.summary && (
+                <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+                  <span className="label-mono text-muted-foreground mb-3 block">01 / Rangkuman Eksekutif</span>
+                  <p className="text-lg leading-relaxed text-foreground font-medium">
+                    {report.summary}
+                  </p>
+                </section>
+              )}
+
+              {/* Recommendations — hanya tampil bila AI memberi saran */}
+              {report.recommendations.length > 0 && (
+                <section className="rounded-[24px] border border-border bg-card p-6 shadow-sm">
+                  <span className="label-mono text-muted-foreground mb-4 block">02 / Rekomendasi Hemat</span>
+                  <ul className="space-y-4">
+                    {report.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <CheckCircle2 className="size-5 text-primary shrink-0 mt-0.5" />
+                        <span className="text-[15px] leading-relaxed text-foreground">{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
               {/* Anomalies */}
               {report.anomalies && report.anomalies.length > 0 && (

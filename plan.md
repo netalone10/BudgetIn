@@ -107,25 +107,21 @@ Dokumen ini adalah working plan konkret — bukan dokumen strategis seperti ROAD
 
 ---
 
-### C3 — Deterministic Insight Cards `[P1]`
+### C3 — Deterministic Insight Cards `[P1]`  ✅ SELESAI (2026-06-01)
 
-**Problem**: Halaman analyst bergantung penuh pada Groq — jika Groq unavailable, tidak ada insight sama sekali.
+**Problem**: Halaman analyst bergantung penuh pada Groq — jika Groq unavailable, route men-500-kan seluruh response sehingga insight deterministik (health score, breakdown kategori, top expenses, rekomendasi otomatis) yang sudah dihitung server-side ikut hilang.
 
-**Scope**:
-- Tambah insight cards deterministik sebelum AI narrative:
-  - Kategori dengan spending tertinggi bulan ini
-  - Kategori yang over-budget
-  - Savings goal yang kurang kontribusi (< target bulanan)
-  - Unusual spending (bulan ini vs rata-rata 3 bulan lalu)
-- AI narrative tetap ada sebagai supplement
+**Temuan**: Insight deterministik **sudah** dihitung server-side (`healthScore`, `overBudget`, `categoryPercentages`, `topExpenses`, `dailyAvgSpending`, `fmRecommendations`) dan **sudah** dirender sebagai cards di AnalystClient (section 04/05/06 + sidebar). Yang dari AI hanya section 01/02/03 (summary, rekomendasi, anomali). Gap satu-satunya: kegagalan Groq menjatuhkan semuanya.
 
-**File yang terpengaruh**:
-- `app/api/analyst/route.ts` — tambah deterministic insight calculation
-- `app/dashboard/analyst/AnalystClient.tsx` — tampilkan insight cards
+**Implementasi**:
+- `app/api/analyst/route.ts` — panggilan Groq dibungkus try/catch terpisah; bila gagal → narasi kosong + flag `aiUnavailable: true`, tapi semua field deterministik tetap dikembalikan (200, bukan 500).
+- `app/dashboard/analyst/AnalystClient.tsx` — tambah notice "Narasi AI tidak tersedia, insight tetap akurat"; section summary (01) & rekomendasi AI (02) hanya tampil bila ada isinya; section deterministik tetap render.
 
 **Kriteria selesai**:
-- Insight cards muncul walau Groq request gagal
-- Angka insight konsisten dengan dashboard dan budget page
+- ✅ Insight (deterministik) tetap muncul walau Groq gagal
+- ✅ Angka konsisten (dihitung dari data yang sama; spending bebas transfer/savings via analyst-metrics)
+
+**Catatan**: "Unusual spending vs rata-rata 3 bulan" (di scope awal) di-skip — butuh fetch 3 bulan tambahan; prediksi tren bulan depan sudah ada di endpoint `/api/prediction`.
 
 ---
 
