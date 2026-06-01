@@ -14,6 +14,20 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.13.3",
+    date: "2026-06-01",
+    title: "Peringatan Budget, Insight Tahan Gangguan & Dashboard Lebih Cepat",
+    description: "Menambahkan kartu peringatan budget di dashboard, membuat AI Analyst tetap menampilkan insight meski layanan AI sedang bermasalah, serta mempercepat waktu muat halaman dashboard.",
+    type: "improvement",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.13.3`,
+    changes: [
+      "Menambahkan kartu Peringatan Budget di dashboard — muncul otomatis saat pengeluaran kategori mendekati (≥80%) atau melewati (≥100%) budget, lengkap dengan progress bar dan persentase.",
+      "AI Analyst kini tetap menampilkan insight deterministik (health score, breakdown kategori, pengeluaran terbesar, rekomendasi otomatis) meskipun layanan AI sedang tidak tersedia — sebelumnya seluruh halaman gagal saat AI bermasalah.",
+      "Mempercepat waktu muat dashboard: sapaan/greeting kini dirender langsung di server sehingga halaman terasa tampil lebih cepat (perbaikan Largest Contentful Paint).",
+      "Menghapus font yang tidak terpakai untuk mengurangi beban unduhan di setiap halaman.",
+    ],
+  },
+  {
     version: "v1.13.2",
     date: "2026-06-01",
     title: "Perbaikan Transaksi Berulang & Export CSV",

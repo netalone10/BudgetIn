@@ -2,6 +2,18 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.13.3] — 2026-06-01
+
+### Added
+- **Peringatan Budget di dashboard.** Kartu peringatan muncul otomatis saat pengeluaran kategori mendekati (≥80%, warn) atau melewati (≥100%, over) budget efektif (budget + rollover). Helper murni `lib/budget-alerts.ts` (+ 10 unit test) + `components/dashboard/BudgetAlertCard.tsx`. Memakai data budget yang sudah ada (tanpa API baru); spending sudah bebas transfer/equity.
+
+### Changed
+- **AI Analyst tahan gangguan.** Panggilan Groq di `/api/analyst` dibungkus terpisah — bila gagal, insight deterministik (health score, breakdown kategori, top expenses, rekomendasi otomatis) tetap dikembalikan dengan flag `aiUnavailable`, bukan men-500-kan seluruh response. UI menampilkan notice dan menyembunyikan section narasi AI yang kosong.
+
+### Performance
+- **Dashboard lebih cepat (LCP).** Greeting/sapaan + tanggal kini dirender server-side di luar Suspense sebagai elemen LCP yang tercat instan, tidak lagi menunggu fetch data dashboard. `DashboardGreeting` diramping jadi action bar.
+- **Hapus font Lora yang tidak terpakai** — `--font-serif` didefinisikan tapi tak pernah dipakai; 4 file font tidak lagi diunduh tiap page load.
+
 ## [1.13.2] — 2026-06-01
 
 ### Added
