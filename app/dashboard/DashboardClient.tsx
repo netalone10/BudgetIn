@@ -395,6 +395,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
   const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
   const [user, setUser] = useState(data.user);
+  const [lastMonthTotals, setLastMonthTotals] = useState(data.lastMonthTotals);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -480,7 +481,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
     // Use daily burn rate from last complete month to avoid fluctuation
     // at the start of the month (incomplete current month data).
-    const lastExpense = data.lastMonthTotals.expense;
+    const lastExpense = lastMonthTotals.expense;
     const [y, m] = currentMonth.split("-").map(Number);
     const lastMonthStr = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
     const [ly, lm] = lastMonthStr.split("-").map(Number);
@@ -491,10 +492,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       avgBurn > 0 ? liquid / avgBurn : Number.POSITIVE_INFINITY;
 
     return { liquid, avgBurn, months };
-  }, [accounts, currentMonth, data.lastMonthTotals.expense]);
+  }, [accounts, currentMonth, lastMonthTotals.expense]);
 
-  const incomeDelta = monthlyStats.income - data.lastMonthTotals.income;
-  const expenseDelta = monthlyStats.expense - data.lastMonthTotals.expense;
+  const incomeDelta = monthlyStats.income - lastMonthTotals.income;
+  const expenseDelta = monthlyStats.expense - lastMonthTotals.expense;
 
   function focusAIWithIntent(kind: "expense" | "income" | "transfer") {
     const presets: Record<typeof kind, string> = {
@@ -529,18 +530,33 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     // Fetch all dashboard data in parallel
     Promise.all([
       fetch("/api/record?period=bulan+ini").then((r) => (r.ok ? r.json() : { transactions: [] })),
+      fetch("/api/record?period=bulan+lalu").then((r) => (r.ok ? r.json() : { transactions: [] })),
       fetch("/api/budget").then((r) => (r.ok ? r.json() : null)),
       fetch("/api/accounts").then((r) => (r.ok ? r.json() : { accounts: [] })),
       fetch("/api/categories").then((r) => (r.ok ? r.json() : { categories: [] })),
     ])
-      .then(([txData, budgetResult, acctData, catData]) => {
+      .then(([txData, lastTxData, budgetResult, acctData, catData]) => {
         if (txData?.transactions) setTransactions(txData.transactions);
         if (budgetResult) setBudgetData(budgetResult);
         if (acctData?.accounts) setAccounts(acctData.accounts);
         if (catData?.categories) {
           const cats = catData.categories;
           setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
-          setSavingsCategoryNames(new Set(cats.filter((c: { isSavings?: boolean }) => c.isSavings).map((c: { name: string }) => c.name.toLowerCase())));
+          const savingsNames = new Set(cats.filter((c: { isSavings?: boolean }) => c.isSavings).map((c: { name: string }) => c.name.toLowerCase()));
+          setSavingsCategoryNames(savingsNames);
+          // Compute last month totals from fetched transactions
+          if (lastTxData?.transactions) {
+            let income = 0;
+            let expense = 0;
+            for (const t of lastTxData.transactions) {
+              if (isEquityTransaction(t)) continue;
+              if (t.type === "income") { income += Math.abs(t.amount); continue; }
+              if (!isExpenseTransaction(t)) continue;
+              if (isSavingsTransaction(t.category, savingsNames)) continue;
+              expense += Math.abs(t.amount);
+            }
+            setLastMonthTotals({ income, expense });
+          }
         }
       })
       .catch(() => {});
