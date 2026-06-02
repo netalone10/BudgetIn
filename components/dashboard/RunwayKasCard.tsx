@@ -111,7 +111,7 @@ export default function RunwayKasCard({
       ? "Tambah akun & catat pengeluaran"
       : tone === "infinite"
         ? "Belum ada pengeluaran 2 bulan terakhir"
-        : "Berdasar rata-rata 2 bulan";
+        : "Berdasar rata-rata harian (proyeksi 30 hari)";
 
   const helperLine =
     tone === "empty"

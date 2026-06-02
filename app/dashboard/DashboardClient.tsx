@@ -478,14 +478,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       return sum + n;
     }, 0);
 
-    const currentExpense = monthlyStats.expense;
+    // Use daily burn rate from last complete month to avoid fluctuation
+    // at the start of the month (incomplete current month data).
     const lastExpense = data.lastMonthTotals.expense;
-    const avgBurn = (currentExpense + lastExpense) / 2;
+    const [y, m] = currentMonth.split("-").map(Number);
+    const lastMonthStr = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    const [ly, lm] = lastMonthStr.split("-").map(Number);
+    const daysInLastMonth = new Date(ly, lm, 0).getDate();
+    const dailyBurn = daysInLastMonth > 0 ? lastExpense / daysInLastMonth : 0;
+    const avgBurn = dailyBurn * 30;
     const months =
       avgBurn > 0 ? liquid / avgBurn : Number.POSITIVE_INFINITY;
 
     return { liquid, avgBurn, months };
-  }, [accounts, monthlyStats.expense, data.lastMonthTotals.expense]);
+  }, [accounts, currentMonth, data.lastMonthTotals.expense]);
 
   const incomeDelta = monthlyStats.income - data.lastMonthTotals.income;
   const expenseDelta = monthlyStats.expense - data.lastMonthTotals.expense;
