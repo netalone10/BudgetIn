@@ -542,7 +542,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         if (catData?.categories) {
           const cats = catData.categories;
           setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
-          const savingsNames = new Set(cats.filter((c: { isSavings?: boolean }) => c.isSavings).map((c: { name: string }) => c.name.toLowerCase()));
+          const savingsNames = new Set<string>(cats.filter((c: { isSavings?: boolean }) => c.isSavings).map((c: { name: string }) => c.name.toLowerCase()));
           setSavingsCategoryNames(savingsNames);
           // Compute last month totals from fetched transactions
           if (lastTxData?.transactions) {
