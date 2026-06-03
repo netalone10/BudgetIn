@@ -59,7 +59,7 @@ export default function KPICard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm",
+        "relative overflow-hidden rounded-[20px] bg-card p-4 shadow",
         "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:content-['']",
         ACCENT_CLASS[type],
         className

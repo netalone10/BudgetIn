@@ -1029,7 +1029,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   return (
     <div className="flex min-w-0 flex-col gap-6 md:gap-8 lg:gap-10">
       {/* Greeting header + action bar — satu blok terpadu */}
-      <header className="relative overflow-hidden rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow-sm md:p-6">
+      <header className="relative overflow-hidden rounded-[24px] bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow md:p-6">
         <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
           {greetingText}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}! <span aria-hidden>👋</span>
         </h1>
