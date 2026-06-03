@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Info,
-  MicVocal,
   LayoutGrid,
   Dices,
   X,
@@ -1029,22 +1028,22 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
   return (
     <div className="flex min-w-0 flex-col gap-6 md:gap-8 lg:gap-10">
-      {/* Greeting header — rendered client-side from browser time (instant shell) */}
+      {/* Greeting header + action bar — satu blok terpadu */}
       <header className="relative overflow-hidden rounded-[24px] border border-border/70 bg-gradient-to-br from-primary/10 via-primary/[0.04] to-transparent p-5 shadow-sm md:p-6">
         <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
           {greetingText}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}! <span aria-hidden>👋</span>
         </h1>
-        <p className="mt-1.5 text-[13px] font-medium text-muted-foreground">{dateLabel}</p>
+        <p className="mt-1 text-[13px] font-medium text-muted-foreground">{dateLabel}</p>
+        <div className="mt-4 border-t border-border/30 pt-4">
+          <DashboardGreeting
+            todayStats={todayStats}
+            onQuickAction={focusAIWithIntent}
+            onRefresh={handleManualRefresh}
+            refreshing={dataLoading}
+            isRevalidating={isRevalidating && !txLoading && !budgetLoading}
+          />
+        </div>
       </header>
-
-      {/* Action bar + today stats */}
-        <DashboardGreeting
-          todayStats={todayStats}
-          onQuickAction={focusAIWithIntent}
-          onRefresh={handleManualRefresh}
-          refreshing={dataLoading}
-          isRevalidating={isRevalidating && !txLoading && !budgetLoading}
-        />
 
       {/* KPI Section: KPI cards grid — streams first */}
         <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
@@ -1110,16 +1109,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         {inputMode === "ai" ? (
           <div className="space-y-4">
             <div className="rounded-[22px] border border-border/70 bg-background p-4">
-              <div className="mb-3 flex min-w-0 items-center gap-2">
-                <MicVocal className="size-4 shrink-0 text-primary" />
-                <p className="min-w-0 truncate text-sm font-semibold text-foreground">
-                  AI Capture
-                </p>
-                <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
-                  Enter untuk kirim
-                </span>
-              </div>
-
               <form onSubmit={handleSubmit} className="min-w-0 space-y-3">
                 <div className="relative">
                   <Textarea
@@ -1419,9 +1408,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 Input manual
               </p>
             </div>
-            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-              Kalau kamu ingin lebih presisi, form manual tetap siap untuk transaksi yang perlu detail tambahan.
-            </p>
             <ManualTransactionForm
               accounts={accounts}
               categories={transactionCategories}
