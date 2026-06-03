@@ -59,7 +59,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     return (
       <div
         className={cn(
-          "relative animate-pulse overflow-hidden rounded-[20px] bg-card p-4 shadow",
+          "relative animate-pulse overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm",
           "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:bg-primary before:content-['']",
           !compact && "p-6"
         )}
@@ -75,7 +75,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-[20px] bg-card p-4 shadow",
+          "relative overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm",
           "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:bg-primary before:content-['']",
           !compact && "p-6"
         )}
@@ -96,7 +96,7 @@ export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = fals
     <Link href="/dashboard/accounts" className="group block min-w-0 h-full">
       <div
         className={cn(
-          "relative h-full overflow-hidden rounded-[20px] bg-card p-4 shadow transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+          "relative h-full overflow-hidden rounded-[20px] border border-border/70 bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/35",
           "before:absolute before:left-0 before:right-0 before:top-0 before:h-[3px] before:rounded-t-[20px] before:bg-primary before:content-['']",
           !compact && "p-6"
         )}

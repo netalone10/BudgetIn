@@ -15,7 +15,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <DemoModeBanner />
         <ErrorBoundary>
-          {children}
+          <div className="px-4 pb-10 md:px-6 lg:px-8">
+            {children}
+          </div>
         </ErrorBoundary>
       </div>
     </div>
