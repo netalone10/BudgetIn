@@ -39,6 +39,9 @@ export default function SavingsPage() {
   const [amountError, setAmountError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Bumped to force UnallocatedSavings to refetch (e.g. after unlinking a contribution)
+  const [unallocatedKey, setUnallocatedKey] = useState(0);
+
   async function fetchGoals() {
     setLoading(true);
     setError(null);
@@ -147,6 +150,34 @@ export default function SavingsPage() {
         };
       })
     );
+  }
+
+  function handleEdit(
+    goalId: string,
+    updated: { id: string; name: string; targetAmount: number; deadline?: string | null; createdAt: string }
+  ) {
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.id === goalId
+          ? { ...g, name: updated.name, targetAmount: updated.targetAmount, deadline: updated.deadline }
+          : g
+      )
+    );
+  }
+
+  function handleUnlink(goalId: string, transactionId: string, amount: number) {
+    setGoals((prev) =>
+      prev.map((g) => {
+        if (g.id !== goalId) return g;
+        return {
+          ...g,
+          totalContributed: g.totalContributed - amount,
+          contributions: g.contributions.filter((c) => c.id !== transactionId),
+        };
+      })
+    );
+    // Unlinked transaction returns to the unallocated pool — refetch that list
+    setUnallocatedKey((k) => k + 1);
   }
 
   // Called when an unallocated tx is linked to a goal
@@ -265,6 +296,8 @@ export default function SavingsPage() {
                 goal={goal}
                 onDelete={handleDelete}
                 onContribute={handleContribute}
+                onEdit={handleEdit}
+                onUnlink={handleUnlink}
               />
             ))}
           </div>
@@ -281,6 +314,7 @@ export default function SavingsPage() {
               Transaksi tabungan yang belum terhubung ke goal manapun.
             </p>
             <UnallocatedSavings
+              key={unallocatedKey}
               goals={goalSummaries}
               onAllocated={handleAllocated}
             />
