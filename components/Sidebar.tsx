@@ -40,7 +40,6 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
-const ManageCategoriesModal = dynamic(() => import("@/components/ManageCategoriesModal"), { ssr: false });
 const ChangePasswordModal = dynamic(() => import("@/components/ChangePasswordModal"), { ssr: false });
 const OnboardingModal = dynamic(() => import("@/components/OnboardingModal"), { ssr: false });
 const CalculatorModal = dynamic(() => import("@/components/CalculatorModal"), { ssr: false });
@@ -147,7 +146,6 @@ export default function Sidebar() {
   const [isPinned, setIsPinned] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  const [showManageCategories, setShowManageCategories] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -179,9 +177,6 @@ export default function Sidebar() {
   const isEmailUser = !session?.sheetsId;
   const isAdminUser = session?.isAdmin === true;
 
-  const handleCategoriesChanged = () => {
-    window.dispatchEvent(new CustomEvent("categoriesChanged"));
-  };
 
   const primaryItems: NavItem[] = [
     { name: "Overview", href: "/dashboard", icon: LayoutGrid, badge: "Home" },
@@ -297,11 +292,12 @@ export default function Sidebar() {
               </m.p>
             )}
 
-            <button
-              onClick={() => setShowManageCategories(true)}
+            <Link
+              href="/dashboard/categories"
               className={cn(
                 "flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                isCollapsed && "justify-center px-0"
+                isCollapsed && "justify-center px-0",
+                pathname === "/dashboard/categories" && "bg-sidebar-accent text-sidebar-accent-foreground"
               )}
               title={isCollapsed ? "Kelola Kategori" : undefined}
               aria-label={isCollapsed ? "Kelola Kategori" : undefined}
@@ -312,7 +308,7 @@ export default function Sidebar() {
                   Kelola Kategori
                 </m.span>
               )}
-            </button>
+            </Link>
 
             <NavSection
               title="Pengaturan"
@@ -499,16 +495,17 @@ export default function Sidebar() {
                 <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55">
                   Tools
                 </p>
-                <button
-                  onClick={() => {
-                    setIsMobileOpen(false);
-                    setShowManageCategories(true);
-                  }}
-                  className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                <Link
+                  href="/dashboard/categories"
+                  onClick={() => setIsMobileOpen(false)}
+                  className={cn(
+                    "flex h-9 w-full items-center gap-2 rounded-md px-2 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    pathname === "/dashboard/categories" && "bg-sidebar-accent text-sidebar-accent-foreground"
+                  )}
                 >
                   <ListPlus className="size-4 shrink-0" />
                   <span className="text-sm font-medium">Kelola Kategori</span>
-                </button>
+                </Link>
 
                 {utilityItems.map((item) => {
                   const Icon = item.icon;
@@ -612,13 +609,6 @@ export default function Sidebar() {
       <>
       {desktopSidebar}
       {mobileTopbarAndNav}
-
-      {showManageCategories && (
-        <ManageCategoriesModal
-          onClose={() => setShowManageCategories(false)}
-          onSaved={handleCategoriesChanged}
-        />
-      )}
 
       {showChangePassword && (
         <ChangePasswordModal onClose={() => setShowChangePassword(false)} />

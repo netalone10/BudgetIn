@@ -29,6 +29,7 @@ export interface Transaction {
 export interface TransactionCategory {
   name: string;
   type: string;
+  isSavings?: boolean;
 }
 
 interface Props {

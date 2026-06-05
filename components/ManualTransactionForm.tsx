@@ -40,7 +40,7 @@ interface ManualTransactionFormProps {
 }
 
 type TabType = "expense" | "income" | "transfer";
-type CategoryOption = string | { name: string; type?: string | null };
+type CategoryOption = string | { name: string; type?: string | null; isSavings?: boolean };
 
 const FORM_CONTROL_CLS = "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus:ring-3 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50";
 const FORM_SELECT_CLS = `${FORM_CONTROL_CLS} min-w-0 truncate`;
@@ -117,6 +117,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   const incomeNames = ["Gaji", "Freelance", "Bonus", "Investasi", "Bisnis", "THR", "Dividen", "Lainnya", "Pemasukan"];
   const expenseCategories = categoryOptions
     .filter((c) => hasTypedCategories ? c.type !== "income" : !incomeNames.includes(c.name))
+    .filter((c) => !c.isSavings)
     .map((c) => c.name);
   const incomeCategories = categoryOptions
     .filter((c) => hasTypedCategories ? c.type === "income" : incomeNames.includes(c.name))

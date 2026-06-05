@@ -376,7 +376,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const revalidatingCountRef = useRef(0);
 
   const [transactionCategories, setTransactionCategories] = useState<TransactionCategory[]>(() =>
-    data.categories.map((c) => ({ name: c.name, type: c.type }))
+    data.categories.map((c) => ({ name: c.name, type: c.type, isSavings: c.isSavings }))
   );
   const [savingsCategoryNames, setSavingsCategoryNames] = useState<Set<string>>(() =>
     new Set(data.savingsCategoryNames)
@@ -540,7 +540,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         if (acctData?.accounts) setAccounts(acctData.accounts);
         if (catData?.categories) {
           const cats = catData.categories;
-          setTransactionCategories(cats.map((c: { name: string; type: string }) => ({ name: c.name, type: c.type })));
+          setTransactionCategories(cats.map((c: { name: string; type: string; isSavings?: boolean }) => ({ name: c.name, type: c.type, isSavings: c.isSavings })));
           const savingsNames = new Set<string>(cats.filter((c: { isSavings?: boolean }) => c.isSavings).map((c: { name: string }) => c.name.toLowerCase()));
           setSavingsCategoryNames(savingsNames);
           // Compute last month totals from fetched transactions
@@ -597,7 +597,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       if (!result) return; // 304 or error — keep stale data
       const cats = result.data.categories ?? [];
       setTransactionCategories(
-        cats.map((c) => ({ name: c.name, type: c.type }))
+        cats.map((c) => ({ name: c.name, type: c.type, isSavings: c.isSavings }))
       );
       const savingsNames = new Set<string>(
         cats
