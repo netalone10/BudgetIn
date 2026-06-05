@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PiggyBank, Loader2, AlertCircle } from "lucide-react";
+import { PiggyBank, Loader2, AlertCircle, Inbox } from "lucide-react";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SavingsGoalCard from "@/components/SavingsGoalCard";
+import UnallocatedSavings from "@/components/UnallocatedSavings";
 
 interface Contribution {
   id: string;
@@ -148,6 +149,31 @@ export default function SavingsPage() {
     );
   }
 
+  // Called when an unallocated tx is linked to a goal
+  function handleAllocated(
+    goalId: string,
+    transactionId: string,
+    amount: number,
+    date: string,
+    note: string
+  ) {
+    setGoals((prev) =>
+      prev.map((g) => {
+        if (g.id !== goalId) return g;
+        return {
+          ...g,
+          totalContributed: g.totalContributed + amount,
+          contributions: [
+            { id: transactionId, date, amount, note },
+            ...g.contributions,
+          ],
+        };
+      })
+    );
+  }
+
+  const goalSummaries = goals.map((g) => ({ id: g.id, name: g.name }));
+
   return (
     <div className="flex min-w-0 flex-col w-full">
       <div className="mx-auto w-full max-w-5xl px-4 md:p-8 space-y-6">
@@ -159,60 +185,56 @@ export default function SavingsPage() {
 
         {/* Create Goal Form */}
         {!isDemo && (
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Buat Goal Baru</h3>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <Input
-                type="text"
-                placeholder="Nama goal (contoh: Dana Darurat)"
-                value={name}
-                onChange={(e) => { setName(e.target.value); setNameError(""); }}
-                disabled={submitting}
-                aria-invalid={!!nameError}
-              />
-              {nameError && (
-                <p className="text-xs text-destructive">{nameError}</p>
-              )}
-            </div>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Buat Goal Baru</h3>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <Input
+                  type="text"
+                  placeholder="Nama goal (contoh: Dana Darurat)"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setNameError(""); }}
+                  disabled={submitting}
+                  aria-invalid={!!nameError}
+                />
+                {nameError && <p className="text-xs text-destructive">{nameError}</p>}
+              </div>
 
-            <div className="flex flex-col gap-1">
-              <Input
-                type="number"
-                placeholder="Target amount (Rp)"
-                value={targetAmount}
-                onChange={(e) => { setTargetAmount(e.target.value); setAmountError(""); }}
-                disabled={submitting}
-                min={1}
-                aria-invalid={!!amountError}
-              />
-              {amountError && (
-                <p className="text-xs text-destructive">{amountError}</p>
-              )}
-            </div>
+              <div className="flex flex-col gap-1">
+                <Input
+                  type="number"
+                  placeholder="Target amount (Rp)"
+                  value={targetAmount}
+                  onChange={(e) => { setTargetAmount(e.target.value); setAmountError(""); }}
+                  disabled={submitting}
+                  min={1}
+                  aria-invalid={!!amountError}
+                />
+                {amountError && <p className="text-xs text-destructive">{amountError}</p>}
+              </div>
 
-            <div>
-              <Input
-                type="date"
-                placeholder="Deadline (opsional)"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                disabled={submitting}
-              />
-            </div>
+              <div>
+                <Input
+                  type="date"
+                  placeholder="Deadline (opsional)"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  disabled={submitting}
+                />
+              </div>
 
-            <Button type="submit" disabled={submitting} className="self-start">
-              {submitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Menyimpan…
-                </>
-              ) : (
-                "Buat Goal"
-              )}
-            </Button>
-          </form>
-        </div>
+              <Button type="submit" disabled={submitting} className="self-start">
+                {submitting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Menyimpan…
+                  </>
+                ) : (
+                  "Buat Goal"
+                )}
+              </Button>
+            </form>
+          </div>
         )}
 
         {/* Goals List */}
@@ -238,8 +260,30 @@ export default function SavingsPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {goals.map((goal) => (
-              <SavingsGoalCard key={goal.id} goal={goal} onDelete={handleDelete} onContribute={handleContribute} />
+              <SavingsGoalCard
+                key={goal.id}
+                goal={goal}
+                onDelete={handleDelete}
+                onContribute={handleContribute}
+              />
             ))}
+          </div>
+        )}
+
+        {/* Unallocated savings — only show for non-demo, non-loading, non-error state */}
+        {!isDemo && !loading && !error && (
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <Inbox className="size-4 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-foreground">Belum Dialokasikan</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Transaksi tabungan yang belum terhubung ke goal manapun.
+            </p>
+            <UnallocatedSavings
+              goals={goalSummaries}
+              onAllocated={handleAllocated}
+            />
           </div>
         )}
       </div>
