@@ -14,7 +14,7 @@ import { isSavingsTransaction } from "@/lib/savings-utils";
 import { cn } from "@/lib/utils";
 
 type Period = "today" | "week" | "month" | "lastMonth" | "custom";
-type TypeFilter = "all" | "expense" | "income" | "transfer";
+type TypeFilter = "all" | "expense" | "income" | "transfer" | "savings";
 
 type Account = {
   id: string;
@@ -120,6 +120,9 @@ export default function TransactionsClient() {
         if (t.type !== "income") return false;
       } else if (typeFilter === "transfer") {
         if (!isTransferTransaction(t)) return false;
+      } else if (typeFilter === "savings") {
+        if (!isExpenseTransaction(t)) return false;
+        if (!isSavingsTransaction(t.category, savingsCategoryNames)) return false;
       }
       if (categoryFilter && t.category !== categoryFilter) return false;
       if (accountFilter) {
@@ -284,6 +287,7 @@ export default function TransactionsClient() {
               <option value="expense">Pengeluaran</option>
               <option value="income">Pemasukan</option>
               <option value="transfer">Transfer</option>
+              <option value="savings">🏦 Tabungan</option>
             </select>
 
             <select
