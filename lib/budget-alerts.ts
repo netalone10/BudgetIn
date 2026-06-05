@@ -31,8 +31,11 @@ export const BUDGET_WARN_THRESHOLD = 0.8;
 
 /**
  * Hitung daftar kategori yang mendekati atau melewati budget.
- * - `over`  : pemakaian >= 100% dari effective budget
- * - `warn`  : pemakaian >= warnThreshold (default 80%) dan < 100%
+ * - `over`  : pemakaian > 100% dari effective budget (benar-benar melewati)
+ * - `warn`  : pemakaian >= warnThreshold (default 80%) dan <= 100%
+ *
+ * Catatan: pemakaian tepat 100% (spent == effective budget) dianggap `warn`,
+ * bukan `over` — budget terpakai penuh tapi belum dilewati.
  *
  * Kategori tanpa effective budget (<= 0) di-skip. Hasil diurutkan rasio
  * tertinggi lebih dulu (yang paling kritis di atas).
@@ -48,7 +51,7 @@ export function computeBudgetAlerts(
     if (effectiveBudget <= 0) continue;
 
     const ratio = b.spent / effectiveBudget;
-    if (ratio >= 1) {
+    if (ratio > 1) {
       alerts.push({ category: b.category, spent: b.spent, effectiveBudget, ratio, level: "over" });
     } else if (ratio >= warnThreshold) {
       alerts.push({ category: b.category, spent: b.spent, effectiveBudget, ratio, level: "warn" });

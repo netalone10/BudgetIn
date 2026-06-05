@@ -32,8 +32,10 @@ export default function BudgetAlertCard({ budgets }: { budgets?: BudgetAlertInpu
 
       <ul className="flex flex-col gap-2">
         {alerts.slice(0, 5).map((a) => {
-          const pct = Math.round(a.ratio * 100);
           const isOver = a.level === "over";
+          // Over selalu tampil > 100% (ceil); warn selalu <= 100% (floor) supaya
+          // 99,x% tidak terlihat seperti "100%" yang membingungkan.
+          const pct = isOver ? Math.ceil(a.ratio * 100) : Math.floor(a.ratio * 100);
           return (
             <li key={a.category} className="flex flex-col gap-1">
               <div className="flex items-baseline justify-between gap-2">

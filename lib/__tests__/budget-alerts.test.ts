@@ -21,12 +21,27 @@ describe("computeBudgetAlerts", () => {
     expect(alerts[0]).toMatchObject({ category: "Makan", level: "warn", ratio: 0.8 });
   });
 
-  it("flags a category at/above 100% as over", () => {
+  it("flags a category above 100% as over", () => {
     const alerts = computeBudgetAlerts([
       { category: "Kopi", budget: 300_000, spent: 354_000 },
     ]);
     expect(alerts[0].level).toBe("over");
     expect(alerts[0].ratio).toBeCloseTo(1.18);
+  });
+
+  it("treats exactly 100% as warn, not over (budget terpakai penuh tapi belum dilewati)", () => {
+    const alerts = computeBudgetAlerts([
+      { category: "Kos", budget: 1_300_000, spent: 1_300_000 },
+    ]);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toMatchObject({ category: "Kos", level: "warn", ratio: 1 });
+  });
+
+  it("flags just over 100% as over", () => {
+    const alerts = computeBudgetAlerts([
+      { category: "Kos", budget: 1_300_000, spent: 1_300_001 },
+    ]);
+    expect(alerts[0].level).toBe("over");
   });
 
   it("uses effective budget (budget + rollover)", () => {
