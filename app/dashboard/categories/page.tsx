@@ -132,7 +132,13 @@ export default function CategoriesPage() {
     }
   }
 
-  const displayedCategories = categories.filter((c) => (c.type || "expense") === activeTab);
+  const allInTab = categories.filter((c) => (c.type || "expense") === activeTab);
+  const displayedCategories = activeTab === "expense"
+    ? allInTab.filter((c) => !c.isSavings)
+    : allInTab;
+  const savingsCategories = activeTab === "expense"
+    ? allInTab.filter((c) => c.isSavings)
+    : [];
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 pt-4">
@@ -184,68 +190,33 @@ export default function CategoriesPage() {
               <div className="flex justify-center py-10">
                 <Loader2 className="size-5 animate-spin text-muted-foreground" />
               </div>
-            ) : displayedCategories.length === 0 ? (
+            ) : displayedCategories.length === 0 && savingsCategories.length === 0 ? (
               <div className="py-10 text-center text-sm text-muted-foreground">
                 Belum ada kategori {activeTab === "expense" ? "pengeluaran" : "pemasukan"}
               </div>
             ) : (
-              <div className="divide-y divide-border/60">
-                {displayedCategories.map((c) => (
-                  <div
-                    key={c.id}
-                    className="flex items-center justify-between gap-3 py-2.5 group"
-                  >
-                    <span className="flex items-center gap-2 text-sm font-medium min-w-0">
-                      <span className="text-base leading-none">{getCategoryIcon(c.name)}</span>
-                      <span className="truncate">{c.name}</span>
-                    </span>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {activeTab === "expense" && (
-                        <>
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-0.5 text-xs font-medium",
-                              resolveBudgetType(c.name, c.budgetType) === "fixed"
-                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
-                                : "bg-muted text-muted-foreground"
-                            )}
-                          >
-                            {resolveBudgetType(c.name, c.budgetType) === "fixed" ? "Fixed" : "Variable"}
-                          </span>
-                          {c.isSavings && (
-                            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
-                              🏦 Tabungan
-                            </span>
-                          )}
-                        </>
-                      )}
-                      <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7"
-                          onClick={() => setEditingCategory(c)}
-                          disabled={savingId === c.id}
-                        >
-                          <Pencil className="size-3" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7 hover:text-destructive"
-                          onClick={() => handleDelete(c.id, c.name)}
-                          disabled={savingId === c.id}
-                        >
-                          {savingId === c.id ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : (
-                            <Trash2 className="size-3" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+              <div className="space-y-4">
+                {/* Kategori pengeluaran biasa */}
+                {displayedCategories.length > 0 && (
+                  <div className="divide-y divide-border/60">
+                    {displayedCategories.map((c) => <CategoryRow key={c.id} c={c} activeTab={activeTab} savingId={savingId} onEdit={setEditingCategory} onDelete={handleDelete} />)}
                   </div>
-                ))}
+                )}
+
+                {/* Kategori Tabungan — dipisah jelas */}
+                {savingsCategories.length > 0 && (
+                  <div>
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span>🏦</span> Kategori Tabungan
+                    </p>
+                    <div className="divide-y divide-border/60 rounded-xl border border-dashed border-border bg-muted/20">
+                      {savingsCategories.map((c) => <CategoryRow key={c.id} c={c} activeTab={activeTab} savingId={savingId} onEdit={setEditingCategory} onDelete={handleDelete} />)}
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      Kategori ini tidak muncul di dropdown pengeluaran — sudah dikelola lewat halaman Tabungan.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -260,6 +231,49 @@ export default function CategoriesPage() {
           onSave={handleSaveEdit}
         />
       )}
+    </div>
+  );
+}
+
+function CategoryRow({
+  c,
+  activeTab,
+  savingId,
+  onEdit,
+  onDelete,
+}: {
+  c: Category;
+  activeTab: "expense" | "income";
+  savingId: string | null;
+  onEdit: (c: Category) => void;
+  onDelete: (id: string, name: string) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2.5 px-3 group">
+      <span className="flex items-center gap-2 text-sm font-medium min-w-0">
+        <span className="text-base leading-none">{getCategoryIcon(c.name)}</span>
+        <span className="truncate">{c.name}</span>
+      </span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {activeTab === "expense" && !c.isSavings && (
+          <span className={cn(
+            "rounded-full px-2 py-0.5 text-xs font-medium",
+            resolveBudgetType(c.name, c.budgetType) === "fixed"
+              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400"
+              : "bg-muted text-muted-foreground"
+          )}>
+            {resolveBudgetType(c.name, c.budgetType) === "fixed" ? "Fixed" : "Variable"}
+          </span>
+        )}
+        <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button size="icon" variant="ghost" className="size-7" onClick={() => onEdit(c)} disabled={savingId === c.id}>
+            <Pencil className="size-3" />
+          </Button>
+          <Button size="icon" variant="ghost" className="size-7 hover:text-destructive" onClick={() => onDelete(c.id, c.name)} disabled={savingId === c.id}>
+            {savingId === c.id ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

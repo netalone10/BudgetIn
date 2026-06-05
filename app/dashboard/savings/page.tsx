@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { PiggyBank, Loader2, AlertCircle, Inbox } from "lucide-react";
+import { PiggyBank, Loader2, AlertCircle, Inbox, History, CheckCircle2, Clock } from "lucide-react";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SavingsGoalCard from "@/components/SavingsGoalCard";
 import UnallocatedSavings from "@/components/UnallocatedSavings";
 import SavingsMigrationBanner from "@/components/SavingsMigrationBanner";
+import { cn } from "@/lib/utils";
 
 interface Contribution {
   id: string;
@@ -43,6 +44,34 @@ export default function SavingsPage() {
 
   // Bumped to force UnallocatedSavings to refetch (e.g. after unlinking a contribution)
   const [unallocatedKey, setUnallocatedKey] = useState(0);
+
+  // History semua transaksi tabungan (allocated + unallocated)
+  interface HistoryTx {
+    id: string;
+    date: string;
+    amount: number;
+    category: string;
+    note: string;
+    goalId: string | null;
+    goalName: string | null;
+  }
+  const [history, setHistory] = useState<HistoryTx[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  async function fetchHistory() {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch("/api/savings/history");
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setHistory(data.transactions ?? []);
+    } catch {
+      // silent fail
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   async function fetchGoals() {
     setLoading(true);
@@ -221,6 +250,7 @@ export default function SavingsPage() {
           <SavingsMigrationBanner
             targetRef={unallocatedRef}
             refreshKey={unallocatedKey}
+            totalHistory={history.length}
           />
         )}
 
@@ -328,6 +358,85 @@ export default function SavingsPage() {
               goals={goalSummaries}
               onAllocated={handleAllocated}
             />
+          </div>
+        )}
+
+        {/* Riwayat Transaksi Tabungan */}
+        {!isDemo && !loading && !error && (
+          <div className="rounded-2xl border border-border bg-card shadow-sm">
+            <button
+              onClick={() => {
+                if (!showHistory && history.length === 0) fetchHistory();
+                setShowHistory((v) => !v);
+              }}
+              className="flex w-full items-center justify-between gap-3 p-5 text-left"
+            >
+              <div className="flex items-center gap-2">
+                <History className="size-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Riwayat Transaksi Tabungan</h3>
+                {history.length > 0 && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    {history.length}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-muted-foreground">{showHistory ? "Tutup ▲" : "Lihat semua ▼"}</span>
+            </button>
+
+            {showHistory && (
+              <div className="border-t border-border px-5 pb-5">
+                {historyLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : history.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">
+                    Belum ada riwayat transaksi tabungan.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-border/60 pt-1">
+                    {history.map((tx) => (
+                      <div key={tx.id} className="flex items-start justify-between gap-3 py-2.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold tabular-nums">
+                              Rp {new Intl.NumberFormat("id-ID").format(tx.amount)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                              {tx.category}
+                            </span>
+                            {tx.note && (
+                              <span className="truncate text-xs text-muted-foreground">{tx.note}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          {tx.goalId ? (
+                            <span className={cn(
+                              "flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                              "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                            )}>
+                              <CheckCircle2 className="size-3" />
+                              {tx.goalName}
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                              <Clock className="size-3" />
+                              Belum dialokasikan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
