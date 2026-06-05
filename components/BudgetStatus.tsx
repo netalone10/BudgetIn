@@ -7,6 +7,7 @@ import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useDataEvent } from "@/lib/data-events";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
+import { getCategoryIcon } from "@/utils/category-icons";
 
 interface BudgetItem {
   id: string;
@@ -193,7 +194,9 @@ export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }
               >
                 {/* Category + % */}
                 <div className="flex items-start justify-between gap-1">
-                  <span className="text-xs font-medium leading-tight">{item.category}</span>
+                  <span className="text-xs font-medium leading-tight">
+                    <span className="mr-1">{getCategoryIcon(item.category)}</span>{item.category}
+                  </span>
                   <span className={cn(
                     "text-xs font-bold tabular-nums shrink-0",
                     isOver ? "text-destructive" : isNear ? "text-yellow-600 dark:text-yellow-400" : "text-foreground"

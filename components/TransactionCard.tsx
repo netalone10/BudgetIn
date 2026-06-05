@@ -8,6 +8,7 @@ import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emitDataChanged } from "@/lib/data-events";
+import { getCategoryIconForTransaction } from "@/utils/category-icons";
 
 export interface Transaction {
   id: string;
@@ -316,7 +317,8 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
 
         {/* Kategori */}
         <td className="block min-w-0 pb-2 sm:table-cell sm:whitespace-nowrap sm:py-2.5 sm:pr-3">
-          <span className="inline-block max-w-full truncate rounded-lg bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+          <span className="inline-flex items-center gap-1 max-w-full truncate rounded-lg bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+            <span>{getCategoryIconForTransaction(transaction.category, transaction.type)}</span>
             {transaction.category}
           </span>
         </td>

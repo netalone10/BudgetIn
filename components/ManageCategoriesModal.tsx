@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
+import { getCategoryIcon } from "@/utils/category-icons";
 
 interface Category {
   id: string;
@@ -217,7 +218,9 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
             <div className="space-y-1">
               {displayedCategories.map((c) => (
                 <div key={c.id} className="flex items-center justify-between gap-3 py-2 px-3 hover:bg-muted/30 rounded-lg group text-sm">
-                  <span className="font-medium truncate pr-4">{c.name}</span>
+                  <span className="font-medium truncate pr-4">
+                    <span className="mr-2">{getCategoryIcon(c.name)}</span>{c.name}
+                  </span>
                   <div className="flex items-center gap-1">
                     {activeTab === "expense" && (
                       <>

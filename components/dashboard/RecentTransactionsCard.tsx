@@ -11,50 +11,12 @@ import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { emitDataChanged } from "@/lib/data-events";
 import { isTransferTransaction } from "@/lib/transaction-classification";
 import { cn } from "@/lib/utils";
+import { getCategoryIconForTransaction } from "@/utils/category-icons";
 
 const ID_MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
 
-const CATEGORY_EMOJI: Record<string, string> = {
-  makan: "🍔",
-  "makan & minum": "🍔",
-  makanan: "🍱",
-  jajan: "🍰",
-  ngopi: "☕",
-  kopi: "☕",
-  transport: "🚗",
-  transportasi: "🚗",
-  bensin: "⛽",
-  parkir: "🅿️",
-  hiburan: "🎮",
-  belanja: "🛒",
-  groceries: "🛒",
-  tagihan: "⚡",
-  "tagihan & utilitas": "⚡",
-  listrik: "💡",
-  internet: "📶",
-  pulsa: "📱",
-  rumah: "🏠",
-  sewa: "🏠",
-  kesehatan: "💊",
-  pendidikan: "📚",
-  olahraga: "🏋️",
-  travel: "✈️",
-  liburan: "🏖️",
-  hadiah: "🎁",
-  donasi: "🤝",
-  investasi: "📈",
-  tabungan: "💰",
-  gaji: "💰",
-  pemasukan: "💰",
-  freelance: "💼",
-  bonus: "🎯",
-};
-
 function emojiForRow(t: Transaction): string {
-  if (t.type === "income") return "💰";
-  if (isTransferTransaction(t)) return "🔄";
-  const key = t.category?.toLowerCase() ?? "";
-  return CATEGORY_EMOJI[key] ?? "📂";
+  return getCategoryIconForTransaction(t.category ?? "", t.type);
 }
 
 function formatRowDate(iso: string): string {
