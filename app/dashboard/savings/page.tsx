@@ -129,6 +129,25 @@ export default function SavingsPage() {
     }
   }
 
+  function handleContribute(
+    goalId: string,
+    contribution: { id: string; transactionId: string; amount: number; date: string; note: string }
+  ) {
+    setGoals((prev) =>
+      prev.map((g) => {
+        if (g.id !== goalId) return g;
+        return {
+          ...g,
+          totalContributed: g.totalContributed + contribution.amount,
+          contributions: [
+            { id: contribution.transactionId, date: contribution.date, amount: contribution.amount, note: contribution.note },
+            ...g.contributions,
+          ],
+        };
+      })
+    );
+  }
+
   return (
     <div className="flex min-w-0 flex-col w-full">
       <div className="mx-auto w-full max-w-5xl px-4 md:p-8 space-y-6">
@@ -219,7 +238,7 @@ export default function SavingsPage() {
         ) : (
           <div className="flex flex-col gap-4">
             {goals.map((goal) => (
-              <SavingsGoalCard key={goal.id} goal={goal} onDelete={handleDelete} />
+              <SavingsGoalCard key={goal.id} goal={goal} onDelete={handleDelete} onContribute={handleContribute} />
             ))}
           </div>
         )}

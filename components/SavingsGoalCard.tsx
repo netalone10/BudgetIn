@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Card, CardHeader, CardTitle, CardAction, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import ContributeModal from "@/components/ContributeModal";
 
 interface Contribution {
   id: string;
@@ -24,9 +25,18 @@ interface SavingsGoalWithProgress {
   contributions: Contribution[];
 }
 
+interface NewContribution {
+  id: string;
+  transactionId: string;
+  amount: number;
+  date: string;
+  note: string;
+}
+
 interface Props {
   goal: SavingsGoalWithProgress;
   onDelete: (goalId: string) => void;
+  onContribute: (goalId: string, contribution: NewContribution) => void;
 }
 
 const ID_NUMBER_FORMAT = new Intl.NumberFormat("id-ID");
@@ -61,9 +71,10 @@ function getDeadlineInfo(
   return { label: `${diffDays} hari lagi`, variant: "remaining" };
 }
 
-export default function SavingsGoalCard({ goal, onDelete }: Props) {
+export default function SavingsGoalCard({ goal, onDelete, onContribute }: Props) {
   const isDemo = useIsDemo();
   const [expanded, setExpanded] = useState(false);
+  const [showContributeModal, setShowContributeModal] = useState(false);
 
   const achieved = goal.totalContributed >= goal.targetAmount;
   const progressValue = Math.min(100, Math.round((goal.totalContributed / goal.targetAmount) * 100));
@@ -75,6 +86,7 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="min-w-0 truncate">{goal.name}</CardTitle>
@@ -96,15 +108,26 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
               </span>
             )}
             {!isDemo && (
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              className="hover:text-destructive"
-              onClick={handleDelete}
-              aria-label="Hapus goal"
-            >
-              <Trash2 />
-            </Button>
+              <>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="hover:text-primary"
+                  onClick={() => setShowContributeModal(true)}
+                  aria-label="Tambah kontribusi"
+                >
+                  <Plus />
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="hover:text-destructive"
+                  onClick={handleDelete}
+                  aria-label="Hapus goal"
+                >
+                  <Trash2 />
+                </Button>
+              </>
             )}
           </div>
         </CardAction>
@@ -159,5 +182,18 @@ export default function SavingsGoalCard({ goal, onDelete }: Props) {
         </div>
       </CardContent>
     </Card>
+
+    {showContributeModal && (
+      <ContributeModal
+        goalId={goal.id}
+        goalName={goal.name}
+        onClose={() => setShowContributeModal(false)}
+        onSaved={(contribution) => {
+          onContribute(goal.id, contribution);
+          setExpanded(true);
+        }}
+      />
+    )}
+    </>
   );
 }
