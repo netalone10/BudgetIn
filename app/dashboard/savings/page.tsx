@@ -90,6 +90,7 @@ export default function SavingsPage() {
 
   useEffect(() => {
     fetchGoals();
+    if (!isDemo) fetchHistory();
   }, []);
 
   function validateForm(): boolean {
@@ -232,6 +233,8 @@ export default function SavingsPage() {
         };
       })
     );
+    // Refresh history supaya status transaksi ter-update
+    fetchHistory();
   }
 
   const goalSummaries = goals.map((g) => ({ id: g.id, name: g.name }));
@@ -365,10 +368,7 @@ export default function SavingsPage() {
         {!isDemo && !loading && !error && (
           <div className="rounded-2xl border border-border bg-card shadow-sm">
             <button
-              onClick={() => {
-                if (!showHistory && history.length === 0) fetchHistory();
-                setShowHistory((v) => !v);
-              }}
+              onClick={() => setShowHistory((v) => !v)}
               className="flex w-full items-center justify-between gap-3 p-5 text-left"
             >
               <div className="flex items-center gap-2">

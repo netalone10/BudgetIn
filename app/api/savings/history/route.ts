@@ -23,10 +23,9 @@ export async function GET(_req: NextRequest) {
     category: { contains: kw, mode: "insensitive" as const },
   }));
 
-  const categoryConditions =
-    savingsCategoryNames.length > 0
-      ? [{ category: { in: savingsCategoryNames } }]
-      : [];
+  const categoryConditions = savingsCategoryNames.map((name) => ({
+    category: { equals: name, mode: "insensitive" as const },
+  }));
 
   const transactions = await prisma.transaction.findMany({
     where: {
