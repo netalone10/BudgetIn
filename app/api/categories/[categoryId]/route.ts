@@ -32,10 +32,10 @@ export async function PATCH(
 
     const { categoryId } = await params;
     const body = await req.json();
-    const { name, isSavings, rolloverEnabled, budgetType } = body;
+    const { name, icon, isSavings, rolloverEnabled, budgetType } = body;
 
     // Validate: at least one field must be provided
-    if (name === undefined && isSavings === undefined && rolloverEnabled === undefined && budgetType === undefined) {
+    if (name === undefined && icon === undefined && isSavings === undefined && rolloverEnabled === undefined && budgetType === undefined) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
@@ -68,8 +68,9 @@ export async function PATCH(
     }
 
     // Build update data
-    const updateData: { name?: string; isSavings?: boolean; rolloverEnabled?: boolean; budgetType?: BudgetType } = {};
+    const updateData: { name?: string; icon?: string | null; isSavings?: boolean; rolloverEnabled?: boolean; budgetType?: BudgetType } = {};
     if (name !== undefined) updateData.name = name.trim();
+    if (icon !== undefined) updateData.icon = icon || null; // empty string → null (reset to default)
     if (isSavings !== undefined) updateData.isSavings = isSavings;
     if (rolloverEnabled !== undefined) updateData.rolloverEnabled = rolloverEnabled;
     if (budgetType !== undefined) updateData.budgetType = budgetType;

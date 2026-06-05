@@ -14,6 +14,7 @@ type CategoryResponseRow = {
   id: string;
   name: string;
   type: string;
+  icon?: string | null;
   isSavings: boolean;
   budgetType?: string | null;
 };
@@ -38,7 +39,7 @@ async function findCategories(userId: string, includeBudgetType = true): Promise
   if (!includeBudgetType) {
     return prisma.category.findMany({
       where: { userId },
-      select: { id: true, name: true, type: true, isSavings: true },
+      select: { id: true, name: true, type: true, icon: true, isSavings: true },
       orderBy: { name: "asc" },
     });
   }
@@ -46,7 +47,7 @@ async function findCategories(userId: string, includeBudgetType = true): Promise
   try {
     return await prisma.category.findMany({
       where: { userId },
-      select: { id: true, name: true, type: true, isSavings: true, budgetType: true },
+      select: { id: true, name: true, type: true, icon: true, isSavings: true, budgetType: true },
       orderBy: { name: "asc" },
     });
   } catch (error) {
@@ -191,7 +192,7 @@ export async function POST(req: Request) {
             name: name.trim(),
             type,
           },
-          select: { id: true, name: true, type: true, isSavings: true },
+          select: { id: true, name: true, type: true, icon: true, isSavings: true },
         });
       } catch (fallbackError) {
         if (isUniqueConstraintError(fallbackError)) {

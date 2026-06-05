@@ -239,14 +239,40 @@ const CATEGORY_EMOJI: Record<string, string> = {
   royalti: "✍️",
 };
 
-export function getCategoryIcon(name: string): string {
+/** Emoji yang bisa dipilih user di icon picker */
+export const ICON_PICKER_OPTIONS = [
+  // Makanan
+  "🍔","🍜","🍱","🍰","☕","🥤","🍽️","🍿","🥡","🧃",
+  // Transport
+  "🚗","🛵","✈️","🚌","🚆","⛽","🅿️","🚕","🚖","🚴",
+  // Rumah & Utilitas
+  "🏠","🏡","💡","💧","🔥","📶","📱","📺","🧹","👕",
+  // Kesehatan
+  "💊","🩺","🏥","💪","🏋️","🧴","🛡️",
+  // Belanja
+  "🛒","👗","👟","👜","💄","💻","📦","🎽",
+  // Hiburan
+  "🎮","🎬","🎤","🎵","🎨","📖","🏖️","🎭","🃏",
+  // Pendidikan & Kerja
+  "📚","🎓","✏️","📝","💼","🏢","📋","🔬","📜",
+  // Keuangan
+  "💰","💵","💳","📈","🏦","💸","💹","🪙","🎯",
+  // Sosial
+  "🎁","🤝","🤲","💒","👶","🎊","🎉","❤️",
+  // Lainnya
+  "📌","📦","⚠️","⚡","🔄","🏷️","🗂️","🌟","🐾","🌿",
+];
+
+export function getCategoryIcon(name: string, customIcon?: string | null): string {
+  if (customIcon) return customIcon;
   return CATEGORY_EMOJI[name.toLowerCase()] ?? "📂";
 }
 
 export function getCategoryIconForTransaction(
   categoryName: string,
-  type?: string
+  type?: string,
+  customIcon?: string | null,
 ): string {
   if (type === "transfer_out" || type === "transfer_in") return "🔄";
-  return getCategoryIcon(categoryName);
+  return getCategoryIcon(categoryName, customIcon);
 }

@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Pencil, Trash2, Plus, X } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, X, RotateCcw } from "lucide-react";
 import { useApi } from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
-import { getCategoryIcon } from "@/utils/category-icons";
+import { getCategoryIcon, ICON_PICKER_OPTIONS } from "@/utils/category-icons";
 
 interface Category {
   id: string;
   name: string;
   type?: string;
+  icon?: string | null;
   isSavings: boolean;
   budgetType?: BudgetType;
 }
@@ -67,8 +68,8 @@ export default function CategoriesPage() {
   async function handleSaveEdit(payload: {
     id: string;
     name: string;
+    icon: string | null;
     budgetType: BudgetType;
-    isSavings: boolean;
   }) {
     const original = categories.find((c) => c.id === payload.id);
     if (!original) return;
@@ -76,10 +77,10 @@ export default function CategoriesPage() {
     const body: Record<string, unknown> = {};
     const trimmedName = payload.name.trim();
     if (trimmedName && trimmedName !== original.name) body.name = trimmedName;
+    if (payload.icon !== (original.icon ?? null)) body.icon = payload.icon;
     if (payload.budgetType !== resolveBudgetType(original.name, original.budgetType)) {
       body.budgetType = payload.budgetType;
     }
-    if (payload.isSavings !== original.isSavings) body.isSavings = payload.isSavings;
 
     if (Object.keys(body).length === 0) {
       setEditingCategory(null);
@@ -98,7 +99,7 @@ export default function CategoriesPage() {
         setCategories((prev) =>
           prev.map((c) =>
             c.id === payload.id
-              ? { ...c, name: trimmedName || c.name, budgetType: payload.budgetType, isSavings: payload.isSavings }
+              ? { ...c, name: trimmedName || c.name, icon: payload.icon, budgetType: payload.budgetType }
               : c
           )
         );
@@ -225,11 +226,11 @@ export default function CategoriesPage() {
 
       {editingCategory && (
         <EditCategoryModal
-          category={editingCategory}
-          saving={savingId === editingCategory.id}
-          onClose={() => setEditingCategory(null)}
-          onSave={handleSaveEdit}
-        />
+        category={editingCategory}
+        saving={savingId === editingCategory.id}
+        onClose={() => setEditingCategory(null)}
+        onSave={handleSaveEdit}
+      />
       )}
     </div>
   );
@@ -251,7 +252,7 @@ function CategoryRow({
   return (
     <div className="flex items-center justify-between gap-3 py-2.5 px-3 group">
       <span className="flex items-center gap-2 text-sm font-medium min-w-0">
-        <span className="text-base leading-none">{getCategoryIcon(c.name)}</span>
+        <span className="text-base leading-none">{getCategoryIcon(c.name, c.icon)}</span>
         <span className="truncate">{c.name}</span>
       </span>
       <div className="flex items-center gap-1.5 shrink-0">
@@ -282,19 +283,20 @@ interface EditCategoryModalProps {
   category: Category;
   saving: boolean;
   onClose: () => void;
-  onSave: (payload: { id: string; name: string; budgetType: BudgetType; isSavings: boolean }) => void;
+  onSave: (payload: { id: string; name: string; icon: string | null; budgetType: BudgetType }) => void;
 }
 
 function EditCategoryModal({ category, saving, onClose, onSave }: EditCategoryModalProps) {
   const isExpense = (category.type || "expense") === "expense";
   const [name, setName] = useState(category.name);
+  const [icon, setIcon] = useState<string | null>(category.icon ?? null);
   const [budgetType, setBudgetType] = useState<BudgetType>(resolveBudgetType(category.name, category.budgetType));
-  const [isSavings, setIsSavings] = useState(category.isSavings);
+  const defaultIcon = getCategoryIcon(name || category.name);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({ id: category.id, name, budgetType, isSavings });
+    onSave({ id: category.id, name, icon, budgetType });
   }
 
   return (
@@ -308,82 +310,86 @@ function EditCategoryModal({ category, saving, onClose, onSave }: EditCategoryMo
       />
       <form
         onSubmit={handleSubmit}
-        className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-6 shadow-xl"
+        className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold">Edit Kategori</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
+          <button type="button" onClick={onClose} disabled={saving}
+            className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
             <X className="size-4" />
           </button>
         </div>
 
         <div className="space-y-4">
+          {/* Nama */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Nama kategori</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={30}
-              disabled={saving}
-              autoFocus
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={30} disabled={saving} autoFocus />
           </div>
 
-          {isExpense && (
-            <>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Tipe budget</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["fixed", "variable"] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setBudgetType(opt)}
-                      disabled={saving}
-                      className={cn(
-                        "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                        budgetType === opt
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      {opt === "fixed" ? "Fixed" : "Variable"}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Fixed dihitung 100% dari budget. Variable diprorata terhadap hari berjalan.
-                </p>
-              </div>
-
-              <label className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2 cursor-pointer">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">Kategori tabungan</span>
-                  <p className="text-[11px] text-muted-foreground">
-                    Dihitung sebagai saving, bukan pengeluaran.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={isSavings}
-                  onChange={(e) => setIsSavings(e.target.checked)}
+          {/* Icon picker */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">Icon</label>
+              {icon && (
+                <button type="button" onClick={() => setIcon(null)} disabled={saving}
+                  className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                  <RotateCcw className="size-3" /> Reset ke default
+                </button>
+              )}
+            </div>
+            {/* Preview */}
+            <div className="flex items-center gap-2">
+              <span className="flex size-10 items-center justify-center rounded-xl border bg-muted text-xl">
+                {icon ?? defaultIcon}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {icon ? "Icon kustom" : "Default dari nama"}
+              </span>
+            </div>
+            {/* Grid */}
+            <div className="grid grid-cols-10 gap-1 rounded-xl border bg-muted/30 p-2">
+              {ICON_PICKER_OPTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setIcon(emoji)}
                   disabled={saving}
-                  className="size-4 accent-primary"
-                />
-              </label>
-            </>
+                  className={cn(
+                    "flex size-7 items-center justify-center rounded-lg text-base transition-colors hover:bg-background",
+                    icon === emoji && "bg-primary/15 ring-1 ring-primary"
+                  )}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Budget type — expense only */}
+          {isExpense && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Tipe budget</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["fixed", "variable"] as const).map((opt) => (
+                  <button key={opt} type="button" onClick={() => setBudgetType(opt)} disabled={saving}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                      budgetType === opt ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-muted"
+                    )}>
+                    {opt === "fixed" ? "Fixed" : "Variable"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Fixed dihitung 100% dari budget. Variable diprorata terhadap hari berjalan.
+              </p>
+            </div>
           )}
         </div>
 
         <div className="flex justify-end gap-2 mt-6">
-          <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>
-            Batal
-          </Button>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={saving}>Batal</Button>
           <Button type="submit" disabled={saving || !name.trim()}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : "Simpan"}
           </Button>

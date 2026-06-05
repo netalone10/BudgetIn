@@ -90,6 +90,7 @@ model Category {
   userId    String  @map("user_id")
   name      String
   type      String  @default("expense") // "expense" | "income"
+  icon      String? @map("icon")          // custom emoji override
   isSavings       Boolean @default(false) @map("is_savings")
   rolloverEnabled Boolean @default(false) @map("rollover_enabled")
   budgetType      String  @default("variable") @map("budget_type")
