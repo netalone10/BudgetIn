@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Search, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Download, Search, X, Loader2 } from "lucide-react";
 import TransactionCard, {
   type Transaction,
   type TransactionCategory,
@@ -43,6 +43,14 @@ export default function TransactionsClient() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<10 | 20 | 50>(20);
+
+  // Savings allocation
+  const [goals, setGoals] = useState<{ id: string; name: string }[]>([]);
+  const [allocatingTxId, setAllocatingTxId] = useState<string | null>(null);
+  const [selectedGoalId, setSelectedGoalId] = useState("");
+  const [allocating, setAllocating] = useState(false);
+  const [allocateError, setAllocateError] = useState("");
+  const allocateRef = useRef<HTMLDivElement>(null);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +109,44 @@ export default function TransactionsClient() {
   useDataEvent(["transactions"], () => {
     fetchTransactions();
   });
+
+  // Fetch goals saat filter savings aktif
+  useEffect(() => {
+    if (typeFilter !== "savings") return;
+    fetch("/api/savings")
+      .then((r) => r.json())
+      .then((d) => setGoals((d.goals ?? []).map((g: { id: string; name: string }) => ({ id: g.id, name: g.name }))))
+      .catch(() => {});
+  }, [typeFilter]);
+
+  function openAllocate(txId: string) {
+    setAllocatingTxId(txId);
+    setSelectedGoalId(goals[0]?.id ?? "");
+    setAllocateError("");
+    setTimeout(() => allocateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }
+
+  async function handleAllocate() {
+    if (!allocatingTxId || !selectedGoalId) return;
+    setAllocating(true);
+    setAllocateError("");
+    try {
+      const res = await fetch(`/api/savings/${selectedGoalId}/link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionId: allocatingTxId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAllocateError(data.error ?? "Gagal mengalokasikan."); return; }
+      // Hapus dari list
+      setTransactions((prev) => prev.filter((t) => t.id !== allocatingTxId));
+      setAllocatingTxId(null);
+    } catch {
+      setAllocateError("Terjadi kesalahan. Coba lagi.");
+    } finally {
+      setAllocating(false);
+    }
+  }
 
   useEffect(() => {
     setPage(1);
@@ -375,6 +421,7 @@ export default function TransactionsClient() {
                         accounts={accounts}
                         onDelete={handleDelete}
                         onUpdate={handleUpdate}
+                        onAllocate={typeFilter === "savings" ? openAllocate : undefined}
                       />
                     ))}
                   </tbody>
@@ -429,6 +476,72 @@ export default function TransactionsClient() {
           )}
         </SectionCard>
       </div>
+
+      {/* Modal alokasi ke savings goal */}
+      {allocatingTxId && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            onClick={() => !allocating && setAllocatingTxId(null)}
+          />
+          <div
+            ref={allocateRef}
+            className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-6 shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold">Alokasikan ke Savings Goal</h3>
+              <button
+                onClick={() => setAllocatingTxId(null)}
+                disabled={allocating}
+                className="rounded-lg p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {goals.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Belum ada savings goal. Buat dulu di halaman Tabungan.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">Pilih goal untuk transaksi ini:</p>
+                <select
+                  value={selectedGoalId}
+                  onChange={(e) => setSelectedGoalId(e.target.value)}
+                  disabled={allocating}
+                  className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                >
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+                {allocateError && (
+                  <p className="text-xs text-destructive">{allocateError}</p>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAllocatingTxId(null)}
+                    disabled={allocating}
+                    className="flex-1 rounded-lg border border-border py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAllocate}
+                    disabled={allocating || !selectedGoalId}
+                    className="flex-1 rounded-lg bg-primary py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                  >
+                    {allocating ? <Loader2 className="size-4 animate-spin mx-auto" /> : "Alokasikan"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

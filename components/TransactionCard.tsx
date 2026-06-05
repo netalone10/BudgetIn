@@ -38,6 +38,7 @@ interface Props {
   accounts?: { id: string; name: string }[];
   onDelete: (id: string) => void;
   onUpdate: (id: string, data: Partial<Transaction>) => void;
+  onAllocate?: (id: string) => void;
 }
 
 const INPUT_CLS = "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground shadow-none transition-colors placeholder:text-muted-foreground/65 focus:outline-none focus:ring-3 focus:ring-ring/35 disabled:cursor-not-allowed disabled:opacity-50";
@@ -249,7 +250,7 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
 
 // ── Transaction Row ───────────────────────────────────────────────────────────
 
-function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts = EMPTY_ACCOUNTS, onDelete, onUpdate }: Props) {
+function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts = EMPTY_ACCOUNTS, onDelete, onUpdate, onAllocate }: Props) {
   const isDemo = useIsDemo();
   const [showModal, setShowModal] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -343,29 +344,39 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
         </td>
 
         {/* Actions */}
-        <td className="block w-full sm:table-cell sm:w-[72px] sm:py-2.5 sm:pr-3">
-          {!isDemo && (
+        <td className="block w-full sm:table-cell sm:w-[96px] sm:py-2.5 sm:pr-3">
           <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-7 rounded-lg shadow-none"
-              onClick={() => setShowModal(true)}
-
-            >
-              <Pencil className="size-3" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="size-7 rounded-lg shadow-none hover:text-destructive"
-              onClick={handleDelete}
-
-            >
-              <Trash2 className="size-3" />
-            </Button>
+            {onAllocate && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 rounded-lg px-2 text-[11px] font-medium text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-700 dark:hover:bg-emerald-950/40"
+                onClick={() => onAllocate(transaction.id)}
+              >
+                → Goal
+              </Button>
+            )}
+            {!isDemo && !onAllocate && (
+              <>
+                <Button size="icon" variant="ghost" className="size-7 rounded-lg shadow-none" onClick={() => setShowModal(true)}>
+                  <Pencil className="size-3" />
+                </Button>
+                <Button size="icon" variant="ghost" className="size-7 rounded-lg shadow-none hover:text-destructive" onClick={handleDelete}>
+                  <Trash2 className="size-3" />
+                </Button>
+              </>
+            )}
+            {!isDemo && onAllocate && (
+              <>
+                <Button size="icon" variant="ghost" className="size-7 rounded-lg shadow-none" onClick={() => setShowModal(true)}>
+                  <Pencil className="size-3" />
+                </Button>
+                <Button size="icon" variant="ghost" className="size-7 rounded-lg shadow-none hover:text-destructive" onClick={handleDelete}>
+                  <Trash2 className="size-3" />
+                </Button>
+              </>
+            )}
           </div>
-          )}
         </td>
       </tr>
 
