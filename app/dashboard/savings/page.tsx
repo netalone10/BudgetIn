@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PiggyBank, Loader2, AlertCircle, Inbox } from "lucide-react";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SavingsGoalCard from "@/components/SavingsGoalCard";
 import UnallocatedSavings from "@/components/UnallocatedSavings";
+import SavingsMigrationBanner from "@/components/SavingsMigrationBanner";
 
 interface Contribution {
   id: string;
@@ -27,6 +28,7 @@ interface SavingsGoalWithProgress {
 
 export default function SavingsPage() {
   const isDemo = useIsDemo();
+  const unallocatedRef = useRef<HTMLDivElement>(null);
   const [goals, setGoals] = useState<SavingsGoalWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -214,6 +216,14 @@ export default function SavingsPage() {
           <h2 className="text-3xl font-semibold tracking-tight text-foreground">Tabungan</h2>
         </div>
 
+        {/* Migration Banner — tampil kalau ada transaksi tabungan lama belum dialokasikan */}
+        {!isDemo && (
+          <SavingsMigrationBanner
+            targetRef={unallocatedRef}
+            refreshKey={unallocatedKey}
+          />
+        )}
+
         {/* Create Goal Form */}
         {!isDemo && (
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
@@ -305,7 +315,7 @@ export default function SavingsPage() {
 
         {/* Unallocated savings — only show for non-demo, non-loading, non-error state */}
         {!isDemo && !loading && !error && (
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div ref={unallocatedRef} className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <Inbox className="size-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold text-foreground">Belum Dialokasikan</h3>
