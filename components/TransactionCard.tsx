@@ -291,6 +291,17 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
     transaction.toAccountName ||
     (transaction.accountId ? accounts.find((a) => a.id === transaction.accountId)?.name : undefined);
 
+  // Untuk transfer, tampilkan rute "asal → tujuan" di kolom Deskripsi supaya
+  // jelas uang pindah ke akun mana (transfer biasanya tanpa catatan).
+  const isTransfer =
+    transaction.type === "transfer_out" ||
+    transaction.type === "transfer_in" ||
+    (!!transaction.fromAccountName && !!transaction.toAccountName);
+  const transferRoute =
+    isTransfer && transaction.fromAccountName && transaction.toAccountName
+      ? `${transaction.fromAccountName} → ${transaction.toAccountName}`
+      : null;
+
   return (
     <>
       <tr
@@ -307,10 +318,23 @@ function TransactionCard({ transaction, categories = EMPTY_CATEGORIES, accounts 
 
         {/* Deskripsi */}
         <td className="block min-w-0 pb-2 sm:table-cell sm:py-2.5 sm:pr-3">
-          <span className="block break-words text-sm font-medium text-foreground sm:truncate sm:font-normal">
-            {transaction.note || <span className="text-muted-foreground">—</span>}
-          </span>
-          {displayAccount && (
+          {transferRoute ? (
+            <>
+              <span className="block break-words text-sm font-medium text-foreground sm:truncate sm:font-normal">
+                {transferRoute}
+              </span>
+              {transaction.note && (
+                <span className="text-[11px] text-muted-foreground block">
+                  {transaction.note}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="block break-words text-sm font-medium text-foreground sm:truncate sm:font-normal">
+              {transaction.note || <span className="text-muted-foreground">—</span>}
+            </span>
+          )}
+          {displayAccount && !transferRoute && (
             <span className="text-[11px] text-muted-foreground block sm:hidden">
               {displayAccount}
             </span>
