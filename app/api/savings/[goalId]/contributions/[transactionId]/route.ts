@@ -28,5 +28,20 @@ export async function DELETE(
     return NextResponse.json({ error: "Kontribusi tidak ditemukan" }, { status: 404 });
   }
 
+  // Sheets users: the underlying transaction lives in Sheets, and the Prisma
+  // Transaction is only a mirror that anchored this contribution. Remove it so it
+  // doesn't linger as a phantom in savings history/unallocated. The Sheets row is
+  // untouched and returns to the unallocated pool. (Email users keep their
+  // Transaction — it's the real record — so it returns to the pool too.)
+  const user = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { sheetsId: true },
+  });
+  if (user?.sheetsId) {
+    await prisma.transaction.deleteMany({
+      where: { id: transactionId, userId: session.userId },
+    });
+  }
+
   return NextResponse.json({ success: true });
 }
