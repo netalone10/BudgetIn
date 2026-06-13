@@ -85,6 +85,8 @@ export async function POST(
 
     const generatedId = randomUUID();
     const sheetsId = user!.sheetsId!;
+    const trimmedNote = note?.trim() || `Kontribusi ke ${goal.name}`;
+    const txTime = normalizeTransactionTime(undefined);
 
     // Upsert category "Tabungan" di Prisma
     await prisma.category.upsert({
@@ -94,39 +96,58 @@ export async function POST(
       select: { id: true },
     });
 
-    // Append transaksi ke Google Sheets (background)
-    scheduleAfterRequest(async () => {
-      try {
-        await appendTransaction(sheetsId, accessToken, {
-          date,
-          time: normalizeTransactionTime(undefined),
-          amount,
-          category: "Tabungan",
-          note: note?.trim() || `Kontribusi ke ${goal.name}`,
-          type: "expense",
-          fromAccountId: accountId,
-          fromAccountName: account.name,
-        });
-      } catch (error) {
-        const err = error as Error;
-        console.error(
-          `[contributions/route] sheets append failed: userId=${userId} transactionId=${generatedId} error=${err.message}`,
-          { userId, transactionId: generatedId, errorMessage: err.message, errorStack: err.stack }
-        );
-      }
-    });
-
-    // Create SavingsContribution di Prisma
+    // Sheets users normally have no prisma.transaction rows, but
+    // SavingsContribution.transactionId carries a required FK to Transaction.
+    // We persist a mirror Transaction in Prisma as the FK anchor (accountId left
+    // null — the real account lives in Sheets and savings reads don't use it).
+    // This also surfaces the contribution in the savings history/progress views.
     try {
-      const contribution = await prisma.savingsContribution.create({
-        data: {
-          userId,
-          goalId: goal.id,
-          transactionId: generatedId,
-          amount: new Decimal(amount),
-          date,
-          note: note?.trim() ?? "",
-        },
+      const contribution = await prisma.$transaction(async (tx) => {
+        await tx.transaction.create({
+          data: {
+            id: generatedId,
+            userId,
+            date,
+            time: txTime,
+            amount,
+            category: "Tabungan",
+            note: trimmedNote,
+            type: "expense",
+          },
+        });
+        return tx.savingsContribution.create({
+          data: {
+            userId,
+            goalId: goal.id,
+            transactionId: generatedId,
+            amount: new Decimal(amount),
+            date,
+            note: note?.trim() ?? "",
+          },
+        });
+      });
+
+      // Only append to Sheets once the Prisma write succeeded (avoids orphan
+      // rows in the sheet when the contribution fails to persist).
+      scheduleAfterRequest(async () => {
+        try {
+          await appendTransaction(sheetsId, accessToken, {
+            date,
+            time: txTime,
+            amount,
+            category: "Tabungan",
+            note: trimmedNote,
+            type: "expense",
+            fromAccountId: accountId,
+            fromAccountName: account.name,
+          });
+        } catch (error) {
+          const err = error as Error;
+          console.error(
+            `[contributions/route] sheets append failed: userId=${userId} transactionId=${generatedId} error=${err.message}`,
+            { userId, transactionId: generatedId, errorMessage: err.message, errorStack: err.stack }
+          );
+        }
       });
 
       invalidateDashboardCache(userId);

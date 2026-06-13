@@ -168,16 +168,47 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
 
   if (savingsResolution.kind === "resolved") {
     try {
-      await prisma.savingsContribution.create({
-        data: {
-          userId,
-          goalId: savingsResolution.goal.id,
-          transactionId: transaction.id,
-          amount: new Decimal(parsed.amount),
-          date,
-          note,
-        },
-      });
+      if (useSheets) {
+        // Sheets users have no prisma.transaction row; SavingsContribution.transactionId
+        // carries a required FK to Transaction. Persist a mirror Transaction as the FK
+        // anchor (accountId left null — the real account lives in Sheets). Same pattern
+        // as app/api/savings/[goalId]/contributions/route.ts.
+        await prisma.$transaction(async (tx) => {
+          await tx.transaction.create({
+            data: {
+              id: transaction.id,
+              userId,
+              date,
+              time,
+              amount: parsed.amount,
+              category,
+              note,
+              type: "expense",
+            },
+          });
+          await tx.savingsContribution.create({
+            data: {
+              userId,
+              goalId: savingsResolution.goal.id,
+              transactionId: transaction.id,
+              amount: new Decimal(parsed.amount),
+              date,
+              note,
+            },
+          });
+        });
+      } else {
+        await prisma.savingsContribution.create({
+          data: {
+            userId,
+            goalId: savingsResolution.goal.id,
+            transactionId: transaction.id,
+            amount: new Decimal(parsed.amount),
+            date,
+            note,
+          },
+        });
+      }
     } catch (err) {
       console.error("[handleTransaksi] savings contribution failed (non-fatal):", err);
     }
