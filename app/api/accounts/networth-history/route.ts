@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
 import { getTransactions, getAccounts } from "@/utils/sheets";
+import { computeAccountBalancesFromTx } from "@/utils/sheets-ledger";
 
 function endOfMonth(year: number, month: number): string {
   const last = new Date(year, month, 0);
@@ -50,17 +51,9 @@ export async function GET(req: NextRequest) {
         const endDate = endOfMonth(year, month);
         const relevantTx = allTx.filter((t) => t.date <= endDate);
 
-        const balanceMap = new Map<string, number>();
-        for (const t of relevantTx) {
-          const acctId = t.type === "income" ? (t.toAccountId ?? t.fromAccountId) : t.fromAccountId;
-          if (!acctId) continue;
-          const prev = balanceMap.get(acctId) ?? 0;
-          if (t.type === "income") {
-            balanceMap.set(acctId, prev + t.amount);
-          } else {
-            balanceMap.set(acctId, prev - t.amount);
-          }
-        }
+        // Pure-ledger dua-leg (from + to) supaya transfer & saldo awal liability
+        // dihitung benar. Sama dengan perhitungan saldo di daftar akun.
+        const balanceMap = computeAccountBalancesFromTx(sheetsAccounts, relevantTx);
 
         let assets = 0;
         let liabilities = 0;

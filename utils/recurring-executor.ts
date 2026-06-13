@@ -119,15 +119,36 @@ export async function runRecurringOccurrence(
       return { ok: false, error: "Gagal menulis ke Google Sheets. Coba lagi.", status: 502 };
     }
 
-    if (r.savingsGoalId) {
-      // Kontribusi tabungan butuh FK ke Transaction DB; user Sheets tidak punya
-      // baris DB. Transaksi tetap tercatat di Sheets, progres goal tidak auto-update.
-      console.warn(
-        `[recurring-executor] savingsGoalId di-skip untuk user Sheets (recurring=${r.id})`
-      );
-    }
-
     await prisma.$transaction(async (tx) => {
+      // Kontribusi tabungan butuh FK ke Transaction. User Sheets tidak punya baris
+      // DB, jadi tulis mirror Transaction (id = baris Sheets) + SavingsContribution
+      // sebagai anchor supaya progres goal ikut update. Pola sama dengan
+      // app/api/savings/[goalId]/contributions/route.ts. Lihat [[savings-sheets-mirror]].
+      if (r.savingsGoalId && sheetsTxId) {
+        await tx.transaction.create({
+          data: {
+            id: sheetsTxId,
+            userId: r.userId,
+            date: dateStr,
+            time,
+            amount,
+            category: r.category?.name ?? "Tabungan",
+            note,
+            type: "expense",
+          },
+        });
+        await tx.savingsContribution.create({
+          data: {
+            userId: r.userId,
+            goalId: r.savingsGoalId,
+            transactionId: sheetsTxId,
+            amount,
+            date: dateStr,
+            note,
+          },
+        });
+      }
+
       await tx.recurringOccurrence.create({
         data: {
           recurringId: r.id,
