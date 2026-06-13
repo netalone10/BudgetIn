@@ -151,6 +151,26 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       note: body.note,
       ...(fromAccountId !== undefined && { fromAccountId, fromAccountName }),
     });
+    // Keep the savings mirror Transaction + contribution in sync (no-op for
+    // ordinary Sheets transactions). accountId is intentionally not mirrored.
+    await prisma.transaction.updateMany({
+      where: { id: recordId, userId: session.userId },
+      data: {
+        ...(body.date !== undefined && { date: body.date }),
+        ...(body.time !== undefined && { time: body.time }),
+        ...(body.amount !== undefined && { amount: body.amount }),
+        ...(body.category !== undefined && { category: body.category }),
+        ...(body.note !== undefined && { note: body.note }),
+      },
+    });
+    await prisma.savingsContribution.updateMany({
+      where: { transactionId: recordId, userId: session.userId },
+      data: {
+        ...(body.date !== undefined && { date: body.date }),
+        ...(body.amount !== undefined && { amount: body.amount }),
+        ...(body.note !== undefined && { note: body.note }),
+      },
+    });
     // Sheets: saldo dihitung pure-ledger di pembacaan; tidak perlu revert/reapply cache.
     invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true });
@@ -217,6 +237,11 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   try {
     await deleteTransaction(user.sheetsId, accessToken, recordId);
+    // Savings transactions also have a mirror Transaction in Prisma (the FK
+    // anchor for SavingsContribution). Remove it so the contribution doesn't
+    // linger in the savings goal. deleteMany cascades to the contribution and is
+    // a harmless no-op (0 rows) for ordinary Sheets transactions.
+    await prisma.transaction.deleteMany({ where: { id: recordId, userId: session.userId } });
     // Sheets: saldo dihitung pure-ledger di pembacaan; tidak perlu revert cache.
     invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true });

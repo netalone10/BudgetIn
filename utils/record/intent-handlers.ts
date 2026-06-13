@@ -130,7 +130,9 @@ export async function handleTransaksi(parsed: ParsedIntent, ctx: RecordContext):
   if (useSheets) {
     // Sheets path: generate local ID, schedule appendTransaction() in background via after()
     const generatedId = randomUUID();
-    const sheetsPayload = { ...base, fromAccountId: accountId, fromAccountName: accountName };
+    // Pass the id so the Sheets row stays in sync with the Prisma mirror
+    // Transaction / SavingsContribution created below (savings case).
+    const sheetsPayload = { id: generatedId, ...base, fromAccountId: accountId, fromAccountName: accountName };
     scheduleAfterRequest(async () => {
       try {
         await appendTransaction(sheetsId!, accessToken, sheetsPayload);

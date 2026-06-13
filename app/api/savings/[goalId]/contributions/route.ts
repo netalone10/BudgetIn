@@ -132,6 +132,7 @@ export async function POST(
       scheduleAfterRequest(async () => {
         try {
           await appendTransaction(sheetsId, accessToken, {
+            id: generatedId,
             date,
             time: txTime,
             amount,

@@ -119,11 +119,13 @@ export interface Transaction {
 export async function appendTransaction(
   sheetsId: string,
   accessToken: string,
-  data: Omit<Transaction, "id" | "created_at">
+  data: Omit<Transaction, "id" | "created_at"> & { id?: string }
 ): Promise<Transaction> {
   const sheets = getSheetsClient(accessToken);
 
-  const id = randomUUID();
+  // Allow callers to supply the row id (e.g. savings contributions keep the
+  // Sheets row id in sync with the Prisma mirror Transaction / contribution).
+  const id = data.id ?? randomUUID();
   const created_at = format(
     toZonedTime(new Date(), TIMEZONE),
     "yyyy-MM-dd'T'HH:mm:ssxxx"
@@ -153,7 +155,7 @@ export async function appendTransaction(
     requestBody: { values: [row] },
   });
 
-  return { id, ...data, time, created_at };
+  return { ...data, id, time, created_at };
 }
 
 /**
