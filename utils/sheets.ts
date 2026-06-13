@@ -237,6 +237,11 @@ export async function getTransactions(
   const todayStr = format(jakartaNow, "yyyy-MM-dd");
   const currentMonth = format(jakartaNow, "yyyy-MM");
 
+  // Semua waktu — kembalikan semua transaksi tanpa filter.
+  if (period === "semua" || period === "all") {
+    return transactions;
+  }
+
   // Custom range: "custom:2026-04-01:2026-04-12"
   if (period.startsWith("custom:")) {
     const [, from, to] = period.split(":");

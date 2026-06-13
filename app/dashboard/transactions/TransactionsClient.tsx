@@ -13,7 +13,7 @@ import { isExpenseTransaction, isTransferTransaction, isEquityTransaction } from
 import { isSavingsTransaction } from "@/lib/savings-utils";
 import { cn } from "@/lib/utils";
 
-type Period = "today" | "week" | "month" | "lastMonth" | "custom";
+type Period = "today" | "week" | "month" | "lastMonth" | "all" | "custom";
 type TypeFilter = "all" | "expense" | "income" | "transfer" | "savings";
 
 type Account = {
@@ -28,6 +28,7 @@ const PERIOD_OPTIONS: { key: Period; label: string; apiPeriod: string }[] = [
   { key: "week", label: "Minggu ini", apiPeriod: "minggu ini" },
   { key: "month", label: "Bulan ini", apiPeriod: "bulan ini" },
   { key: "lastMonth", label: "Bulan lalu", apiPeriod: "bulan lalu" },
+  { key: "all", label: "Semua", apiPeriod: "semua" },
   { key: "custom", label: "Custom", apiPeriod: "custom" },
 ];
 

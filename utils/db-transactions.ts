@@ -110,6 +110,9 @@ export async function getTransactionsDB(
     yesterday.setDate(now.getDate() - 1);
     const d = yesterday.toISOString().slice(0, 10);
     dateFilter = { gte: d, lte: d };
+  } else if (periodLow === "semua" || periodLow === "all") {
+    // Semua waktu — tanpa filter tanggal.
+    dateFilter = {};
   } else if (periodLow === "last3months") {
     // Dari awal bulan 3 bulan lalu s/d akhir bulan kemarin
     const startMonth = new Date(now.getFullYear(), now.getMonth() - 3, 1);
