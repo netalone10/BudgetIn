@@ -14,6 +14,22 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.14.0",
+    date: "2026-06-13",
+    title: "Tabungan (Savings Goals) Kini Penuh untuk Pengguna Google Sheets",
+    description: "Fitur Tabungan — kontribusi, alokasi transaksi ke goal, riwayat, dan transaksi berulang — kini berfungsi penuh untuk pengguna Google Sheets, bukan hanya pengguna email. Termasuk perbaikan grafik Kekayaan Bersih untuk transaksi transfer.",
+    type: "fix",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.14.0`,
+    changes: [
+      "Menambah Kontribusi tabungan kini berhasil untuk pengguna Google Sheets — sebelumnya selalu gagal dengan \"Internal server error\".",
+      "Menghapus atau mengedit transaksi tabungan dari halaman Transaksi kini ikut memperbarui progres goal, tidak lagi tertinggal.",
+      "Tombol \"Alokasikan\" dan lepas-alokasi (unlink) transaksi ke goal kini bekerja untuk pengguna Google Sheets.",
+      "Riwayat tabungan dan daftar transaksi yang belum dialokasikan kini tampil untuk pengguna Google Sheets (sebelumnya kosong).",
+      "Transaksi berulang yang terhubung ke goal tabungan kini otomatis menambah progres goal untuk pengguna Google Sheets.",
+      "Memperbaiki grafik Kekayaan Bersih (net worth) pengguna Google Sheets: transaksi transfer antar akun tidak lagi membuat nilai turun keliru.",
+    ],
+  },
+  {
     version: "v1.13.4",
     date: "2026-06-01",
     title: "Transaksi Berulang Tersinkron untuk Pengguna Google Sheets",
