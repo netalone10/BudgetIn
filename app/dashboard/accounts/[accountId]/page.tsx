@@ -13,7 +13,7 @@ type Props = { params: Promise<{ accountId: string }> };
 export default async function AccountDetailPage({ params }: Props) {
   const { accountId } = await params;
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 md:px-8 space-y-6">
       <Link
         href="/dashboard/accounts"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
