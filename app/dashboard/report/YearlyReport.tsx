@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, Calendar, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useReport } from "./useReport";
 import {
   KpiCard,
   ReportEmptyState,
@@ -34,32 +35,9 @@ function sumMonthly(rows: YearlyCategoryRow[]): number[] {
 export default function YearlyReport() {
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<number>(currentYear);
-  const [data, setData] = useState<YearlyPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useMemo(
-    () => async (y: number) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/report?mode=yearly&year=${y}`, { cache: "no-store" });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Gagal memuat laporan.");
-        setData(json);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
+  const { data, loading, error, refetch } = useReport<YearlyPayload>(
+    `/api/report?mode=yearly&year=${year}`,
   );
-
-  useEffect(() => {
-    fetchData(year);
-  }, [year, fetchData]);
 
   const yearOptions = useMemo(() => {
     const years: number[] = [];
@@ -86,7 +64,7 @@ export default function YearlyReport() {
       </div>
 
       {loading && <ReportLoadingSkeleton />}
-      {error && !loading && <ReportError message={error} onRetry={() => fetchData(year)} />}
+      {error && !loading && <ReportError message={error} onRetry={refetch} />}
       {!loading && !error && data && <YearlyReportContent data={data} />}
     </div>
   );

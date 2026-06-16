@@ -204,12 +204,24 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetchStats();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchStats();
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchStats, status]);
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetchUsers();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchUsers();
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchUsers, status]);
 
   function showToast(msg: string, ok: boolean) {

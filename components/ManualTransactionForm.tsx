@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
@@ -64,7 +64,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   // Form state
   const [amount, setAmount] = useState("");
   const [fee, setFee] = useState("");
-  const [accountId, setAccountId] = useState("");
+  const [accountId, setAccountId] = useState(defaultAccountId ?? "");
   const [toAccountId, setToAccountId] = useState("");
   const [category, setCategory] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -72,8 +72,11 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
   const [timeManuallyEdited, setTimeManuallyEdited] = useState(false);
   const [note, setNote] = useState("");
 
-  // Reset form on tab change
-  useEffect(() => {
+  // Reset the form when switching tabs. Handled in the event handler (not an
+  // effect) so we never call setState during effect/render. `defaultAccountId`
+  // is constant per mount, so it only seeds the initial accountId above.
+  function changeTab(next: TabType) {
+    setTab(next);
     setAmount("");
     setFee("");
     setAccountId(defaultAccountId ?? "");
@@ -84,7 +87,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
     setNote("");
     setError(null);
     setSuccess(null);
-  }, [tab, defaultAccountId]);
+  }
 
   const activeAccounts = accounts.filter((a) => a.id);
 
@@ -271,7 +274,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
         {tabs.map(({ key, label, icon: Icon, color }) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => changeTab(key)}
             className={cn(
               "flex min-w-0 items-center justify-center gap-1.5 rounded-lg p-2 text-[13px] font-semibold transition-all",
               tab === key

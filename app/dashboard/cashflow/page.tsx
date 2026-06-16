@@ -107,7 +107,16 @@ export default function CashflowPage() {
   );
 
   useEffect(() => {
-    if (status === "authenticated") fetchData();
+    if (status !== "authenticated") return;
+    // Defer off the synchronous effect path: setState runs in the promise
+    // callback, not during the effect body.
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchData();
+    });
+    return () => {
+      active = false;
+    };
   }, [status, fetchData]);
 
   useDataEvent(["transactions", "accounts"], () => {
@@ -178,7 +187,7 @@ export default function CashflowPage() {
           <CreditCard className="size-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-2">Belum ada Kartu Kredit.</p>
           <p className="text-xs text-muted-foreground">
-            Tambahkan akun dengan tipe "Kartu Kredit" untuk melihat laporan arus kas.
+            Tambahkan akun dengan tipe &quot;Kartu Kredit&quot; untuk melihat laporan arus kas.
           </p>
         </div>
       )}

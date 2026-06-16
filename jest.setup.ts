@@ -17,12 +17,12 @@ const g = globalThis as unknown as Record<string, unknown>;
 
 // Walk back from the `process` object's constructor chain to reach the Node
 // host's `globalThis` (which IS where `fetch` lives in Node 18+).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const hostGlobal: any =
   typeof process !== "undefined" &&
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   (process as any).constructor &&
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   (process as any).constructor.constructor("return globalThis")();
 
 if (hostGlobal && typeof hostGlobal.fetch === "function") {

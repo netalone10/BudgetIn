@@ -65,7 +65,13 @@ export default function AdminTestimonialsPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    load();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) load();
+    });
+    return () => {
+      active = false;
+    };
   }, [load, status]);
 
   function showToast(msg: string, ok: boolean) {

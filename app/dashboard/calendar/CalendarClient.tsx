@@ -97,7 +97,15 @@ export default function CalendarClient() {
   }, []);
 
   useEffect(() => {
-    load(year, month);
+    // Defer off the synchronous effect path: setState runs in the promise
+    // callback, not during the effect body.
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) load(year, month);
+    });
+    return () => {
+      active = false;
+    };
   }, [year, month, load]);
 
   function prevMonth() {

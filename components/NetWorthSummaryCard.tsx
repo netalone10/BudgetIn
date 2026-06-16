@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataEvent } from "@/lib/data-events";
+import { useApi } from "@/lib/hooks/use-api";
 
 interface NetWorthData {
   summary: {
@@ -31,29 +32,20 @@ interface Props {
 }
 
 export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = false }: Props) {
-  const [data, setData] = useState<NetWorthData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: raw, isLoading: loading, mutate } = useApi<NetWorthData>("/api/accounts");
 
-  const load = useCallback((noStore = false) => {
-    setLoading(true);
-    fetch("/api/accounts", noStore ? { cache: "no-store" } : undefined)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d && d.summary && typeof d.summary.netWorth === "string") {
-          setData(d);
-        } else {
-          setData(null);
-        }
-      })
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, []);
+  // Only treat a well-formed payload as data; anything else renders the empty state.
+  const data =
+    raw && raw.summary && typeof raw.summary.netWorth === "string" ? raw : null;
 
+  // Parent bumps refreshTrigger to force a refetch after an action.
   useEffect(() => {
-    load();
-  }, [refreshTrigger, load]);
+    if (refreshTrigger) void mutate();
+  }, [refreshTrigger, mutate]);
 
-  useDataEvent(["transactions", "accounts"], () => load(true));
+  useDataEvent(["transactions", "accounts"], () => {
+    void mutate();
+  });
 
   if (loading) {
     return (

@@ -264,7 +264,14 @@ export default function AccountTypesPage() {
   }, []);
 
   useEffect(() => {
-    if (status === "authenticated") fetchTypes();
+    if (status !== "authenticated") return;
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchTypes();
+    });
+    return () => {
+      active = false;
+    };
   }, [status, fetchTypes]);
 
   async function handleArchive(type: AccountType) {

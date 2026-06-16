@@ -171,8 +171,16 @@ export default function DetailsClient() {
     const controller = new AbortController();
     inFlightRef.current?.abort();
     inFlightRef.current = controller;
-    void fetchTx(controller.signal);
-    return () => controller.abort();
+    // Defer the fetch off the synchronous effect path (setState runs in the
+    // promise callback, not the effect body).
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) void fetchTx(controller.signal);
+    });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [fetchTx]);
 
   const fetchAccounts = useCallback(async () => {
@@ -211,8 +219,15 @@ export default function DetailsClient() {
   // Mount-only fetch for accounts + categories (parallel with the first
   // transactions fetch driven by the effect above).
   useEffect(() => {
-    void fetchAccounts();
-    void fetchCategories();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      void fetchAccounts();
+      void fetchCategories();
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchAccounts, fetchCategories]);
 
   // External data events — keep the page in sync with mutations elsewhere.
@@ -230,9 +245,13 @@ export default function DetailsClient() {
 
   // Reset expansion whenever the visible window or active tab changes.
   // Spec: Req 2.5 (tab change) and Req 3.6 (period / custom range change).
-  useEffect(() => {
+  // Render-phase reset (converges) instead of a setState-in-effect.
+  const expansionKey = `${activeTab}|${period}|${customFrom ?? ""}|${customTo ?? ""}`;
+  const [prevExpansionKey, setPrevExpansionKey] = useState(expansionKey);
+  if (expansionKey !== prevExpansionKey) {
+    setPrevExpansionKey(expansionKey);
     setExpandedKeys(new Set());
-  }, [activeTab, period, customFrom, customTo]);
+  }
 
   // ── Derived data ────────────────────────────────────────────────────────
   const filteredTx = useMemo(

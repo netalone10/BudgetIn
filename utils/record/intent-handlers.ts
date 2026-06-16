@@ -52,7 +52,7 @@ export interface RecordContext {
   currentMonth: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type ParsedIntent = Record<string, any>;
 
 function formatSignedIDR(amount: number, positivePrefix = ""): string {

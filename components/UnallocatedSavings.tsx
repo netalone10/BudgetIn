@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AlertCircle, Loader2, MoveRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useApi } from "@/lib/hooks/use-api";
 
 interface UnallocatedTx {
   id: string;
@@ -37,34 +38,27 @@ function formatDate(dateStr: string) {
 }
 
 export default function UnallocatedSavings({ goals, onAllocated }: Props) {
+  const { data, isLoading, error: apiError } = useApi<{ transactions: UnallocatedTx[] }>(
+    "/api/savings/unallocated",
+  );
   const [transactions, setTransactions] = useState<UnallocatedTx[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // Sync the editable local copy from the server (render-phase; no effect setState).
+  const serverTx = data?.transactions;
+  const [syncedTx, setSyncedTx] = useState<UnallocatedTx[] | undefined>(undefined);
+  if (serverTx && serverTx !== syncedTx) {
+    setSyncedTx(serverTx);
+    setTransactions(serverTx);
+  }
+
+  const loading = isLoading && transactions.length === 0;
+  const error = apiError ? "Gagal memuat transaksi. Coba lagi." : null;
 
   // Per-row state: which tx is open for goal picking, and which goal is selected
   const [openTxId, setOpenTxId] = useState<string | null>(null);
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [rowError, setRowError] = useState("");
-
-  useEffect(() => {
-    fetchUnallocated();
-  }, []);
-
-  async function fetchUnallocated() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/savings/unallocated");
-      if (!res.ok) throw new Error("Gagal memuat data");
-      const data = await res.json();
-      setTransactions(data.transactions ?? []);
-    } catch {
-      setError("Gagal memuat transaksi. Coba lagi.");
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function openPicker(txId: string) {
     setOpenTxId(txId);

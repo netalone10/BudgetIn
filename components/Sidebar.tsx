@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -50,6 +50,24 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
 };
+
+const PINNED_KEY = "budgetin.sidebar.pinned";
+
+/** Subscribe to cross-tab + same-tab `storage` notifications. */
+function subscribeStorage(callback: () => void): () => void {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getPinnedSnapshot(): boolean {
+  return localStorage.getItem(PINNED_KEY) === "1";
+}
+
+/** Persist a localStorage value and notify this tab's subscribers. */
+function writeStorage(key: string, value: string) {
+  localStorage.setItem(key, value);
+  window.dispatchEvent(new StorageEvent("storage", { key }));
+}
 
 const sidebarVariants = {
   expanded: { width: "15rem" },
@@ -142,37 +160,44 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
 
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [isPinned, setIsPinned] = useState(false);
+  // Pinned state lives in localStorage; derive collapse from it + hover.
+  const isPinned = useSyncExternalStore(subscribeStorage, getPinnedSnapshot, () => false);
+  const [hoverExpanded, setHoverExpanded] = useState(false);
+  const isCollapsed = isPinned ? false : !hoverExpanded;
+
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
 
+  // Onboarding shows once per user. The "seen" flag is persisted, but a session
+  // latch (`onboardingFor`) drives visibility so that marking it seen — done as
+  // soon as it opens, so it survives a reload — doesn't immediately re-close it.
+  const userId = session?.userId;
+  const onboardingKey = userId ? `budgetin_onboarding_${userId}` : null;
+  const hasSeenOnboarding = useSyncExternalStore(
+    subscribeStorage,
+    () => (onboardingKey ? localStorage.getItem(onboardingKey) === "1" : true),
+    () => true,
+  );
+  const [onboardingFor, setOnboardingFor] = useState<string | null>(null);
+  if (userId && !hasSeenOnboarding && onboardingFor !== userId) {
+    setOnboardingFor(userId); // render-phase latch open; converges
+  }
+  const showOnboarding = !!userId && onboardingFor === userId;
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("budgetin.sidebar.pinned");
-    if (stored === "1") {
-      setIsPinned(true);
-      setIsCollapsed(false);
+    // Persist "seen" the moment onboarding opens so a reload won't show it again.
+    if (showOnboarding && onboardingKey) {
+      localStorage.setItem(onboardingKey, "1");
     }
-  }, []);
+  }, [showOnboarding, onboardingKey]);
 
-  useEffect(() => {
-    const userId = session?.userId;
-    if (userId) {
-      const key = `budgetin_onboarding_${userId}`;
-      if (!localStorage.getItem(key)) {
-        setShowOnboarding(true);
-        localStorage.setItem(key, "1");
-      }
-    }
-  }, [session?.userId]);
-
-  useEffect(() => {
+  // Close the mobile drawer on navigation (render-phase, no effect setState).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (pathname !== lastPath) {
+    setLastPath(pathname);
     setIsMobileOpen(false);
-  }, [pathname]);
+  }
 
   const isEmailUser = !session?.sheetsId;
   const isAdminUser = session?.isAdmin === true;
@@ -214,13 +239,9 @@ export default function Sidebar() {
       animate={isCollapsed ? "collapsed" : "expanded"}
       variants={sidebarVariants}
       transition={{ type: "tween", ease: "easeOut", duration: 0.2 }}
-      onMouseEnter={() => {
-        if (!isPinned) setIsCollapsed(false);
-      }}
-      onMouseLeave={() => {
-        if (!isPinned) setIsCollapsed(true);
-      }}
-      onFocusCapture={() => setIsCollapsed(false)}
+      onMouseEnter={() => setHoverExpanded(true)}
+      onMouseLeave={() => setHoverExpanded(false)}
+      onFocusCapture={() => setHoverExpanded(true)}
     >
       <div className="flex h-full w-full flex-col p-2">
         {/* Header */}
@@ -245,14 +266,9 @@ export default function Sidebar() {
             <button
               type="button"
               onClick={() => {
-                setIsPinned((current) => {
-                  const next = !current;
-                  setIsCollapsed(!next);
-                  if (typeof window !== "undefined") {
-                    localStorage.setItem("budgetin.sidebar.pinned", next ? "1" : "0");
-                  }
-                  return next;
-                });
+                const next = !isPinned;
+                if (!next) setHoverExpanded(false);
+                writeStorage(PINNED_KEY, next ? "1" : "0");
               }}
               className={cn(
                 "ml-auto flex size-8 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -619,7 +635,7 @@ export default function Sidebar() {
       )}
 
       {showOnboarding && (
-        <OnboardingModal onClose={() => setShowOnboarding(false)} />
+        <OnboardingModal onClose={() => setOnboardingFor(null)} />
       )}
       </>
     </LazyMotion>

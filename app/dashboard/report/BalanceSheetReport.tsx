@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Calendar, Scale, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useReport } from "./useReport";
 import type { CategoryRow } from "@/lib/report-data";
 import {
   KpiCard,
@@ -30,34 +31,9 @@ function todayISO(): string {
 
 export default function BalanceSheetReport() {
   const [asOf, setAsOf] = useState<string>(todayISO);
-  const [data, setData] = useState<BalancePayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useMemo(
-    () => async (target: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/report?mode=balance&asOf=${target}`, {
-          cache: "no-store",
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Gagal memuat laporan.");
-        setData(json);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
+  const { data, loading, error, refetch } = useReport<BalancePayload>(
+    `/api/report?mode=balance&asOf=${asOf}`,
   );
-
-  useEffect(() => {
-    fetchData(asOf);
-  }, [asOf, fetchData]);
 
   return (
     <div className="space-y-6">
@@ -78,7 +54,7 @@ export default function BalanceSheetReport() {
       </div>
 
       {loading && <ReportLoadingSkeleton />}
-      {error && !loading && <ReportError message={error} onRetry={() => fetchData(asOf)} />}
+      {error && !loading && <ReportError message={error} onRetry={refetch} />}
 
       {!loading && !error && data && <BalanceContent data={data} />}
     </div>

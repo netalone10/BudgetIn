@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (demoBlock) return demoBlock;
   if (!session?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   let body: any;
   try {
     body = await req.json();

@@ -67,7 +67,15 @@ export default function RecurringClient() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) load();
+    });
+    return () => {
+      active = false;
+    };
+  }, [load]);
 
   const handleRun = async (id: string) => {
     const res = await fetch(`/api/recurring/${id}/run`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });

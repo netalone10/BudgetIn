@@ -401,16 +401,30 @@ export default function AccountDetailClient({ initialData }: Props) {
   // Prefetch accounts + categories on mount so the modal opens instantly.
   // Re-fetch in background when accounts/categories change.
   useEffect(() => {
-    fetchModalData();
+    // Defer off the synchronous effect path: setState runs in the promise
+    // callback, not during the effect body.
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchModalData();
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchModalData]);
 
   useDataEvent(["accounts", "categories"], () => {
     fetchModalData();
   });
 
+  // Reset the prompt result whenever the add modal opens (render-phase update).
+  const [prevShowAddModal, setPrevShowAddModal] = useState(showAddModal);
+  if (showAddModal !== prevShowAddModal) {
+    setPrevShowAddModal(showAddModal);
+    if (showAddModal) setPromptResult(null);
+  }
+
   useEffect(() => {
     if (showAddModal) {
-      setPromptResult(null);
       const focusTimer = setTimeout(() => textareaRef.current?.focus(), 0);
       return () => clearTimeout(focusTimer);
     }

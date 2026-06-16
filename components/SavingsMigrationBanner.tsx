@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowDown, Sparkles, X } from "lucide-react";
+import { useApi } from "@/lib/hooks/use-api";
 
 interface Props {
   targetRef: React.RefObject<HTMLElement | null>;
@@ -11,16 +12,19 @@ interface Props {
 }
 
 export default function SavingsMigrationBanner({ targetRef, refreshKey, totalHistory }: Props) {
-  const [unallocatedCount, setUnallocatedCount] = useState<number | null>(null);
-  const [dismissed, setDismissed] = useState(false);
+  const { data, mutate } = useApi<{ transactions?: unknown[] }>(
+    "/api/savings/unallocated",
+  );
+  const unallocatedCount = data ? (data.transactions ?? []).length : null;
+
+  // Dismissal is tied to the current refreshKey, so a parent refresh
+  // (e.g. after an allocation) re-shows the banner without an effect setState.
+  const [dismissedKey, setDismissedKey] = useState<number | null>(null);
+  const dismissed = dismissedKey === (refreshKey ?? 0);
 
   useEffect(() => {
-    setDismissed(false);
-    fetch("/api/savings/unallocated")
-      .then((r) => r.json())
-      .then((d) => setUnallocatedCount((d.transactions ?? []).length))
-      .catch(() => setUnallocatedCount(0));
-  }, [refreshKey]);
+    void mutate();
+  }, [refreshKey, mutate]);
 
   // Belum selesai fetch
   if (unallocatedCount === null) return null;
@@ -73,7 +77,7 @@ export default function SavingsMigrationBanner({ targetRef, refreshKey, totalHis
       </button>
 
       <button
-        onClick={() => setDismissed(true)}
+        onClick={() => setDismissedKey(refreshKey ?? 0)}
         className="absolute right-2.5 top-2.5 rounded p-0.5 text-amber-500 transition-colors hover:bg-amber-100 hover:text-amber-700 dark:hover:bg-amber-900/40"
         aria-label="Tutup"
       >

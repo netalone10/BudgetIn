@@ -16,7 +16,7 @@ export function useDemoTimeout() {
   const isDemo = useIsDemo();
   const [secondsRemaining, setSecondsRemaining] = useState(TIMEOUT_MINUTES * 60);
   const [showWarning, setShowWarning] = useState(false);
-  const expiresAtRef = useRef(Date.now() + TIMEOUT_MS);
+  const expiresAtRef = useRef(0);
   const warningShownRef = useRef(false);
 
   const resetTimer = useCallback(() => {
@@ -30,6 +30,9 @@ export function useDemoTimeout() {
   // Activity listener — resets on any user interaction
   useEffect(() => {
     if (!isDemo) return;
+
+    // Seed the expiry on mount (Date.now() is impure, so not in render).
+    expiresAtRef.current = Date.now() + TIMEOUT_MS;
 
     const events = ["click", "keypress", "mousemove", "scroll", "touchstart"];
     const handler = () => resetTimer();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -9,6 +9,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useReport } from "./useReport";
 import {
   CategoryTable,
   KpiCard,
@@ -42,40 +43,15 @@ function defaultRange(): { from: string; to: string } {
 }
 
 export default function CustomRangeReport() {
-  const initial = useMemo(defaultRange, []);
+  const [initial] = useState(defaultRange);
   const [from, setFrom] = useState(initial.from);
   const [to, setTo] = useState(initial.to);
   const [appliedFrom, setAppliedFrom] = useState(initial.from);
   const [appliedTo, setAppliedTo] = useState(initial.to);
 
-  const [data, setData] = useState<CustomPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useMemo(
-    () => async (f: string, t: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/report?mode=custom&from=${f}&to=${t}`, {
-          cache: "no-store",
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Gagal memuat laporan.");
-        setData(json);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
-        setData(null);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
+  const { data, loading, error, refetch } = useReport<CustomPayload>(
+    `/api/report?mode=custom&from=${appliedFrom}&to=${appliedTo}`,
   );
-
-  useEffect(() => {
-    fetchData(appliedFrom, appliedTo);
-  }, [appliedFrom, appliedTo, fetchData]);
 
   const handleApply = () => {
     if (!from || !to || from > to) return;
@@ -120,7 +96,7 @@ export default function CustomRangeReport() {
 
       {loading && <ReportLoadingSkeleton />}
       {error && !loading && (
-        <ReportError message={error} onRetry={() => fetchData(appliedFrom, appliedTo)} />
+        <ReportError message={error} onRetry={refetch} />
       )}
 
       {!loading && !error && data && <CustomRangeContent data={data} />}

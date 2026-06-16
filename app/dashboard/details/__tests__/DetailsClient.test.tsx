@@ -37,7 +37,7 @@ jest.mock("@/lib/data-events", () => ({
 }));
 
 // Imported AFTER the mocks above so the component picks up our stubs.
-// eslint-disable-next-line import/first
+ 
 import DetailsClient from "../DetailsClient";
 
 // ── Fixture data ────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, createElement } from "react";
 import { useSession } from "next-auth/react";
 import { redirect, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -198,23 +198,24 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
   const selectedType = selectableAccountTypes.find((t) => getAccountTypeValue(t) === accountTypeId);
   const isKartuKredit = selectedType?.name === "Kartu Kredit";
 
-  useEffect(() => {
-    if (selectableAccountTypes.length === 0) {
-      if (accountTypeId !== "") setAccountTypeId("");
-      return;
-    }
-
-    if (accountTypeId && selectableAccountTypes.some((t) => getAccountTypeValue(t) === accountTypeId)) return;
-
+  // Keep accountTypeId valid as the available types change. Render-phase update
+  // (converges to a stable value) instead of a setState-in-effect.
+  if (selectableAccountTypes.length === 0) {
+    if (accountTypeId !== "") setAccountTypeId("");
+  } else if (
+    !(accountTypeId && selectableAccountTypes.some((t) => getAccountTypeValue(t) === accountTypeId))
+  ) {
     const editType = editAccount
-      ? selectableAccountTypes.find((t) =>
-          t.id === editAccount.accountType.id ||
-          (t.name === editAccount.accountType.name && t.classification === editAccount.accountType.classification)
+      ? selectableAccountTypes.find(
+          (t) =>
+            t.id === editAccount.accountType.id ||
+            (t.name === editAccount.accountType.name &&
+              t.classification === editAccount.accountType.classification),
         )
       : undefined;
-
-    setAccountTypeId(getAccountTypeValue(editType ?? selectableAccountTypes[0]));
-  }, [selectableAccountTypes, accountTypeId, editAccount]);
+    const nextTypeId = getAccountTypeValue(editType ?? selectableAccountTypes[0]);
+    if (nextTypeId !== accountTypeId) setAccountTypeId(nextTypeId);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -327,7 +328,7 @@ function AccountFormModal({ accountTypes, editAccount, isSheets, onClose, onSave
 
           {isEdit && hasTransactions && (
             <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
-              Saldo awal & mata uang tidak bisa diubah karena sudah ada transaksi. Gunakan "Sesuaikan Saldo" untuk koreksi.
+              Saldo awal & mata uang tidak bisa diubah karena sudah ada transaksi. Gunakan &quot;Sesuaikan Saldo&quot; untuk koreksi.
             </p>
           )}
 
@@ -497,7 +498,7 @@ const AccountCard = memo(function AccountCard({
   const balance = parseFloat(account.currentBalance);
   const color = getAccountBadgeColor(account);
   const recent = account.recentTransactions ?? [];
-  const AccountIcon = getAccountIcon(account.icon ?? account.accountType.icon, account.accountType.name);
+  const accountIcon = getAccountIcon(account.icon ?? account.accountType.icon, account.accountType.name);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-background transition-colors hover:border-border/80">
@@ -508,7 +509,7 @@ const AccountCard = memo(function AccountCard({
             className="size-9 rounded-lg shrink-0 flex items-center justify-center text-white"
             style={{ backgroundColor: color }}
           >
-            <AccountIcon className="size-4" />
+            {createElement(accountIcon, { className: "size-4" })}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -667,7 +668,16 @@ export default function AccountsPage() {
   );
 
   useEffect(() => {
-    if (status === "authenticated") fetchData();
+    if (status !== "authenticated") return;
+    // Defer off the synchronous effect path: setState happens in the promise
+    // callback, not during the effect body (avoids cascading renders).
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchData();
+    });
+    return () => {
+      active = false;
+    };
   }, [status, fetchData]);
 
   useDataEvent(["accounts", "transactions"], () => {

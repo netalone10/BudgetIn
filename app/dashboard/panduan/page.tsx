@@ -80,7 +80,7 @@ const sections: Section[] = [
           <Tip>Saldo akun dihitung otomatis dari semua transaksi yang tercatat</Tip>
           <Tip>Bisa tambah banyak akun sekaligus</Tip>
         </ul>
-        <Code>Contoh: "BCA Tabungan", "Cash on Hand", "Mandiri Pertamina"</Code>
+        <Code>{'Contoh: "BCA Tabungan", "Cash on Hand", "Mandiri Pertamina"'}</Code>
       </div>
     ),
   },
@@ -109,11 +109,11 @@ const sections: Section[] = [
       <div className="space-y-3">
         <p>Ketik transaksi pakai bahasa natural di kolom chat dashboard. AI otomatis memahami jumlah, kategori, dan akun.</p>
         <div className="space-y-1.5">
-          <Code>"beli makan siang 35rb dari BCA"</Code>
-          <Code>"gaji masuk 8jt ke BNI Debit"</Code>
-          <Code>"bayar listrik 250rb cash"</Code>
-          <Code>"transfer 1jt dari BCA ke BNI"</Code>
-          <Code>"laporan bulan ini"</Code>
+          <Code>{'"beli makan siang 35rb dari BCA"'}</Code>
+          <Code>{'"gaji masuk 8jt ke BNI Debit"'}</Code>
+          <Code>{'"bayar listrik 250rb cash"'}</Code>
+          <Code>{'"transfer 1jt dari BCA ke BNI"'}</Code>
+          <Code>{'"laporan bulan ini"'}</Code>
         </div>
         <ul className="space-y-1.5">
           <Tip>Tidak perlu format khusus — tulis seperti chat biasa</Tip>
@@ -149,7 +149,7 @@ const sections: Section[] = [
       <div className="space-y-3">
         <p>Set batas pengeluaran per kategori. Pantau di tab <strong className="text-foreground">vs Budget</strong> di dashboard.</p>
         <ul className="space-y-1.5">
-          <Tip>Set via prompt: <em>"budget makan 500rb"</em></Tip>
+          <Tip>Set via prompt: <em>{'"budget makan 500rb"'}</em></Tip>
           <Tip>Budget <strong className="text-foreground">Variable</strong> diprorasikan sesuai hari berjalan bulan ini</Tip>
           <Tip>Budget <strong className="text-foreground">Fixed</strong> (kos, arisan, cicilan, dll) tetap 100%</Tip>
           <Tip>Aktifkan <strong className="text-foreground">Rollover</strong> agar sisa budget carry-over ke bulan depan</Tip>
@@ -217,9 +217,9 @@ const sections: Section[] = [
       <div className="space-y-3">
         <p>Minta ringkasan keuangan langsung dari kolom chat di dashboard. AI generate narasi otomatis.</p>
         <div className="space-y-1.5">
-          <Code>"laporan bulan ini"</Code>
-          <Code>"ringkasan keuangan April"</Code>
-          <Code>"gimana pengeluaran bulan ini?"</Code>
+          <Code>{'"laporan bulan ini"'}</Code>
+          <Code>{'"ringkasan keuangan April"'}</Code>
+          <Code>{'"gimana pengeluaran bulan ini?"'}</Code>
         </div>
         <ul className="space-y-1.5">
           <Tip>Laporan mencakup total pemasukan, pengeluaran, vs budget</Tip>

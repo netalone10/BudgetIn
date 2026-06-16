@@ -76,26 +76,26 @@ describe("useApi - fetcher logic", () => {
 describe("useApi - module exports", () => {
   it("exports useApi function", () => {
     // Verify the module can be required and exports the expected shape
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const mod = require("../hooks/use-api");
     expect(typeof mod.useApi).toBe("function");
   });
 
   it("exports applyOptimisticUpdate function", () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const mod = require("../hooks/use-api");
     expect(typeof mod.applyOptimisticUpdate).toBe("function");
   });
 
   it("exports useOptimisticMutation function", () => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const mod = require("../hooks/use-api");
     expect(typeof mod.useOptimisticMutation).toBe("function");
   });
 });
 
 describe("applyOptimisticUpdate", () => {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+   
   const { applyOptimisticUpdate } = require("../hooks/use-api");
 
   it("applies create transform - adds item to array", () => {

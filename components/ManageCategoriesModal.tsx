@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { X, Loader2, Pencil, Trash2, Plus } from "lucide-react";
 import { useApi } from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
@@ -26,11 +26,14 @@ export default function ManageCategoriesModal({ onClose, onSaved }: Props) {
   const { data: categoriesData, isLoading } = useApi<{ categories: Category[] }>("/api/categories");
   const [categories, setCategories] = useState<Category[]>([]);
 
-  useEffect(() => {
-    if (categoriesData?.categories) {
-      setCategories(categoriesData.categories);
-    }
-  }, [categoriesData]);
+  // Sync the editable local copy whenever the server returns a new array
+  // (render-phase update; avoids a setState-in-effect).
+  const serverCategories = categoriesData?.categories;
+  const [syncedServer, setSyncedServer] = useState<Category[] | undefined>(undefined);
+  if (serverCategories && serverCategories !== syncedServer) {
+    setSyncedServer(serverCategories);
+    setCategories(serverCategories);
+  }
 
   const loading = isLoading && categories.length === 0;
 

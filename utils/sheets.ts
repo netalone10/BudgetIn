@@ -689,7 +689,7 @@ export async function getTransactionRow(
 
 // ─── HELPER ───────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function findRowByIdInSheet(sheets: any, sheetsId: string, sheetTitle: string, id: string): Promise<number> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
@@ -702,7 +702,7 @@ async function findRowByIdInSheet(sheets: any, sheetsId: string, sheetTitle: str
 
 // ─── HELPER ───────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function findRowById(sheets: any, sheetsId: string, id: string): Promise<number> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,

@@ -223,7 +223,14 @@ export default function AccountSettingsPage() {
   }
 
   useEffect(() => {
-    if (status === "authenticated") void fetchUser();
+    if (status !== "authenticated") return;
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) void fetchUser();
+    });
+    return () => {
+      active = false;
+    };
   }, [status]);
 
   function openDialog(type: ActionType) {

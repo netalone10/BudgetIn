@@ -103,8 +103,16 @@ export default function TransactionsClient() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchTransactions(controller.signal);
-    return () => controller.abort();
+    // Defer off the synchronous effect path (setState runs in the promise
+    // callback, not the effect body).
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) fetchTransactions(controller.signal);
+    });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [fetchTransactions]);
 
   useDataEvent(["transactions"], () => {
@@ -149,9 +157,13 @@ export default function TransactionsClient() {
     }
   }
 
-  useEffect(() => {
+  // Reset to the first page whenever any filter changes (render-phase update).
+  const pageResetKey = [period, customFrom, customTo, typeFilter, categoryFilter, accountFilter, searchQuery, pageSize].join("|");
+  const [prevPageResetKey, setPrevPageResetKey] = useState(pageResetKey);
+  if (pageResetKey !== prevPageResetKey) {
+    setPrevPageResetKey(pageResetKey);
     setPage(1);
-  }, [period, customFrom, customTo, typeFilter, categoryFilter, accountFilter, searchQuery, pageSize]);
+  }
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

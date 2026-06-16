@@ -89,8 +89,16 @@ export default function SavingsPage() {
   }
 
   useEffect(() => {
-    fetchGoals();
-    if (!isDemo) fetchHistory();
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      fetchGoals();
+      if (!isDemo) fetchHistory();
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function validateForm(): boolean {

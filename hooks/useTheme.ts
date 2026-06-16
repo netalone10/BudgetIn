@@ -1,35 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 type Mode = "light" | "dark";
 
+function applyMode(m: Mode) {
+  document.documentElement.classList.toggle("dark", m === "dark");
+}
+
+function getSnapshot(): Mode {
+  const stored = localStorage.getItem("theme");
+  if (stored === "dark" || stored === "light") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function getServerSnapshot(): Mode {
+  return "light";
+}
+
+function subscribe(callback: () => void): () => void {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  window.addEventListener("storage", callback);
+  mq.addEventListener("change", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    mq.removeEventListener("change", callback);
+  };
+}
+
 export function useTheme() {
-  const [mode, setMode] = useState<Mode>("light");
+  const mode = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
+  // Keep the <html> class in sync with the resolved mode.
   useEffect(() => {
-    // Restore mode
-    const storedMode = localStorage.getItem("theme") as Mode | null;
-    const initialMode =
-      storedMode === "dark" || storedMode === "light"
-        ? storedMode
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    applyMode(initialMode);
-    setMode(initialMode);
-  }, []);
+    applyMode(mode);
+  }, [mode]);
 
-  function applyMode(m: Mode) {
-    document.documentElement.classList.toggle("dark", m === "dark");
-  }
-
-  function toggleMode() {
-    const next: Mode = mode === "dark" ? "light" : "dark";
-    applyMode(next);
+  const toggleMode = useCallback(() => {
+    const next: Mode = getSnapshot() === "dark" ? "light" : "dark";
     localStorage.setItem("theme", next);
-    setMode(next);
-  }
+    applyMode(next);
+    // `storage` only fires in other tabs, so notify this tab's subscriber too.
+    window.dispatchEvent(new StorageEvent("storage", { key: "theme" }));
+  }, []);
 
   return { theme: mode, toggle: toggleMode };
 }

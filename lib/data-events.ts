@@ -81,7 +81,10 @@ export function useDataEvent(
   handler: (topic: DataTopic) => void
 ): void {
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  // Keep the ref pointing at the latest handler without writing during render.
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
   const topicsKey = (Array.isArray(topics) ? topics : [topics]).join(",");
 
   useEffect(() => {
