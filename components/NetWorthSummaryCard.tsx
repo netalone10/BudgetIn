@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDataEvent } from "@/lib/data-events";
-import { useApi } from "@/lib/hooks/use-api";
 
 interface NetWorthData {
   summary: {
@@ -32,20 +31,39 @@ interface Props {
 }
 
 export default function NetWorthSummaryCard({ refreshTrigger = 0, compact = false }: Props) {
-  const { data: raw, isLoading: loading, mutate } = useApi<NetWorthData>("/api/accounts");
+  // Use local state (loading starts true) so the server and the first client
+  // render agree on the skeleton — avoids an SWR-cache hydration mismatch.
+  const [data, setData] = useState<NetWorthData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Only treat a well-formed payload as data; anything else renders the empty state.
-  const data =
-    raw && raw.summary && typeof raw.summary.netWorth === "string" ? raw : null;
+  const load = useCallback((noStore = false) => {
+    setLoading(true);
+    fetch("/api/accounts", noStore ? { cache: "no-store" } : undefined)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && d.summary && typeof d.summary.netWorth === "string") {
+          setData(d);
+        } else {
+          setData(null);
+        }
+      })
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
 
-  // Parent bumps refreshTrigger to force a refetch after an action.
+  // Parent bumps refreshTrigger to force a refetch after an action. Deferred off
+  // the synchronous effect path to avoid set-state-in-effect.
   useEffect(() => {
-    if (refreshTrigger) void mutate();
-  }, [refreshTrigger, mutate]);
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) load();
+    });
+    return () => {
+      active = false;
+    };
+  }, [refreshTrigger, load]);
 
-  useDataEvent(["transactions", "accounts"], () => {
-    void mutate();
-  });
+  useDataEvent(["transactions", "accounts"], () => load(true));
 
   if (loading) {
     return (

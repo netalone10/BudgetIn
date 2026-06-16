@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useDataEvent } from "@/lib/data-events";
-import { useApi } from "@/lib/hooks/use-api";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
 import { getCategoryIcon } from "@/utils/category-icons";
@@ -80,16 +79,35 @@ function getBudgetDay(month: string) {
 }
 
 export default function BudgetStatus({ refreshKey = 0 }: { refreshKey?: number }) {
-  const { data, isLoading: loading, mutate } = useApi<BudgetData>("/api/budget");
+  // Use local state (loading starts true) so the server and the first client
+  // render agree on the skeleton — avoids an SWR-cache hydration mismatch.
+  const [data, setData] = useState<BudgetData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Parent bumps refreshKey to force a refetch after an action.
+  const load = useCallback((noStore = false) => {
+    setLoading(true);
+    fetch("/api/budget", noStore ? { cache: "no-store" } : undefined)
+      .then((r) => r.json())
+      .then((d) => {
+        setData(d);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  // Parent bumps refreshKey to force a refetch after an action. Deferred off the
+  // synchronous effect path to avoid set-state-in-effect.
   useEffect(() => {
-    if (refreshKey) void mutate();
-  }, [refreshKey, mutate]);
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) load();
+    });
+    return () => {
+      active = false;
+    };
+  }, [refreshKey, load]);
 
-  useDataEvent(["transactions", "budget"], () => {
-    void mutate();
-  });
+  useDataEvent(["transactions", "budget"], () => load(true));
 
   const budgets = data?.budgets ?? [];
   const month = data?.month ?? getCurrentMonth();
