@@ -72,42 +72,112 @@ interface EditModalProps {
   onSaved: (updates: Partial<Transaction>) => void;
 }
 
+type TxKind = "expense" | "income" | "transfer";
+
 export function EditModal({ transaction, categories, accounts, onClose, onSaved }: EditModalProps) {
+  // Tipe awal: transfer dideteksi dari type leg atau dari pasangan akun from+to.
+  const initialIsTransfer =
+    transaction.type === "transfer_out" ||
+    transaction.type === "transfer_in" ||
+    (!!transaction.fromAccountName && !!transaction.toAccountName) ||
+    (!!transaction.fromAccountId && !!transaction.toAccountId);
+  const initialKind: TxKind = initialIsTransfer
+    ? "transfer"
+    : transaction.type === "income"
+      ? "income"
+      : "expense";
+
+  // Cocokkan nama akun → id (untuk leg transfer yang hanya bawa nama, mis. di
+  // halaman detail akun).
+  const idByName = (name?: string | null) =>
+    name ? accounts.find((a) => a.name === name)?.id ?? "" : "";
+  const initFrom =
+    transaction.fromAccountId ||
+    idByName(transaction.fromAccountName) ||
+    (transaction.type === "transfer_out" ? transaction.accountId ?? "" : "");
+  const initTo =
+    transaction.toAccountId ||
+    idByName(transaction.toAccountName) ||
+    (transaction.type === "transfer_in" ? transaction.accountId ?? "" : "");
+
+  const [editKind, setEditKind] = useState<TxKind>(initialKind);
   const [editDate, setEditDate] = useState(transaction.date);
   const [editTime, setEditTime] = useState(() => formatTime(transaction.time));
   const [editNote, setEditNote] = useState(transaction.note);
   const [editAmount, setEditAmount] = useState(String(transaction.amount));
   const [editCategory, setEditCategory] = useState(transaction.category);
-  const [editAccountId, setEditAccountId] = useState(transaction.accountId ?? transaction.fromAccountId ?? "");
+  const [editAccountId, setEditAccountId] = useState(
+    transaction.accountId ?? transaction.fromAccountId ?? transaction.toAccountId ?? ""
+  );
+  const [editFromAccountId, setEditFromAccountId] = useState(initFrom);
+  const [editToAccountId, setEditToAccountId] = useState(initTo);
   const [error, setError] = useState<string | null>(null);
 
-  const categoryType =
-    transaction.type === "income" || transaction.type === "transfer_in"
-      ? "income"
-      : "expense";
+  const categoryType = editKind === "income" ? "income" : "expense";
   const filteredCategoryNames = categories.flatMap((c) =>
     c.type === categoryType ? [c.name] : []
   );
-  const categoryOptions = filteredCategoryNames.includes(transaction.category)
+  const categoryOptions = filteredCategoryNames.includes(editCategory)
     ? filteredCategoryNames
-    : [...filteredCategoryNames, transaction.category].sort();
+    : [...filteredCategoryNames, editCategory].sort();
+
+  function handleKindChange(next: TxKind) {
+    setEditKind(next);
+    setError(null);
+    // Reset kategori ke pilihan yang valid untuk tipe baru (non-transfer).
+    if (next !== "transfer") {
+      const names = categories.flatMap((c) => (c.type === (next === "income" ? "income" : "expense") ? [c.name] : []));
+      if (!names.includes(editCategory)) setEditCategory(names[0] ?? editCategory);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const updates = {
+    const base = {
       date: editDate,
       time: editTime,
       note: editNote,
       amount: Number(editAmount),
-      category: editCategory,
-      accountId: editAccountId || null,
     };
 
-    // Optimistic: notify parent & close immediately — no spinner.
+    let updates: Record<string, unknown>;
+    if (editKind === "transfer") {
+      if (!editFromAccountId || !editToAccountId) {
+        setError("Pilih akun asal dan tujuan.");
+        return;
+      }
+      if (editFromAccountId === editToAccountId) {
+        setError("Akun asal dan tujuan tidak boleh sama.");
+        return;
+      }
+      updates = {
+        ...base,
+        type: "transfer",
+        category: "Transfer",
+        fromAccountId: editFromAccountId,
+        toAccountId: editToAccountId,
+      };
+    } else {
+      updates = {
+        ...base,
+        type: editKind,
+        category: editCategory,
+        accountId: editAccountId || null,
+      };
+    }
+
+    // Transfer melibatkan dua row (buat/hapus pasangan), jadi optimistic merge
+    // satu row tidak cukup → tutup modal lalu refetch dari server.
+    const needsRefetch = editKind === "transfer" || initialKind === "transfer";
+
     toast.success("Transaksi berhasil diperbarui.");
-    onSaved(updates);
+    if (needsRefetch) {
+      onClose();
+    } else {
+      onSaved(updates as Partial<Transaction>);
+    }
 
     try {
       const res = await fetch(`/api/record/${transaction.id}`, {
@@ -119,6 +189,8 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
         const data = await res.json().catch(() => ({}));
         const msg = (data as { error?: string }).error || "Gagal menyimpan.";
         toast.error(msg);
+      }
+      if (needsRefetch || !res.ok) {
         emitDataChanged(["transactions", "budget", "accounts"]);
       }
     } catch {
@@ -196,22 +268,37 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
           </div>
 
           <div>
-            <label htmlFor="transactioncard-field-5" className={LABEL_CLS}>Kategori</label>
-            <select id="transactioncard-field-5"
-              value={editCategory}
-              onChange={(e) => setEditCategory(e.target.value)}
+            <label htmlFor="transactioncard-field-type" className={LABEL_CLS}>Tipe</label>
+            <select id="transactioncard-field-type"
+              value={editKind}
+              onChange={(e) => handleKindChange(e.target.value as TxKind)}
               className={SELECT_CLS}
             >
-              {categoryOptions.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-              {!categoryOptions.includes(editCategory) && (
-                <option value={editCategory}>{editCategory}</option>
-              )}
+              <option value="expense">Pengeluaran</option>
+              <option value="income">Pemasukan</option>
+              <option value="transfer" disabled={accounts.length < 2}>Transfer</option>
             </select>
           </div>
 
-          {accounts.length > 0 && (
+          {editKind !== "transfer" && (
+            <div>
+              <label htmlFor="transactioncard-field-5" className={LABEL_CLS}>Kategori</label>
+              <select id="transactioncard-field-5"
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                className={SELECT_CLS}
+              >
+                {categoryOptions.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+                {!categoryOptions.includes(editCategory) && (
+                  <option value={editCategory}>{editCategory}</option>
+                )}
+              </select>
+            </div>
+          )}
+
+          {editKind !== "transfer" && accounts.length > 0 && (
             <div>
               <label htmlFor="transactioncard-field-6" className={LABEL_CLS}>Akun</label>
               <select id="transactioncard-field-6"
@@ -224,6 +311,37 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
                   <option key={acc.id} value={acc.id}>{acc.name}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {editKind === "transfer" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="transactioncard-field-from" className={LABEL_CLS}>Dari Akun</label>
+                <select id="transactioncard-field-from"
+                  value={editFromAccountId}
+                  onChange={(e) => setEditFromAccountId(e.target.value)}
+                  className={SELECT_CLS}
+                >
+                  <option value="">— Pilih —</option>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id} disabled={acc.id === editToAccountId}>{acc.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="transactioncard-field-to" className={LABEL_CLS}>Ke Akun</label>
+                <select id="transactioncard-field-to"
+                  value={editToAccountId}
+                  onChange={(e) => setEditToAccountId(e.target.value)}
+                  className={SELECT_CLS}
+                >
+                  <option value="">— Pilih —</option>
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id} disabled={acc.id === editFromAccountId}>{acc.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 

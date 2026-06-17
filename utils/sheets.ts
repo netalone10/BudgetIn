@@ -315,8 +315,8 @@ export async function updateTransaction(
     data.type ?? current[6] ?? "expense",
     data.fromAccountId !== undefined ? (data.fromAccountId ?? "") : (current[7] ?? ""),
     data.fromAccountName !== undefined ? (data.fromAccountName ?? "") : (current[8] ?? ""),
-    current[9] ?? "",
-    current[10] ?? "",
+    data.toAccountId !== undefined ? (data.toAccountId ?? "") : (current[9] ?? ""),
+    data.toAccountName !== undefined ? (data.toAccountName ?? "") : (current[10] ?? ""),
     data.time !== undefined ? normalizeTransactionTime(data.time) : normalizeTransactionTime(current[11]),
   ];
 

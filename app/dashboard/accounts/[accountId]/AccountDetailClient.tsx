@@ -624,6 +624,7 @@ export default function AccountDetailClient({ initialData }: Props) {
                       key={t.id}
                       transaction={t}
                       categories={transactionCategories}
+                      accounts={accounts}
                       onDelete={handleDeleteTx}
                       onUpdate={handleUpdateTx}
                     />

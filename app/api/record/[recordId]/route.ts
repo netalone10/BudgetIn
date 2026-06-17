@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { randomUUID } from "crypto";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getValidToken } from "@/utils/token";
@@ -39,13 +40,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     // Verifikasi kepemilikan sebelum update
     const existing = await prisma.transaction.findUnique({
       where: { id: recordId },
-      select: { userId: true, isInitialBalance: true, transferId: true },
+      select: { userId: true, isInitialBalance: true, transferId: true, type: true },
     });
     if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
     if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
-    // Guard: transaksi saldo awal tidak boleh diedit amount-nya via endpoint ini
-    if (existing.isInitialBalance && body.amount !== undefined) {
+    // Target tipe (kalau client minta ubah tipe transaksi). undefined = tidak diubah.
+    const targetType: "expense" | "income" | "transfer" | undefined =
+      body.type === "expense" || body.type === "income" || body.type === "transfer" ? body.type : undefined;
+    const isTransferNow = !!existing.transferId;
+
+    // Guard: transaksi saldo awal tidak boleh diedit amount/tipe-nya via endpoint ini
+    if (existing.isInitialBalance && (body.amount !== undefined || targetType !== undefined)) {
       return NextResponse.json(
         { error: "Gunakan fitur 'Sesuaikan Saldo' di halaman Akun untuk mengubah saldo awal." },
         { status: 403 }
@@ -54,12 +60,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     if (body.amount !== undefined) {
       const parsedAmount = Number(body.amount);
-      const validAmount = existing.transferId
+      const wantTransfer = targetType === "transfer" || (targetType === undefined && isTransferNow);
+      const validAmount = wantTransfer
         ? isValidTransferAmount(parsedAmount)
         : isValidTransactionAmount(parsedAmount);
       if (!validAmount) {
         return NextResponse.json(
-          { error: existing.transferId ? "Nominal transfer harus lebih dari 0." : "Nominal tidak boleh 0." },
+          { error: wantTransfer ? "Nominal transfer harus lebih dari 0." : "Nominal tidak boleh 0." },
           { status: 400 }
         );
       }
@@ -70,8 +77,96 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
 
     try {
-      // Transfer pair: update kedua row sekaligus via transferId
-      if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined || body.category !== undefined || body.accountId !== undefined)) {
+      if (targetType === "transfer") {
+        // ── Target: transfer ──────────────────────────────────────────────
+        const fromAccountId = body.fromAccountId || null;
+        const toAccountId = body.toAccountId || null;
+        const sharedTransfer = {
+          ...(body.date !== undefined && { date: body.date }),
+          ...(body.time !== undefined && { time: body.time }),
+          ...(body.amount !== undefined && { amount: body.amount }),
+          ...(body.note !== undefined && { note: body.note }),
+          category: "Transfer",
+        };
+
+        if (isTransferNow) {
+          // Sudah transfer → update kedua leg, reassign akun bila keduanya dikirim
+          const legs = await prisma.transaction.findMany({
+            where: { transferId: existing.transferId! },
+            select: { id: true, type: true },
+          });
+          const reassign = !!fromAccountId && !!toAccountId && fromAccountId !== toAccountId;
+          await prisma.$transaction(
+            legs.map((leg) =>
+              prisma.transaction.update({
+                where: { id: leg.id },
+                data: {
+                  ...sharedTransfer,
+                  ...(reassign && { accountId: leg.type === "transfer_in" ? toAccountId : fromAccountId }),
+                },
+              })
+            )
+          );
+        } else {
+          // single → transfer: butuh dua akun berbeda, buat leg pasangan
+          if (!fromAccountId || !toAccountId || fromAccountId === toAccountId) {
+            return NextResponse.json({ error: "Pilih akun asal dan tujuan yang berbeda." }, { status: 400 });
+          }
+          const current = await prisma.transaction.findUnique({
+            where: { id: recordId },
+            select: { date: true, time: true, amount: true, note: true },
+          });
+          const transferId = randomUUID();
+          await prisma.$transaction([
+            prisma.transaction.update({
+              where: { id: recordId },
+              data: { ...sharedTransfer, type: "transfer_out", accountId: fromAccountId, transferId },
+            }),
+            prisma.transaction.create({
+              data: {
+                userId: session.userId,
+                type: "transfer_in",
+                accountId: toAccountId,
+                category: "Transfer",
+                transferId,
+                date: body.date ?? current!.date,
+                time: body.time ?? current!.time,
+                amount: body.amount ?? current!.amount,
+                note: body.note ?? current!.note,
+              },
+            }),
+          ]);
+        }
+      } else if (targetType === "expense" || targetType === "income") {
+        // ── Target: expense / income (transaksi tunggal) ──────────────────
+        const accountId = body.accountId || null;
+        const singleData = {
+          type: targetType,
+          ...(body.accountId !== undefined && { accountId }),
+          ...(body.category !== undefined && { category: body.category }),
+          ...(body.date !== undefined && { date: body.date }),
+          ...(body.time !== undefined && { time: body.time }),
+          ...(body.amount !== undefined && { amount: body.amount }),
+          ...(body.note !== undefined && { note: body.note }),
+        };
+
+        if (isTransferNow) {
+          // transfer → tunggal: simpan row ini, hapus leg pasangan
+          await prisma.$transaction([
+            prisma.transaction.update({
+              where: { id: recordId },
+              data: { ...singleData, accountId, transferId: null },
+            }),
+            prisma.transaction.deleteMany({
+              where: { transferId: existing.transferId!, id: { not: recordId } },
+            }),
+          ]);
+        } else {
+          // expense ↔ income (tetap satu row)
+          await prisma.transaction.update({ where: { id: recordId }, data: singleData });
+        }
+      } else if (existing.transferId && (body.amount !== undefined || body.date !== undefined || body.time !== undefined || body.note !== undefined || body.category !== undefined || body.accountId !== undefined)) {
+        // ── Tanpa ubah tipe: transfer pair, update kedua row sekaligus ────
         await prisma.transaction.updateMany({
           where: { transferId: existing.transferId },
           data: {
@@ -84,6 +179,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           },
         });
       } else {
+        // ── Tanpa ubah tipe: transaksi tunggal ───────────────────────────
         await updateTransactionDB(session.userId, recordId, {
           date: body.date,
           time: body.time,
@@ -109,17 +205,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   try {
+    // Target tipe (kalau client minta ubah tipe transaksi). undefined = tidak diubah.
+    const targetType: "expense" | "income" | "transfer" | undefined =
+      body.type === "expense" || body.type === "income" || body.type === "transfer" ? body.type : undefined;
+
+    // Butuh row saat ini untuk validasi nominal & deteksi transfer (from+to terisi).
+    const existingRow =
+      targetType !== undefined || body.amount !== undefined
+        ? await getTransactionRow(user.sheetsId, accessToken, recordId)
+        : null;
+    if ((targetType !== undefined || body.amount !== undefined) && !existingRow) {
+      return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
+    }
+    const isTransferNow = !!existingRow?.fromAccountId && !!existingRow?.toAccountId;
+
     if (body.amount !== undefined) {
-      const existing = await getTransactionRow(user.sheetsId, accessToken, recordId);
-      if (!existing) return NextResponse.json({ error: "Transaksi tidak ditemukan." }, { status: 404 });
       const parsedAmount = Number(body.amount);
-      const isTransfer = !!existing.fromAccountId && !!existing.toAccountId;
-      const validAmount = isTransfer
+      const wantTransfer = targetType === "transfer" || (targetType === undefined && isTransferNow);
+      const validAmount = wantTransfer
         ? isValidTransferAmount(parsedAmount)
         : isValidTransactionAmount(parsedAmount);
       if (!validAmount) {
         return NextResponse.json(
-          { error: isTransfer ? "Nominal transfer harus lebih dari 0." : "Nominal tidak boleh 0." },
+          { error: wantTransfer ? "Nominal transfer harus lebih dari 0." : "Nominal tidak boleh 0." },
           { status: 400 }
         );
       }
@@ -127,6 +235,86 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
     if (body.time !== undefined && !isValidTransactionTime(body.time)) {
       return NextResponse.json({ error: "Format jam tidak valid (HH:mm)." }, { status: 400 });
+    }
+
+    // ── Ubah tipe transaksi ──────────────────────────────────────────────────
+    // Di Sheets, kolom akun beda per tipe: expense → fromAccount (H), income →
+    // toAccount (J), transfer → keduanya terisi (type tetap "expense").
+    if (targetType !== undefined) {
+      const accounts = await getAccounts(user.sheetsId, accessToken);
+      const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? "";
+      const shared = {
+        ...(body.date !== undefined && { date: body.date }),
+        ...(body.time !== undefined && { time: body.time }),
+        ...(body.amount !== undefined && { amount: body.amount }),
+        ...(body.note !== undefined && { note: body.note }),
+      };
+
+      if (targetType === "transfer") {
+        const newFromId = body.fromAccountId || "";
+        const newToId = body.toAccountId || "";
+        if (!isTransferNow && (!newFromId || !newToId || newFromId === newToId)) {
+          return NextResponse.json({ error: "Pilih akun asal dan tujuan yang berbeda." }, { status: 400 });
+        }
+        await updateTransaction(user.sheetsId, accessToken, recordId, {
+          ...shared,
+          type: "expense",
+          category: "Transfer",
+          ...(newFromId && newToId
+            ? {
+                fromAccountId: newFromId,
+                fromAccountName: nameOf(newFromId),
+                toAccountId: newToId,
+                toAccountName: nameOf(newToId),
+              }
+            : {}),
+        });
+      } else if (targetType === "expense") {
+        const accId = body.accountId || "";
+        await updateTransaction(user.sheetsId, accessToken, recordId, {
+          ...shared,
+          type: "expense",
+          ...(body.category !== undefined && { category: body.category }),
+          fromAccountId: accId,
+          fromAccountName: accId ? nameOf(accId) : "",
+          toAccountId: "",
+          toAccountName: "",
+        });
+      } else {
+        // income → akun di toAccount (J), fromAccount dikosongkan
+        const accId = body.accountId || "";
+        await updateTransaction(user.sheetsId, accessToken, recordId, {
+          ...shared,
+          type: "income",
+          ...(body.category !== undefined && { category: body.category }),
+          fromAccountId: "",
+          fromAccountName: "",
+          toAccountId: accId,
+          toAccountName: accId ? nameOf(accId) : "",
+        });
+      }
+
+      // Sinkronkan savings mirror (no-op untuk transaksi biasa).
+      await prisma.transaction.updateMany({
+        where: { id: recordId, userId: session.userId },
+        data: {
+          ...(body.date !== undefined && { date: body.date }),
+          ...(body.time !== undefined && { time: body.time }),
+          ...(body.amount !== undefined && { amount: body.amount }),
+          ...(body.category !== undefined && { category: body.category }),
+          ...(body.note !== undefined && { note: body.note }),
+        },
+      });
+      await prisma.savingsContribution.updateMany({
+        where: { transactionId: recordId, userId: session.userId },
+        data: {
+          ...(body.date !== undefined && { date: body.date }),
+          ...(body.amount !== undefined && { amount: body.amount }),
+          ...(body.note !== undefined && { note: body.note }),
+        },
+      });
+      invalidateDashboardCache(session.userId);
+      return NextResponse.json({ success: true });
     }
 
     let fromAccountId: string | undefined;
