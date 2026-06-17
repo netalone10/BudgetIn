@@ -16,8 +16,10 @@ import {
   LayoutGrid,
   Dices,
   X,
+  Sparkles,
 } from "lucide-react";
 import NetWorthSummaryCard from "@/components/NetWorthSummaryCard";
+import SetupAccountsModal from "@/components/SetupAccountsModal";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns/format";
 import { toZonedTime } from "date-fns-tz";
@@ -391,6 +393,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     }[]
   >(data.accounts);
   const [accountVersion, setAccountVersion] = useState(0);
+  // Banner setup hanya muncul setelah akun benar-benar di-load (hindari flash untuk user lama).
+  const [accountsLoaded, setAccountsLoaded] = useState(!isClientFetch);
+  const [showSetupModal, setShowSetupModal] = useState(false);
   const [promptExamples, setPromptExamples] = useState(() => PROMPT_EXAMPLES.slice(0, 8));
   const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
   const [user, setUser] = useState(data.user);
@@ -538,6 +543,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         if (txData?.transactions) setTransactions(txData.transactions);
         if (budgetResult) setBudgetData(budgetResult);
         if (acctData?.accounts) setAccounts(acctData.accounts);
+        setAccountsLoaded(true);
         if (catData?.categories) {
           const cats = catData.categories;
           setTransactionCategories(cats.map((c: { name: string; type: string; isSavings?: boolean }) => ({ name: c.name, type: c.type, isSavings: c.isSavings })));
@@ -694,8 +700,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         "/api/accounts",
         etagStoreRef
       );
-      if (!result) return; // 304 or error — keep stale data
+      if (!result) { setAccountsLoaded(true); return; } // 304 or error — keep stale data
       setAccounts(result.data.accounts ?? []);
+      setAccountsLoaded(true);
       setAccountVersion((v) => v + 1);
     } catch {
       // ignore — keep stale data
@@ -1073,6 +1080,22 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       {/* Secondary Section: Input + Transactions + Budget */}
           <div className="grid min-w-0 items-start gap-5 md:gap-6 lg:grid-cols-[1.62fr_1fr]">
             <div className="flex min-w-0 flex-col gap-5 md:gap-6">
+              {accountsLoaded && accounts.length === 0 && (
+                <div className="flex flex-col gap-3 rounded-[22px] border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-0.5 size-5 shrink-0 text-primary" />
+                    <div>
+                      <p className="text-sm font-semibold">Mulai dari sini</p>
+                      <p className="text-xs text-muted-foreground">
+                        Kamu belum punya akun. Buat akun &amp; saldo awalmu sekaligus lewat AI.
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={() => setShowSetupModal(true)} size="sm" className="shrink-0 gap-1.5">
+                    <Sparkles className="size-4" /> Setup Akun
+                  </Button>
+                </div>
+              )}
               <SectionCard
                 eyebrow="Input · AI Capture"
                 title="Tulis seperti ngobrol"
@@ -1338,6 +1361,19 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                       <p className="text-sm text-yellow-700 dark:text-yellow-400">
                         {response.clarification}
                       </p>
+                      {accountsLoaded && accounts.length === 0 ? (
+                        <div className="mt-3">
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={loading}
+                            onClick={() => setShowSetupModal(true)}
+                            className="gap-1.5"
+                          >
+                            <Sparkles className="size-4" /> Setup Akun
+                          </Button>
+                        </div>
+                      ) : null}
                       {response.clarificationType === "savings_goal_selection" && response.options?.length ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {response.options.map((option) => (
@@ -1452,6 +1488,17 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
           </div>
       {/* End Secondary Section */}
+
+      {showSetupModal && (
+        <SetupAccountsModal
+          onClose={() => setShowSetupModal(false)}
+          onSaved={() => {
+            setShowSetupModal(false);
+            setResponse(null);
+            emitDataChanged(["accounts", "transactions"]);
+          }}
+        />
+      )}
     </div>
   );
 }

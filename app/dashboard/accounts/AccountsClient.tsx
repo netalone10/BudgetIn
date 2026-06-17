@@ -7,13 +7,14 @@ import Link from "next/link";
 import {
   Plus, Loader2, Wallet, AlertCircle, Tags, Edit2, Trash2,
   ChevronDown, ChevronRight, RefreshCw, Eye, Landmark, Smartphone,
-  TrendingUp, Bitcoin, House, Car, HandCoins, CreditCard, Ellipsis,
+  TrendingUp, Bitcoin, House, Car, HandCoins, CreditCard, Ellipsis, Sparkles,
   type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { emitDataChanged, useDataEvent } from "@/lib/data-events";
 import AccountsSkeleton from "./AccountsSkeleton";
+import SetupAccountsModal from "@/components/SetupAccountsModal";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -618,6 +619,7 @@ export default function AccountsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSetupModal, setShowSetupModal] = useState(false);
   const [editAccount, setEditAccount] = useState<AccountData | null>(null);
   const [adjustAccount, setAdjustAccount] = useState<AccountData | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -812,9 +814,14 @@ export default function AccountsPage() {
           <Wallet className="size-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground mb-4">Belum ada akun. Tambahkan akun pertamamu!</p>
           {!isDemo && (
-          <Button onClick={() => setShowAddModal(true)} size="sm" className="gap-1.5">
-            <Plus className="size-4" /> Tambah Akun
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button onClick={() => setShowSetupModal(true)} size="sm" className="gap-1.5">
+              <Sparkles className="size-4" /> Setup cepat dengan AI
+            </Button>
+            <Button onClick={() => setShowAddModal(true)} size="sm" variant="outline" className="gap-1.5">
+              <Plus className="size-4" /> Tambah Akun
+            </Button>
+          </div>
           )}
         </div>
       ) : (
@@ -911,6 +918,12 @@ export default function AccountsPage() {
           isSheets={isSheets}
           onClose={() => setShowAddModal(false)}
           onSaved={() => { setShowAddModal(false); fetchData(); emitDataChanged(["accounts"]); }}
+        />
+      )}
+      {showSetupModal && (
+        <SetupAccountsModal
+          onClose={() => setShowSetupModal(false)}
+          onSaved={() => { setShowSetupModal(false); fetchData(); emitDataChanged(["accounts", "transactions"]); }}
         />
       )}
       {editAccount && (

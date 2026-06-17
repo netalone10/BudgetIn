@@ -25,7 +25,7 @@ export interface AccountResolverContext {
   userAccounts: RuntimeAccount[];
 }
 
-function inferAccountSpec(accountName: string, prompt: string) {
+export function inferAccountSpec(accountName: string, prompt: string) {
   const combined = `${prompt.toLowerCase()} ${accountName.toLowerCase()}`;
   if (/(kartu kredit|credit card|\bcc\b)/.test(combined))
     return { classification: "liability" as const, typeName: "Kartu Kredit" };

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
 import {
   getAccountBalances,
   calculateNetWorth,
@@ -15,7 +14,6 @@ import { sheets as googleSheets } from "@googleapis/sheets";
 import { OAuth2Client } from "google-auth-library";
 import {
   appendAccount,
-  appendTransaction,
   getAccounts,
   getAccountsWithBalance,
   updateAccount,
@@ -28,6 +26,7 @@ import { ROUTE_CACHE_PROFILES } from "@/lib/cache-headers";
 import { normalizePaginationParams } from "@/lib/pagination";
 import { sanitizeErrorForProduction } from "@/lib/api-error";
 import { invalidateDashboardCache } from "@/lib/cache";
+import { createAccountWithOpeningBalance } from "@/utils/setup/create-account-with-balance";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -244,54 +243,30 @@ export async function POST(req: NextRequest) {
 
     try {
       const accessToken = await getValidToken(session.userId);
-      const classif = classification || "asset";
+      const classif: "asset" | "liability" = classification === "liability" ? "liability" : "asset";
 
-      // Create with balance 0 — initial balance will be set via Saldo Awal transaction
-      const newAccount = await appendAccount(user.sheetsId, accessToken, {
-        name: name.trim(),
-        type: accountTypeName,
-        classification: classif,
-        balance: 0,
-        currency: currency ?? "IDR",
-        color: color ?? null,
-        note: note ?? "",
-        tanggalSettlement: accountTypeName === "Kartu Kredit" ? tanggalSettlement : null,
-        tanggalJatuhTempo: accountTypeName === "Kartu Kredit" ? tanggalJatuhTempo : null,
-      });
-
-      // Record initial balance as a transaction so it's auditable and revertable on delete
-      if (parsedBalance > 0) {
-        const today = new Date().toISOString().slice(0, 10);
-        // Asset: income (money flows in). Liability: expense (you took on debt).
-        if (classif === "asset") {
-          await appendTransaction(user.sheetsId, accessToken, {
-            date: today,
-            amount: parsedBalance,
-            category: "Saldo Awal",
-            note: `Saldo awal akun ${name.trim()}`,
-            type: "income",
-            toAccountId: newAccount.id,
-            toAccountName: name.trim(),
-          });
-        } else {
-          await appendTransaction(user.sheetsId, accessToken, {
-            date: today,
-            amount: parsedBalance,
-            category: "Saldo Awal",
-            note: `Saldo awal akun ${name.trim()}`,
-            type: "expense",
-            fromAccountId: newAccount.id,
-            fromAccountName: name.trim(),
-          });
-        }
-        // Saldo dihitung dari ledger via getAccountsWithBalance — tidak perlu update cache.
-      }
+      const created = await createAccountWithOpeningBalance(
+        session.userId,
+        {
+          name: name.trim(),
+          classification: classif,
+          typeName: accountTypeName,
+          saldoAwal: parsedBalance,
+          currency: currency ?? "IDR",
+          color: color ?? null,
+          note: note ?? "",
+          tanggalSettlement: accountTypeName === "Kartu Kredit" ? tanggalSettlement : null,
+          tanggalJatuhTempo: accountTypeName === "Kartu Kredit" ? tanggalJatuhTempo : null,
+        },
+        { sheetsId: user.sheetsId, accessToken }
+      );
 
       invalidateDashboardCache(session.userId);
       return NextResponse.json({
         account: {
-          ...newAccount,
-          currentBalance: parsedBalance.toString(),
+          id: created.id,
+          name: created.name,
+          currentBalance: created.currentBalance,
           accountType: { name: accountTypeName, classification: classif },
           icon: null,
           transactionCount: 0,
@@ -328,47 +303,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const parsedBalanceDecimal = new Decimal(parsedBalance);
-  const today = new Date().toISOString().slice(0, 10);
-
-  const account = await prisma.$transaction(async (tx) => {
-    const newAccount = await tx.account.create({
-      data: {
-        userId: session.userId,
-        accountTypeId,
-        name: name.trim(),
-        initialBalance: parsedBalanceDecimal,
-        currency: currency ?? "IDR",
-        color: color ?? null,
-        icon: icon ?? null,
-        note: note ?? "",
-        ...(accountType.name === "Kartu Kredit" && {
-          tanggalSettlement,
-          tanggalJatuhTempo,
-        }),
-      },
-    });
-
-    if (parsedBalanceDecimal.greaterThan(0)) {
-      await tx.transaction.create({
-        data: {
-          userId: session.userId,
-          accountId: newAccount.id,
-          type: "income",
-          amount: parsedBalanceDecimal,
-          category: "Saldo Awal",
-          date: today,
-          note: `Saldo awal akun ${newAccount.name}`,
-          isInitialBalance: true,
-        },
-      });
-    }
-
-    return newAccount;
+  const created = await createAccountWithOpeningBalance(session.userId, {
+    name: name.trim(),
+    classification: accountType.classification === "liability" ? "liability" : "asset",
+    typeName: accountType.name,
+    accountTypeId,
+    saldoAwal: parsedBalance,
+    currency: currency ?? "IDR",
+    color: color ?? null,
+    icon: icon ?? null,
+    note: note ?? "",
+    tanggalSettlement: accountType.name === "Kartu Kredit" ? tanggalSettlement : null,
+    tanggalJatuhTempo: accountType.name === "Kartu Kredit" ? tanggalJatuhTempo : null,
   });
 
   invalidateDashboardCache(session.userId);
-  return NextResponse.json({ account }, { status: 201 });
+  return NextResponse.json({ account: { id: created.id, name: created.name } }, { status: 201 });
 }
 
 // Migration endpoint: merge local Prisma accounts to Google Sheets
