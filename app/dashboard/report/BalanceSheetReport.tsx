@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Calendar, Scale, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReport } from "./useReport";
-import type { CategoryRow } from "@/lib/report-data";
+import type { CategoryRow, BalanceSheetGroup } from "@/lib/report-data";
 import {
   KpiCard,
   ReportError,
@@ -19,6 +19,8 @@ type BalancePayload = {
   generatedAt: string;
   assets: CategoryRow[];
   liabilities: CategoryRow[];
+  assetGroups: BalanceSheetGroup[];
+  liabilityGroups: BalanceSheetGroup[];
   totalAssets: number;
   totalLiabilities: number;
   equity: number;
@@ -105,7 +107,7 @@ function BalanceContent({ data }: { data: BalancePayload }) {
           {/* ASET */}
           <BalanceColumn
             heading="ASET"
-            rows={data.assets}
+            groups={data.assetGroups}
             total={data.totalAssets}
             totalLabel="Total Aset"
             tone="positive"
@@ -115,7 +117,7 @@ function BalanceContent({ data }: { data: BalancePayload }) {
           <div>
             <BalanceColumn
               heading="LIABILITAS"
-              rows={data.liabilities}
+              groups={data.liabilityGroups}
               total={data.totalLiabilities}
               totalLabel="Total Liabilitas"
               tone="negative"
@@ -149,7 +151,7 @@ function BalanceContent({ data }: { data: BalancePayload }) {
 
 function BalanceColumn({
   heading,
-  rows,
+  groups,
   total,
   totalLabel,
   tone,
@@ -158,7 +160,7 @@ function BalanceColumn({
   grandTotal,
 }: {
   heading: string;
-  rows: CategoryRow[];
+  groups: BalanceSheetGroup[];
   total: number;
   totalLabel: string;
   tone: "positive" | "negative";
@@ -167,30 +169,43 @@ function BalanceColumn({
   grandTotal?: number;
 }) {
   const toneText = tone === "positive" ? "text-[#0fa76e]" : "text-destructive";
+  const isEmpty = groups.every((g) => g.rows.length === 0);
   return (
     <div className="overflow-hidden rounded-xl border border-border">
       <div className="bg-muted/30 px-4 py-2">
         <span className={cn("text-[11px] font-bold uppercase tracking-widest", toneText)}>{heading}</span>
       </div>
       <table className="w-full">
-        <tbody>
-          {rows.length === 0 ? (
+        {isEmpty ? (
+          <tbody>
             <tr>
               <td colSpan={2} className="px-4 py-3 text-center text-xs text-muted-foreground">
                 Tidak ada akun {heading.toLowerCase()}.
               </td>
             </tr>
-          ) : (
-            rows.map((row) => (
-              <tr key={row.category} className="border-b border-border last:border-0 hover:bg-muted/10">
-                <td className="px-4 py-2.5 text-sm text-foreground">{row.category}</td>
-                <td className="px-4 py-2.5 text-right text-sm tabular-nums text-foreground">
-                  {formatRupiah(row.amount)}
+          </tbody>
+        ) : (
+          groups.map((group) => (
+            <tbody key={group.typeName} className="border-b border-border last:border-0">
+              <tr className="bg-muted/15">
+                <td className="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.typeName}
+                </td>
+                <td className="px-4 pt-2.5 pb-1 text-right text-[11px] font-medium tabular-nums text-muted-foreground">
+                  {formatRupiah(group.subtotal)}
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
+              {group.rows.map((row) => (
+                <tr key={row.category} className="hover:bg-muted/10">
+                  <td className="px-4 py-2 pl-6 text-sm text-foreground">{row.category}</td>
+                  <td className="px-4 py-2 text-right text-sm tabular-nums text-foreground">
+                    {formatRupiah(row.amount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          ))
+        )}
         <tfoot>
           <tr className="border-t border-border bg-muted/20">
             <td className="px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-foreground">{totalLabel}</td>

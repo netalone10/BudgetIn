@@ -187,14 +187,63 @@ export interface BalanceSheetAccount {
   name: string;
   classification: string; // "asset" | "liability"
   balance: number;
+  /** Nama tipe akun (Kas, Bank, Investasi, Kartu Kredit, …) untuk pengelompokan. */
+  typeName?: string;
+  /** Urutan likuiditas tipe (kecil = paling likuid). Default: end of list. */
+  typeOrder?: number;
+}
+
+/** Satu kelompok akun sejenis dalam neraca (mis. semua rekening Bank). */
+export interface BalanceSheetGroup {
+  typeName: string;
+  rows: CategoryRow[];
+  subtotal: number;
 }
 
 export interface BalanceSheetData {
+  /** Daftar datar (flat) — dipertahankan untuk konsumen lama. */
   assets: CategoryRow[];
   liabilities: CategoryRow[];
+  /** Dikelompokkan per tipe akun, diurutkan dari yang paling likuid. */
+  assetGroups: BalanceSheetGroup[];
+  liabilityGroups: BalanceSheetGroup[];
   totalAssets: number;
   totalLiabilities: number;
   equity: number;
+}
+
+/** Urut abjad nama akun (locale id, case-insensitive). */
+const nameAsc = (a: CategoryRow, b: CategoryRow) =>
+  a.category.localeCompare(b.category, "id", { sensitivity: "base" });
+
+/**
+ * Kelompokkan akun per `typeName`, urutkan grup berdasarkan likuiditas
+ * (`typeOrder` terkecil dulu), dan urutkan akun di dalam grup secara abjad.
+ */
+function groupByType(accounts: BalanceSheetAccount[]): BalanceSheetGroup[] {
+  const map = new Map<string, { order: number; rows: CategoryRow[] }>();
+
+  accounts.forEach((acc, idx) => {
+    const typeName = acc.typeName?.trim() || "Lainnya";
+    const order = acc.typeOrder ?? Number.MAX_SAFE_INTEGER - 1000 + idx;
+    let g = map.get(typeName);
+    if (!g) {
+      g = { order, rows: [] };
+      map.set(typeName, g);
+    }
+    g.order = Math.min(g.order, order);
+    g.rows.push({ category: acc.name, amount: Number(acc.balance) || 0 });
+  });
+
+  return Array.from(map.entries())
+    .map(([typeName, g]) => ({
+      typeName,
+      order: g.order,
+      rows: g.rows.sort(nameAsc),
+      subtotal: g.rows.reduce((s, r) => s + r.amount, 0),
+    }))
+    .sort((a, b) => a.order - b.order || a.typeName.localeCompare(b.typeName, "id"))
+    .map(({ order: _order, ...group }) => group);
 }
 
 /**
@@ -203,30 +252,36 @@ export interface BalanceSheetData {
  * bersih): liabilitas dijumlah BERTANDA (bukan absolut) agar angka ekuitas
  * cocok persis dengan "Kekayaan Bersih" di dashboard, dan identitas
  * Aset = Liabilitas + Ekuitas selalu terpenuhi.
+ *
+ * Baris dikelompokkan per tipe akun (Kas, Bank, Investasi, …): grup diurut
+ * dari yang paling likuid (`typeOrder` terkecil dulu), akun di dalam grup
+ * diurut abjad.
  */
 export function buildBalanceSheet(accounts: BalanceSheetAccount[]): BalanceSheetData {
-  const assets: CategoryRow[] = [];
-  const liabilities: CategoryRow[] = [];
+  const assetAccounts: BalanceSheetAccount[] = [];
+  const liabilityAccounts: BalanceSheetAccount[] = [];
   let totalAssets = 0;
   let totalLiabilities = 0;
 
   for (const acc of accounts) {
     const bal = Number(acc.balance) || 0;
     if (acc.classification === "liability") {
-      liabilities.push({ category: acc.name, amount: bal });
+      liabilityAccounts.push(acc);
       totalLiabilities += bal;
     } else {
-      assets.push({ category: acc.name, amount: bal });
+      assetAccounts.push(acc);
       totalAssets += bal;
     }
   }
 
-  assets.sort(sumDesc);
-  liabilities.sort(sumDesc);
+  const assetGroups = groupByType(assetAccounts);
+  const liabilityGroups = groupByType(liabilityAccounts);
 
   return {
-    assets,
-    liabilities,
+    assets: assetGroups.flatMap((g) => g.rows),
+    liabilities: liabilityGroups.flatMap((g) => g.rows),
+    assetGroups,
+    liabilityGroups,
     totalAssets,
     totalLiabilities,
     equity: totalAssets - totalLiabilities,

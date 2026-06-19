@@ -63,11 +63,19 @@ async function balanceAccountsAsOf(ctx: BalanceCtx, asOf?: string): Promise<Bala
         toAccountId: t.toAccountId,
       })),
     );
-    return ledger.accounts.map((a) => ({
-      name: a.name,
-      classification: a.classification,
-      balance: balances.get(a.id) ?? 0,
-    }));
+    // Sheets tak punya sortOrder eksplisit → pakai urutan kemunculan tipe
+    // sebagai proxy likuiditas (urutan baris di sheet Akun).
+    const typeOrder = new Map<string, number>();
+    return ledger.accounts.map((a) => {
+      if (!typeOrder.has(a.type)) typeOrder.set(a.type, typeOrder.size);
+      return {
+        name: a.name,
+        classification: a.classification,
+        balance: balances.get(a.id) ?? 0,
+        typeName: a.type,
+        typeOrder: typeOrder.get(a.type),
+      };
+    });
   }
 
   const accs = await getAccountBalancesAsOf(ctx.userId, asOf);
@@ -75,6 +83,8 @@ async function balanceAccountsAsOf(ctx: BalanceCtx, asOf?: string): Promise<Bala
     name: a.name,
     classification: a.accountType.classification,
     balance: a.currentBalance.toNumber(),
+    typeName: a.accountType.name,
+    typeOrder: a.accountType.sortOrder,
   }));
 }
 
