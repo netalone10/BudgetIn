@@ -63,8 +63,16 @@ export default function BalanceSheetReport() {
   );
 }
 
+/** Fallback grup tunggal dari daftar datar — jaga-jaga payload lama (cache) tanpa *Groups. */
+function fallbackGroups(rows: CategoryRow[] | undefined, typeName: string): BalanceSheetGroup[] {
+  if (!rows?.length) return [];
+  return [{ typeName, rows, subtotal: rows.reduce((s, r) => s + r.amount, 0) }];
+}
+
 function BalanceContent({ data }: { data: BalancePayload }) {
   const balanced = Math.abs(data.totalAssets - (data.totalLiabilities + data.equity)) < 1;
+  const assetGroups = data.assetGroups ?? fallbackGroups(data.assets, "Aset");
+  const liabilityGroups = data.liabilityGroups ?? fallbackGroups(data.liabilities, "Liabilitas");
 
   return (
     <>
@@ -107,7 +115,7 @@ function BalanceContent({ data }: { data: BalancePayload }) {
           {/* ASET */}
           <BalanceColumn
             heading="ASET"
-            groups={data.assetGroups}
+            groups={assetGroups}
             total={data.totalAssets}
             totalLabel="Total Aset"
             tone="positive"
@@ -117,7 +125,7 @@ function BalanceContent({ data }: { data: BalancePayload }) {
           <div>
             <BalanceColumn
               heading="LIABILITAS"
-              groups={data.liabilityGroups}
+              groups={liabilityGroups}
               total={data.totalLiabilities}
               totalLabel="Total Liabilitas"
               tone="negative"
