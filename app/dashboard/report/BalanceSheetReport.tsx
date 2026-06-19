@@ -196,17 +196,17 @@ function BalanceColumn({
           groups.map((group) => (
             <tbody key={group.typeName} className="border-b border-border last:border-0">
               <tr className="bg-muted/15">
-                <td className="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <td className="px-4 pt-2.5 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-foreground">
                   {group.typeName}
                 </td>
-                <td className="px-4 pt-2.5 pb-1 text-right text-[11px] font-medium tabular-nums text-muted-foreground">
+                <td className="px-4 pt-2.5 pb-1.5 text-right text-sm font-bold tabular-nums text-foreground">
                   {formatRupiah(group.subtotal)}
                 </td>
               </tr>
               {group.rows.map((row) => (
                 <tr key={row.category} className="hover:bg-muted/10">
-                  <td className="px-4 py-2 pl-6 text-sm text-foreground">{row.category}</td>
-                  <td className="px-4 py-2 text-right text-sm tabular-nums text-foreground">
+                  <td className="px-4 py-2 pl-6 text-[13px] text-muted-foreground">{row.category}</td>
+                  <td className="px-4 py-2 text-right text-[13px] tabular-nums text-muted-foreground">
                     {formatRupiah(row.amount)}
                   </td>
                 </tr>
