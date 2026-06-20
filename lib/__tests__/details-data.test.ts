@@ -222,16 +222,19 @@ describe("aggregateDetails — floating-point amounts", () => {
     expect(Math.abs(expenseShareSum - 1)).toBeLessThan(0.01);
   });
 
-  it("uses Math.abs for negative amounts (defensive)", () => {
+  it("nets negative amounts (refund mengurangi pengeluaran)", () => {
     const txs: Tx[] = [
+      { date: "2026-03-09", category: "Makan", amount: 500, type: "expense" },
+      // Refund/koreksi negatif → mengurangi total kategori Makan secara net.
       { date: "2026-03-10", category: "Makan", amount: -150.25, type: "expense" },
     ];
 
     const result = aggregateDetails(txs, new Set<string>());
 
     expect(result.expenseGroups).toHaveLength(1);
-    expect(result.expenseGroups[0].amount).toBeCloseTo(150.25, 5);
-    expect(result.expenseTotal).toBeCloseTo(150.25, 5);
+    expect(result.expenseGroups[0].amount).toBeCloseTo(500 - 150.25, 5);
+    expect(result.expenseGroups[0].count).toBe(2);
+    expect(result.expenseTotal).toBeCloseTo(500 - 150.25, 5);
   });
 });
 

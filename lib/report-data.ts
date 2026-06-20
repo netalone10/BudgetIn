@@ -54,7 +54,9 @@ export function aggregatePeriodReport(
 
   for (const tx of transactions) {
     if (isEquityTransaction(tx)) continue;
-    const amt = Math.abs(Number(tx.amount) || 0);
+    // Nilai bertanda (net): transaksi expense ber-nominal negatif (refund/koreksi)
+    // mengurangi total kategorinya, konsisten dgn cara saldo akun menghitung.
+    const amt = Number(tx.amount) || 0;
     if (amt === 0) continue;
 
     if (tx.type === "income") {
@@ -99,7 +101,7 @@ export function aggregateYearlyReport(
     if (!tx.date || tx.date.slice(0, 4) !== yearStr) continue;
     const month = parseInt(tx.date.slice(5, 7), 10) - 1;
     if (month < 0 || month > 11) continue;
-    const amt = Math.abs(Number(tx.amount) || 0);
+    const amt = Number(tx.amount) || 0;
     if (amt === 0) continue;
 
     if (tx.type === "income") {
@@ -164,7 +166,7 @@ export function aggregateOwnerEquity(
   let withdrawals = 0;
   let adjustments = 0;
   for (const tx of transactions) {
-    const amt = Math.abs(Number(tx.amount) || 0);
+    const amt = Number(tx.amount) || 0;
     if (amt === 0) continue;
 
     if (isEquityTransaction(tx)) {

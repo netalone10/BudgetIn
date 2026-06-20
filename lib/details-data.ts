@@ -20,11 +20,15 @@ export type Period = "today" | "week" | "month" | "lastMonth" | "custom";
 export interface CategoryGroup {
   /** Nama kategori, e.g. "Makan", "Gaji". */
   category: string;
-  /** Total nominal IDR (selalu non-negatif). */
+  /** Total nominal IDR secara net (bisa negatif jika refund/koreksi > belanja). */
   amount: number;
   /** Jumlah transaksi di group. Invariant: `count === transactions.length`. */
   count: number;
-  /** Share kontribusi terhadap grand total tab aktif, di range [0, 1]. */
+  /**
+   * Share kontribusi terhadap grand total tab aktif. Normalnya di range [0, 1]
+   * dan Σ share = 1 saat total > 0; namun karena `amount` kini net, share satu
+   * kategori bisa di luar [0, 1] bila ada refund (Σ share tetap = 1).
+   */
   share: number;
   /** Transaksi anggota, sorted desc by date+time (terbaru dulu). */
   transactions: ReportTransactionLike[];
@@ -56,15 +60,19 @@ type Bucket = { amount: number; txs: ReportTransactionLike[] };
  * Aggregate transaksi periode menjadi groups per kategori untuk income & expense.
  *
  * Aturan eksklusi (sama dengan `aggregatePeriodReport`):
- * - `tx.category === "Saldo Awal"` di-skip.
- * - `Math.abs(Number(tx.amount) || 0) === 0` di-skip.
+ * - Transaksi equity (Saldo Awal, Penyesuaian Saldo) di-skip.
+ * - `(Number(tx.amount) || 0) === 0` di-skip.
  * - Transaksi non-income yang gagal `isExpenseTransaction` (transfer principal) di-skip.
  * - Transaksi non-income di kategori savings di-skip.
+ *
+ * Amount dijumlah secara NET (bertanda): nominal negatif (refund/koreksi)
+ * mengurangi total kategorinya, konsisten dengan `aggregatePeriodReport`.
  *
  * Postconditions:
  * - `Math.abs(incomeTotal - sum(incomeGroups[i].amount)) < 0.01`.
  * - `Math.abs(expenseTotal - sum(expenseGroups[i].amount)) < 0.01`.
- * - Setiap group: `count === transactions.length`, `0 <= share <= 1`, `amount >= 0`.
+ * - Setiap group: `count === transactions.length`; `amount` bersifat net
+ *   (boleh negatif); `share` menjumlah ~1 saat total > 0.
  * - Groups sorted by `amount DESC`, tie-break `category ASC` (`localeCompare`).
  * - Setiap `transactions[]` di group sorted desc by date+time.
  * - Tidak memutasi input array maupun elemennya.
@@ -80,7 +88,9 @@ export function aggregateDetails(
 
   for (const tx of transactions) {
     if (isEquityTransaction(tx)) continue;
-    const amt = Math.abs(Number(tx.amount) || 0);
+    // Nilai bertanda (net): refund/koreksi negatif mengurangi total kategorinya,
+    // selaras dengan `aggregatePeriodReport` & perhitungan saldo akun.
+    const amt = Number(tx.amount) || 0;
     if (amt === 0) continue;
 
     if (tx.type === "income") {
