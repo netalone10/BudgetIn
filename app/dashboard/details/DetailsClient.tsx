@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -83,14 +84,25 @@ type ErrorKind =
 export default function DetailsClient() {
   const [, startTransition] = useTransition();
 
+  // Deep-link seed (mis. dari baris kategori di halaman Budget):
+  // `?category=&from=&to=&tab=` mengarahkan Rincian langsung ke kategori +
+  // rentang bulan yang sama. Hanya dipakai sebagai nilai awal (mount), tidak
+  // di-sinkron ulang saat URL berubah.
+  const searchParams = useSearchParams();
+  const linkFrom = searchParams.get("from") ?? "";
+  const linkTo = searchParams.get("to") ?? "";
+  const linkRangeValid = isValidCustomRange(linkFrom, linkTo);
+
   // ── UI state ────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTabRaw] = useState<DetailType>("expense");
-  const [period, setPeriod] = useState<Period>("month");
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [activeTab, setActiveTabRaw] = useState<DetailType>(() =>
+    searchParams.get("tab") === "income" ? "income" : "expense",
+  );
+  const [period, setPeriod] = useState<Period>(() => (linkRangeValid ? "custom" : "month"));
+  const [customFrom, setCustomFrom] = useState(() => (linkRangeValid ? linkFrom : ""));
+  const [customTo, setCustomTo] = useState(() => (linkRangeValid ? linkTo : ""));
   const [searchQuery, setSearchQuery] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get("category") ?? "");
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   // ── Data state ──────────────────────────────────────────────────────────

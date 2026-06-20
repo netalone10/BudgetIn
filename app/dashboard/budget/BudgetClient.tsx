@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -100,6 +101,18 @@ function shiftMonth(month: string, delta: number) {
 function getDaysInSelectedMonth(month: string) {
   const [year, monthNum] = month.split("-").map(Number);
   return new Date(year, monthNum, 0).getDate();
+}
+
+/**
+ * URL drill-down ke halaman Rincian, ter-filter ke `category` pada rentang
+ * penuh `month`. Rincian membaca `category`/`from`/`to`/`tab` dari query
+ * (lihat `DetailsClient`), jadi angka & transaksinya 1 sumber dengan Rincian.
+ */
+function buildDetailsHref(category: string, month: string) {
+  const totalDays = getDaysInSelectedMonth(month);
+  const from = `${month}-01`;
+  const to = `${month}-${String(totalDays).padStart(2, "0")}`;
+  return `/dashboard/details?category=${encodeURIComponent(category)}&from=${from}&to=${to}&tab=expense`;
 }
 
 function getBudgetDay(month: string) {
@@ -462,7 +475,13 @@ export default function BudgetClient({ initialData, categories }: Props) {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate text-sm font-medium">{item.category}</span>
+                        <Link
+                          href={buildDetailsHref(item.category, month)}
+                          className="truncate text-sm font-medium underline-offset-2 hover:underline"
+                          title={`Lihat transaksi ${item.category} di Rincian`}
+                        >
+                          {item.category}
+                        </Link>
                         <span className={cn(
                           "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
                           fixed ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-muted text-muted-foreground"
@@ -639,7 +658,13 @@ export default function BudgetClient({ initialData, categories }: Props) {
                     <tr key={item.id} className="group border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="py-3 pl-4 pr-2 max-w-[200px]">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="truncate text-sm font-medium">{item.category}</span>
+                          <Link
+                          href={buildDetailsHref(item.category, month)}
+                          className="truncate text-sm font-medium underline-offset-2 hover:underline"
+                          title={`Lihat transaksi ${item.category} di Rincian`}
+                        >
+                          {item.category}
+                        </Link>
                           <span className={cn(
                             "shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium leading-none",
                             fixed ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" : "bg-muted text-muted-foreground"
