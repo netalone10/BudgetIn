@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BudgetProgressBar } from "@/components/BudgetProgressBar";
+import SafeToSpendCard from "@/components/dashboard/SafeToSpendCard";
+import { computeSafeToSpend } from "@/lib/safe-to-spend";
 import { cn } from "@/lib/utils";
 import { useIsDemo } from "@/lib/hooks/use-is-demo";
 import { resolveBudgetType, type BudgetType } from "@/utils/budget-type";
@@ -352,6 +354,10 @@ export default function BudgetClient({ initialData, categories }: Props) {
   const totalRemaining = totals.prorated - totals.spent;
   const totalProgress = getBudgetProgress(totals.spent, totals.budget, totals.prorated);
 
+  // "Aman dipakai per hari" — hanya bermakna untuk bulan berjalan; kartunya
+  // me-return null sendiri kalau bukan bulan ini atau belum ada budget variable.
+  const safeToSpend = computeSafeToSpend(data.budgets, month);
+
   return (
     <div className="space-y-5">
       <div className="space-y-4 rounded-2xl border bg-card p-4 shadow-sm">
@@ -403,6 +409,8 @@ export default function BudgetClient({ initialData, categories }: Props) {
           </span>
         </div>
       </div>
+
+      {!loading && <SafeToSpendCard result={safeToSpend} showLink={false} />}
 
       {error && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

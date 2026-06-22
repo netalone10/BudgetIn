@@ -34,6 +34,8 @@ import KPICard from "@/components/dashboard/KPICard";
 import { SectionCard } from "@/components/dashboard/SectionCard";
 import RunwayKasCard from "@/components/dashboard/RunwayKasCard";
 import BudgetAlertCard from "@/components/dashboard/BudgetAlertCard";
+import SafeToSpendCard from "@/components/dashboard/SafeToSpendCard";
+import { computeSafeToSpend } from "@/lib/safe-to-spend";
 
 // ---------------------------------------------------------------------------
 // SWR (Stale-While-Revalidate) utilities for client-side fetching
@@ -497,6 +499,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
     return { liquid, avgBurn, months };
   }, [accounts, currentMonth, lastMonthTotals.expense]);
+
+  // Murah — hitung langsung. `now` objek baru tiap render, jadi useMemo tak berguna.
+  const safeToSpend = computeSafeToSpend(budgetData?.budgets ?? [], currentMonth, now);
 
   const incomeDelta = monthlyStats.income - lastMonthTotals.income;
   const expenseDelta = monthlyStats.expense - lastMonthTotals.expense;
@@ -1466,6 +1471,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
             <div className="flex min-w-0 flex-col gap-5 md:gap-6">
               <BudgetAlertCard budgets={budgetData?.budgets} />
+              <SafeToSpendCard result={safeToSpend} />
               <MiniCashflowCard
                 transactions={transactions}
                 monthlyIncome={monthlyStats.income}
