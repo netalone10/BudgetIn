@@ -134,13 +134,13 @@ export default function CalendarClient() {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="min-w-0">
               <div className="text-xs text-muted-foreground mb-0.5">Total Masuk</div>
-              <div className="break-words text-[clamp(0.7rem,2.8vw,0.875rem)] font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
+              <div className="break-words text-[clamp(0.85rem,2.4vw,1.125rem)] font-semibold leading-tight text-emerald-600 dark:text-emerald-400">
                 {formatIDR(calData.summary.totalIncome)}
               </div>
             </div>
             <div className="min-w-0">
               <div className="text-xs text-muted-foreground mb-0.5">Total Keluar</div>
-              <div className="break-words text-[clamp(0.7rem,2.8vw,0.875rem)] font-semibold leading-tight text-red-500">
+              <div className="break-words text-[clamp(0.85rem,2.4vw,1.125rem)] font-semibold leading-tight text-red-500">
                 {formatIDR(calData.summary.totalExpense)}
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function CalendarClient() {
               <div className="text-xs text-muted-foreground mb-0.5">Net</div>
               <div
                 className={cn(
-                  "break-words text-[clamp(0.7rem,2.8vw,0.875rem)] font-semibold leading-tight",
+                  "break-words text-[clamp(0.85rem,2.4vw,1.125rem)] font-semibold leading-tight",
                   calData.summary.net >= 0
                     ? "text-emerald-600 dark:text-emerald-400"
                     : "text-red-500"
@@ -171,7 +171,7 @@ export default function CalendarClient() {
           >
             <ChevronLeft className="size-4" />
           </button>
-          <span className="text-sm font-semibold text-foreground">
+          <span className="text-base font-semibold text-foreground">
             {formatMonthYear(year, month)}
           </span>
           <button
@@ -183,11 +183,11 @@ export default function CalendarClient() {
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-0.5 mb-1">
+        <div className="grid grid-cols-7 gap-1 mb-1">
           {DAY_LABELS.map((label) => (
             <div
               key={label}
-              className="text-center text-[10px] font-medium text-muted-foreground py-1"
+              className="text-center text-xs font-medium text-muted-foreground py-1.5"
             >
               {label}
             </div>
@@ -195,15 +195,15 @@ export default function CalendarClient() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-7 gap-0.5">
+          <div className="grid grid-cols-7 gap-1">
             {Array.from({ length: 35 }).map((_, i) => (
-              <div key={i} className="min-h-[52px] rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="min-h-[84px] rounded-lg bg-muted animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-7 gap-0.5">
+          <div className="grid grid-cols-7 gap-1">
             {Array.from({ length: startOffset }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[52px]" />
+              <div key={`pad-${i}`} className="min-h-[84px]" />
             ))}
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
@@ -221,7 +221,7 @@ export default function CalendarClient() {
                     setSelectedDay((prev) => (prev === dateStr ? null : dateStr))
                   }
                   className={cn(
-                    "min-h-[52px] rounded-lg flex flex-col items-center justify-start pt-1.5 pb-1 px-0.5 gap-0.5 transition-colors text-sm font-medium",
+                    "min-h-[84px] rounded-lg flex flex-col items-center justify-start pt-2 pb-1.5 px-1 gap-1 transition-colors text-sm font-medium",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : isToday
@@ -229,11 +229,11 @@ export default function CalendarClient() {
                       : "hover:bg-muted text-foreground"
                   )}
                 >
-                  <span className="text-[11px] font-semibold leading-none">{day}</span>
+                  <span className="text-sm font-semibold leading-none">{day}</span>
                   {hasIncome && (
                     <span
                       className={cn(
-                        "text-[9px] leading-tight font-medium truncate w-full text-center",
+                        "text-[11px] leading-tight font-medium truncate w-full text-center",
                         isSelected ? "text-white/90" : "text-emerald-600 dark:text-emerald-400"
                       )}
                     >
@@ -243,7 +243,7 @@ export default function CalendarClient() {
                   {hasExpense && (
                     <span
                       className={cn(
-                        "text-[9px] leading-tight font-medium truncate w-full text-center",
+                        "text-[11px] leading-tight font-medium truncate w-full text-center",
                         isSelected ? "text-white/80" : "text-red-500"
                       )}
                     >
