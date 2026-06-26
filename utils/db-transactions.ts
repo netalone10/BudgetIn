@@ -17,6 +17,8 @@ export interface DbTransaction {
   created_at: string;
   type: "expense" | "income" | "transfer_out" | "transfer_in";
   accountId: string | null;
+  familyTransferId?: string | null;
+  counterpartyUserId?: string | null;
 }
 
 interface CreateInput {
@@ -141,6 +143,8 @@ export async function getTransactionsDB(
       createdAt: true,
       type: true,
       accountId: true,
+      familyTransferId: true,
+      counterpartyUserId: true,
     },
     orderBy: [{ date: "desc" }, { time: "desc" }],
   });
@@ -155,6 +159,8 @@ export async function getTransactionsDB(
     created_at: r.createdAt.toISOString(),
     type: r.type as DbTransaction["type"],
     accountId: r.accountId,
+    familyTransferId: r.familyTransferId,
+    counterpartyUserId: r.counterpartyUserId,
   }));
 }
 

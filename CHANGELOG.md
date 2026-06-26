@@ -2,6 +2,25 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.15.0] — 2026-06-26
+
+### Added
+- **Mode Keluarga (read-only consolidated).** Pasangan (mis. suami & istri) tetap mencatat di buku masing-masing, tapi punya "kacamata keluarga" yang mengonsolidasikan keuangan. Keanggotaan (`Family`/`FamilyMember`/`FamilyInvite`) selalu di Postgres, independen dari storage ledger tiap anggota (Sheets vs DB); `family_members` `@@unique([userId])` → 1 user = 1 family (MVP).
+- **Halaman `/dashboard/family`** + entri sidebar "Keluarga". Menampilkan Net Worth keluarga (total + per anggota), total pemasukan/pengeluaran, pengeluaran per kategori, ringkasan per anggota, dan transaksi terbaru ber-tag pemilik.
+- **Consolidation engine** (`lib/family-data.ts`): `getFamilyLedger` (merge ledger lintas DB+Sheets per anggota, tag `ownerUserId`, degradasi anggun per anggota), `getFamilyNetWorth` (Σ net worth per anggota), `summarizeFamily` (income/expense/kategori/per-orang + eliminasi transfer antar-anggota). Helper scope `lib/family.ts` (`getFamilyContext`, `getFamilyMemberIds`).
+- **Alur undangan via email.** `POST /api/family/invite` (owner) mengirim email (`lib/email.ts`) berisi link `/family/join?token=...`; halaman join menampilkan konsen eksplisit sebelum bergabung. `GET/POST /api/family/invite/accept` memvalidasi email penerima cocok dengan tujuan undangan.
+- **Transfer antar-anggota (Opsi A — auto 2 kaki).** `POST /api/family/transfer` otomatis membuat sepasang entri ter-link — **expense** di pengirim + **income** di penerima — berbagi `familyTransferId`, ditulis ke store masing-masing (DB via Prisma, Sheets via `appendTransaction` + token tersimpan penerima). Di tampilan keluarga pasangan ini dieliminasi agar tidak double-count. UI form + `GET /api/family/accounts` (daftar akun per anggota).
+- **API manajemen:** `GET/POST/DELETE /api/family` (info/buat/bubarkan), `DELETE /api/family/member/[userId]` (keluar/keluarkan), `GET /api/family/dashboard` (data konsolidasi).
+
+### Changed
+- **Schema `Transaction`** ditambah kolom opsional `familyTransferId` + `counterpartyUserId` (+ index `familyTransferId`) sebagai penanda transfer antar-anggota.
+- **Ledger Google Sheets diperluas ke kolom M-N** (`familyTransferId`, `counterpartyUserId`). `appendTransaction`, `getTransactions`, `updateTransaction`, header (`TRANSACTION_HEADERS` + `ensureTransaksiHeader`), dan `clearBudgetInSheetData` dirapikan ke range `A:N`. Backward-compatible: row lama tanpa kolom tersebut dibaca sebagai `undefined`; edit transaksi mempertahankan marker M-N.
+
+### Catatan
+- **Net worth keluarga** = Σ net worth anggota (transfer intra/antar-anggota net-zero terhadap total). Buku pribadi tiap anggota tidak berubah — transfer keluarga tetap tampil sebagai expense/income masing-masing.
+- **Atomicity lintas store** (DB+Sheets) pada `POST /api/family/transfer` tidak dijamin DB transaction; dipakai kompensasi best-effort (rollback kaki penerima bila kaki pengirim gagal). Auto-create ke ledger Sheets penerima butuh token tersimpan penerima valid.
+- **Asumsi MVP:** semua anggota memakai mata uang sama (IDR); multi-currency di luar scope.
+
 ## [1.14.0] — 2026-06-02
 
 ### Added

@@ -14,6 +14,24 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.15.0",
+    date: "2026-06-26",
+    title: "Mode Keluarga — Konsolidasi Keuangan Suami & Istri",
+    description: "Fitur baru untuk pasangan: tetap mencatat keuangan di buku masing-masing, tapi punya satu \"kacamata keluarga\" yang menggabungkan net worth dan pengeluaran. Transfer antar anggota otomatis tercatat di kedua sisi dan saling dieliminasi agar tidak terhitung ganda. Mendukung campuran pengguna Google Sheets dan email.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.15.0`,
+    changes: [
+      "Menambahkan halaman Keluarga (/dashboard/family) — buat keluarga, undang pasangan lewat email, lalu lihat kondisi keuangan gabungan.",
+      "Tampilan konsolidasi: Net Worth keluarga (total + rincian per orang), total pemasukan & pengeluaran, pengeluaran per kategori, dan ringkasan per anggota.",
+      "Tiap anggota tetap mencatat di bukunya sendiri — Mode Keluarga hanya \"kacamata\" gabungan (read-only), tidak mengubah data pribadi siapa pun.",
+      "Undangan via email dengan halaman konfirmasi yang menjelaskan bahwa transaksi akan terlihat di tampilan keluarga (persetujuan eksplisit sebelum bergabung).",
+      "Transfer ke Anggota Keluarga: saat kamu transfer ke pasangan, transaksi otomatis tercatat sebagai pengeluaranmu sekaligus pemasukan penerima — dan di tampilan keluarga pasangan ini saling dieliminasi agar tidak menggelembungkan angka.",
+      "Mendukung campuran penyimpanan: anggota bisa pengguna Google Sheets maupun email, atau gabungan keduanya.",
+      "Tahan gangguan: jika data salah satu anggota gagal dimuat (mis. perlu login ulang Google), tampilan keluarga tetap muncul untuk anggota lain disertai peringatan.",
+      "Pemilik bisa mengeluarkan anggota atau membubarkan keluarga; anggota bisa keluar kapan saja — tanpa menghapus data finansial siapa pun.",
+    ],
+  },
+  {
     version: "v1.14.0",
     date: "2026-06-13",
     title: "Tabungan (Savings Goals) Kini Penuh untuk Pengguna Google Sheets",

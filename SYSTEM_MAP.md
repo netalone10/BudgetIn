@@ -90,6 +90,29 @@ app/dashboard/page.tsx
 POST /api/record intent=laporan → narrative report
 ```
 
+**Family mode (read-only consolidated):**
+```text
+Keanggotaan SELALU di Postgres (Family/FamilyMember/FamilyInvite), independen
+dari storage ledger tiap anggota (Sheets vs DB). Owner pun punya baris FamilyMember.
+
+/dashboard/family → GET /api/family + GET /api/family/dashboard
+  → getFamilyContext / getFamilyMemberIds (lib/family.ts)
+  → getFamilyLedger: loop anggota → getMemberLedger (branch sheetsId) → merge + tag ownerUserId
+  → getFamilyNetWorth: Σ net worth per anggota (path murah, tanpa merge mentah)
+  → summarizeFamily: income/expense/kategori/per-orang + eliminasi pasangan familyTransferId
+  → degradasi anggun: 1 anggota gagal (token Sheets) → ditandai error, view tetap render
+
+Invite: POST /api/family/invite (owner) → email (lib/email.ts) → /family/join?token=...
+  → GET/POST /api/family/invite/accept (validasi email cocok + consent)
+
+Transfer antar-anggota (Opsi A — auto 2 kaki):
+  POST /api/family/transfer
+  → tulis kaki penerima (income) lalu kaki pengirim (expense), familyTransferId sama
+  → lintas store (DB: prisma.create / Sheets: appendTransaction + getValidToken(memberId))
+  → rollback kompensasi best-effort kalau kaki kedua gagal (atomicity lintas store tidak dijamin)
+  → di family view kedua kaki dieliminasi agar tidak double-count
+```
+
 ---
 
 # Clean Tree
@@ -198,6 +221,15 @@ BudgetIn/
 | `utils/account-balance.ts` | account balance/net worth calculations | Pure ledger account balance logic. |
 | `utils/groq.ts` | `classifyIntent`, `callWithRotation` | Groq prompt parser and API-key rotation. |
 | `lib/auth.ts` | `authOptions` | Google OAuth + Credentials auth. |
+| `lib/family.ts` | `getFamilyContext`, `getFamilyMemberIds` | Membership & scope helpers (keanggotaan di Postgres). |
+| `lib/family-data.ts` | `getFamilyLedger`, `getFamilyNetWorth`, `summarizeFamily` | Consolidation engine: merge ledger lintas DB+Sheets, net worth, eliminasi transfer antar-anggota. |
+| `app/api/family/route.ts` | `GET`/`POST`/`DELETE` | Info/buat/bubarkan family. |
+| `app/api/family/invite/route.ts` + `invite/accept` | invite/accept | Undangan email + terima (validasi email + consent). |
+| `app/api/family/member/[userId]/route.ts` | `DELETE` | Keluar / keluarkan anggota. |
+| `app/api/family/dashboard/route.ts` | `GET` | Data konsolidasi: net worth + summary + ledger. |
+| `app/api/family/accounts/route.ts` | `GET` | Akun per anggota (untuk form transfer). |
+| `app/api/family/transfer/route.ts` | `POST` | Transfer antar-anggota Opsi A (auto 2 kaki, lintas store). |
+| `app/dashboard/family/*` | Family UI | Net worth/spending konsolidasi + kelola anggota + transfer. |
 
 ---
 
@@ -232,6 +264,8 @@ User
 - **`savings_contributions`**: per-goal progress linked to transaction ID.
 - **`recurring_bills`**: recurring bill definitions and schedule metadata.
 - **`bill_payments`**: monthly bill payment records linked to recurring bills.
+- **`families` / `family_members` / `family_invites`**: Family mode (read-only consolidated). `family_members` `@@unique([userId])` → 1 user = 1 family (MVP). Selalu di Postgres untuk semua user.
+- **`transactions.familyTransferId` / `counterpartyUserId`**: penanda transfer antar-anggota (pasangan expense pengirim + income penerima) untuk eliminasi di family view. Di Sheets disimpan kolom M-N.
 
 ---
 
@@ -243,6 +277,7 @@ User
 - **Expense analytics**: always use `isExpenseTransaction`; this excludes transfer principal and includes transfer fee.
 - **Sheets transfer detection**: `category === "Transfer"` plus from/to account IDs or names counts as transfer principal.
 - **Savings progress**: only `savings_contributions` counts toward goal progress. Generic `Tabungan` transactions without an allocated contribution do not increase a specific goal.
+- **Family transfer elimination**: di level family, pasangan transaksi ber-`familyTransferId` (expense pengirim + income penerima) dieliminasi dari agregasi spending/income (`summarizeFamily`). Net worth keluarga = Σ net worth anggota dan tidak terpengaruh (uang hanya berpindah dalam keluarga). Buku pribadi tiap anggota tidak berubah (tetap expense/income masing-masing).
 
 ---
 
@@ -276,3 +311,4 @@ User
 - **Google token failure**: revoked/expired refresh tokens can break Sheets reads/writes until re-auth.
 - **Groq dependency**: AI flows rely on external API availability and configured `GROQ_API_KEY_*` rotation.
 - **Signed amounts**: many UI summaries must preserve sign for corrections while still presenting totals intuitively.
+- **Family cross-store writes**: `POST /api/family/transfer` menulis dua kaki ke store berbeda (DB+Sheets) — tidak ada atomicity lintas store; dipakai kompensasi best-effort. Auto-create kaki income ke ledger Sheets penerima butuh token tersimpan penerima valid. Asumsi MVP: semua anggota mata uang sama (IDR).

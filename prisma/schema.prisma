@@ -5,49 +5,108 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")   // pgbouncer (port 6543) — untuk runtime
-  directUrl = env("DIRECT_URL")     // direct (port 5432) — untuk prisma db push/migrate
+  url       = env("DATABASE_URL") // pgbouncer (port 6543) — untuk runtime
+  directUrl = env("DIRECT_URL") // direct (port 5432) — untuk prisma db push/migrate
 }
 
 model User {
-  id           String    @id @default(uuid())
-  googleId     String?   @unique @map("google_id")  // null untuk email users
-  email        String    @unique
-  name         String
-  image        String?
-  password     String?   // bcrypt hash — hanya untuk email/password users
-  accessToken  String?   @map("access_token")
-  refreshToken String?   @map("refresh_token")
-  tokenExpiry  DateTime? @map("token_expiry")
-  sheetsId                String?   @map("sheets_id")          // null untuk email users
-  googleSetupMigratedAt   DateTime? @map("google_setup_migrated_at")
-  emailVerified           DateTime? @map("email_verified")
-  verificationToken       String?   @unique @map("verification_token")
-  verificationTokenExpiry DateTime? @map("verification_token_expiry")
-  resetPasswordToken      String?   @unique @map("reset_password_token")
+  id                       String    @id @default(uuid())
+  googleId                 String?   @unique @map("google_id") // null untuk email users
+  email                    String    @unique
+  name                     String
+  image                    String?
+  password                 String? // bcrypt hash — hanya untuk email/password users
+  accessToken              String?   @map("access_token")
+  refreshToken             String?   @map("refresh_token")
+  tokenExpiry              DateTime? @map("token_expiry")
+  sheetsId                 String?   @map("sheets_id") // null untuk email users
+  googleSetupMigratedAt    DateTime? @map("google_setup_migrated_at")
+  emailVerified            DateTime? @map("email_verified")
+  verificationToken        String?   @unique @map("verification_token")
+  verificationTokenExpiry  DateTime? @map("verification_token_expiry")
+  resetPasswordToken       String?   @unique @map("reset_password_token")
   resetPasswordTokenExpiry DateTime? @map("reset_password_token_expiry")
-  createdAt               DateTime  @default(now()) @map("created_at")
+  createdAt                DateTime  @default(now()) @map("created_at")
 
   // Aktivitas terakhir user (throttled heartbeat dari session callback).
-  lastActivityAt          DateTime  @default(now()) @map("last_activity_at")
+  lastActivityAt      DateTime  @default(now()) @map("last_activity_at")
   // Cache count Sheets, di-isi cron 6 jam (handler app/api/cron/sync-sheets-counts).
   // Untuk user DB (sheetsId null) kolom ini diabaikan oleh admin endpoint.
-  sheetsTxCount           Int       @default(0) @map("sheets_tx_count")
-  sheetsAccountCount      Int       @default(0) @map("sheets_account_count")
-  sheetsCountSyncedAt     DateTime? @map("sheets_count_synced_at")
+  sheetsTxCount       Int       @default(0) @map("sheets_tx_count")
+  sheetsAccountCount  Int       @default(0) @map("sheets_account_count")
+  sheetsCountSyncedAt DateTime? @map("sheets_count_synced_at")
 
-  budgets        Budget[]
-  categories     Category[]
-  transactions   Transaction[]
-  savingsGoals   SavingsGoal[]
-  savingsContributions SavingsContribution[]
-  accountTypes   AccountType[]
-  accounts       Account[]
+  budgets               Budget[]
+  categories            Category[]
+  transactions          Transaction[]
+  savingsGoals          SavingsGoal[]
+  savingsContributions  SavingsContribution[]
+  accountTypes          AccountType[]
+  accounts              Account[]
   recurringTransactions RecurringTransaction[]
-  testimonials   Testimonial[]
+  testimonials          Testimonial[]
+
+  // Family mode (read-only consolidated). Keanggotaan disimpan di Postgres
+  // untuk semua user, independen dari storage ledger (Sheets vs DB).
+  ownedFamilies    Family[]      @relation("FamilyOwner")
+  familyMembership FamilyMember?
 
   @@index([lastActivityAt(sort: Desc)])
   @@map("users")
+}
+
+// ── Family Mode ───────────────────────────────────────────────────────────────
+// Grup konsolidasi keuangan keluarga. Tiap anggota tetap punya buku sendiri;
+// Family hanya "lensa" agregat (read-only consolidated). Lihat plan family mode.
+
+model Family {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner   User           @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members FamilyMember[]
+  invites FamilyInvite[]
+
+  @@index([ownerId])
+  @@map("families")
+}
+
+model FamilyMember {
+  id          String   @id @default(uuid())
+  familyId    String   @map("family_id")
+  userId      String   @map("user_id")
+  role        String   @default("partner") // "owner" | "partner"
+  displayRole String?  @map("display_role") // label bebas: "Suami" | "Istri" | dll
+  status      String   @default("active") // "active"
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@unique([userId]) // MVP: 1 user = 1 family
+  @@index([familyId])
+  @@map("family_members")
+}
+
+model FamilyInvite {
+  id          String   @id @default(uuid())
+  familyId    String   @map("family_id")
+  email       String
+  token       String   @unique
+  role        String   @default("partner")
+  displayRole String?  @map("display_role")
+  status      String   @default("pending") // "pending" | "accepted" | "expired"
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@index([familyId])
+  @@index([email])
+  @@map("family_invites")
 }
 
 // Testimoni publik di landing page. Submission butuh login,
@@ -55,8 +114,8 @@ model User {
 model Testimonial {
   id         String    @id @default(uuid())
   userId     String    @map("user_id")
-  name       String    // snapshot dari user.name saat submit
-  role       String    // contoh: "Marketing Staff, Jakarta"
+  name       String // snapshot dari user.name saat submit
+  role       String // contoh: "Marketing Staff, Jakarta"
   quote      String    @db.Text
   rating     Int       @default(5) // 1-5
   avatarBg   String    @default("#d04f99") @map("avatar_bg")
@@ -74,29 +133,29 @@ model Testimonial {
 // Cache singleton untuk metrik landing page (Pengguna Aktif, Transaksi Dicatat, Rating).
 // Refresh berat (terutama Sheets count) di-trigger lazily/cron.
 model AppMetric {
-  id                     String   @id @default("global")
-  userCount              Int      @default(0) @map("user_count")
-  dbTransactionCount     Int      @default(0) @map("db_transaction_count")
-  sheetsTransactionCount Int      @default(0) @map("sheets_transaction_count")
-  approvedTestimonialCount Int    @default(0) @map("approved_testimonial_count")
-  avgRating              Float    @default(0) @map("avg_rating")
-  refreshedAt            DateTime @default(now()) @map("refreshed_at")
+  id                       String   @id @default("global")
+  userCount                Int      @default(0) @map("user_count")
+  dbTransactionCount       Int      @default(0) @map("db_transaction_count")
+  sheetsTransactionCount   Int      @default(0) @map("sheets_transaction_count")
+  approvedTestimonialCount Int      @default(0) @map("approved_testimonial_count")
+  avgRating                Float    @default(0) @map("avg_rating")
+  refreshedAt              DateTime @default(now()) @map("refreshed_at")
 
   @@map("app_metrics")
 }
 
 model Category {
-  id        String  @id @default(uuid())
-  userId    String  @map("user_id")
-  name      String
-  type      String  @default("expense") // "expense" | "income"
-  icon      String? @map("icon")          // custom emoji override
+  id              String  @id @default(uuid())
+  userId          String  @map("user_id")
+  name            String
+  type            String  @default("expense") // "expense" | "income"
+  icon            String? @map("icon") // custom emoji override
   isSavings       Boolean @default(false) @map("is_savings")
   rolloverEnabled Boolean @default(false) @map("rollover_enabled")
   budgetType      String  @default("variable") @map("budget_type")
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  budgets Budget[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgets               Budget[]
   recurringTransactions RecurringTransaction[]
 
   @@unique([userId, name])
@@ -104,10 +163,10 @@ model Category {
 }
 
 model Budget {
-  id         String @id @default(uuid())
-  userId     String @map("user_id")
-  categoryId String @map("category_id")
-  amount     Decimal  @db.Decimal(19, 4)
+  id         String  @id @default(uuid())
+  userId     String  @map("user_id")
+  categoryId String  @map("category_id")
+  amount     Decimal @db.Decimal(19, 4)
   month      String // format: "2026-04" (YYYY-MM)
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -123,19 +182,22 @@ model Budget {
 model Transaction {
   id               String   @id @default(uuid())
   userId           String   @map("user_id")
-  date             String   // YYYY-MM-DD
+  date             String // YYYY-MM-DD
   time             String   @default("00:00") // HH:mm
   amount           Decimal  @db.Decimal(19, 4)
   category         String
   note             String   @default("")
   type             String   @default("expense") // "expense" | "income" | "transfer_out" | "transfer_in"
   accountId        String?  @map("account_id")
-  transferId       String?  @map("transfer_id")  // shared UUID untuk pasangan transfer_out + transfer_in
+  transferId       String?  @map("transfer_id") // shared UUID untuk pasangan transfer_out + transfer_in
   isInitialBalance Boolean  @default(false) @map("is_initial_balance")
+  // Family Mode (Fase 4) — penanda transfer antar-anggota untuk eliminasi konsolidasi.
+  familyTransferId   String? @map("family_transfer_id") // shared UUID untuk pasangan expense (pengirim) + income (penerima) lintas user
+  counterpartyUserId String? @map("counterparty_user_id") // userId anggota family lawan transaksi
   createdAt        DateTime @default(now()) @map("created_at")
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account             Account?             @relation(fields: [accountId], references: [id], onDelete: SetNull)
   savingsContribution SavingsContribution?
 
   @@index([userId, accountId])
@@ -145,6 +207,7 @@ model Transaction {
   @@index([userId, accountId, date])
   @@index([userId, accountId, type])
   @@index([transferId])
+  @@index([familyTransferId])
   @@map("transactions")
 }
 
@@ -152,12 +215,12 @@ model SavingsGoal {
   id           String    @id @default(uuid())
   userId       String    @map("user_id")
   name         String
-  targetAmount Decimal  @db.Decimal(19, 4)  @map("target_amount")
+  targetAmount Decimal   @map("target_amount") @db.Decimal(19, 4)
   deadline     DateTime? @map("deadline")
   createdAt    DateTime  @default(now()) @map("created_at")
 
-  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contributions SavingsContribution[]
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributions         SavingsContribution[]
   recurringTransactions RecurringTransaction[]
 
   @@map("savings_goals")
@@ -173,8 +236,8 @@ model SavingsContribution {
   note          String   @default("")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  goal SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal        SavingsGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, transactionId])
@@ -189,7 +252,7 @@ model AccountType {
   id             String   @id @default(uuid())
   userId         String   @map("user_id")
   name           String
-  classification String   // "asset" | "liability"
+  classification String // "asset" | "liability"
   icon           String   @default("wallet")
   color          String   @default("#6366f1")
   sortOrder      Int      @default(0) @map("sort_order")
@@ -210,7 +273,7 @@ model Account {
   userId         String   @map("user_id")
   accountTypeId  String   @map("account_type_id")
   name           String
-  initialBalance Decimal  @default(0) @db.Decimal(19, 4) @map("initial_balance") // metadata display only
+  initialBalance Decimal  @default(0) @map("initial_balance") @db.Decimal(19, 4) // metadata display only
   currency       String   @default("IDR")
   color          String?
   icon           String?
@@ -221,12 +284,12 @@ model Account {
 
   // === Kartu Kredit Fields ===
   // Hanya applicable kalau accountType.name = "Kartu Kredit"
-  tanggalSettlement   Int?  @map("tanggal_settlement")  // 1-31
-  tanggalJatuhTempo   Int?  @map("tanggal_jatuh_tempo") // 1-31
+  tanggalSettlement Int? @map("tanggal_settlement") // 1-31
+  tanggalJatuhTempo Int? @map("tanggal_jatuh_tempo") // 1-31
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountType  AccountType   @relation(fields: [accountTypeId], references: [id], onDelete: Restrict)
-  transactions Transaction[]
+  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountType   AccountType            @relation(fields: [accountTypeId], references: [id], onDelete: Restrict)
+  transactions  Transaction[]
   recurringFrom RecurringTransaction[] @relation("RecurringFromAccount")
   recurringTo   RecurringTransaction[] @relation("RecurringToAccount")
 
@@ -238,40 +301,40 @@ model Account {
 // ── Recurring Transactions ────────────────────────────────────────────────────
 
 model RecurringTransaction {
-  id            String   @id @default(uuid())
-  userId        String   @map("user_id")
-  name          String
-  type          String   @default("expense") // "expense" | "income" | "transfer"
-  amount        Decimal  @db.Decimal(19, 4)
+  id     String  @id @default(uuid())
+  userId String  @map("user_id")
+  name   String
+  type   String  @default("expense") // "expense" | "income" | "transfer"
+  amount Decimal @db.Decimal(19, 4)
 
   // Schedule
-  frequency     String   @default("monthly") // "daily" | "weekly" | "monthly" | "yearly"
-  interval      Int      @default(1)
-  startDate     DateTime @map("start_date")
-  endDate       DateTime? @map("end_date")
-  nextDueDate   DateTime @map("next_due_date")
-  lastRunAt     DateTime? @map("last_run_at")
+  frequency   String    @default("monthly") // "daily" | "weekly" | "monthly" | "yearly"
+  interval    Int       @default(1)
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  nextDueDate DateTime  @map("next_due_date")
+  lastRunAt   DateTime? @map("last_run_at")
 
   // Targeting
-  categoryId    String?  @map("category_id")
-  accountId     String?  @map("account_id")        // expense source / income destination / transfer FROM
-  toAccountId   String?  @map("to_account_id")     // transfer TO
-  savingsGoalId String?  @map("savings_goal_id")
+  categoryId    String? @map("category_id")
+  accountId     String? @map("account_id") // expense source / income destination / transfer FROM
+  toAccountId   String? @map("to_account_id") // transfer TO
+  savingsGoalId String? @map("savings_goal_id")
 
-  autoRecord    Boolean  @default(false) @map("auto_record")
-  reminderDays  Int[]    @default([1]) @map("reminder_days")
+  autoRecord   Boolean @default(false) @map("auto_record")
+  reminderDays Int[]   @default([1]) @map("reminder_days")
 
-  isActive      Boolean   @default(true) @map("is_active")
-  note          String?
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  isActive  Boolean  @default(true) @map("is_active")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  account       Account?  @relation("RecurringFromAccount", fields: [accountId], references: [id], onDelete: SetNull)
-  toAccount     Account?  @relation("RecurringToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
-  savingsGoal   SavingsGoal? @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
-  occurrences   RecurringOccurrence[]
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  account     Account?              @relation("RecurringFromAccount", fields: [accountId], references: [id], onDelete: SetNull)
+  toAccount   Account?              @relation("RecurringToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+  savingsGoal SavingsGoal?          @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
+  occurrences RecurringOccurrence[]
 
   @@index([userId, isActive, nextDueDate])
   @@map("recurring_transactions")
@@ -287,7 +350,7 @@ model RecurringOccurrence {
   occurrenceKey String   @map("occurrence_key") // YYYY-MM-DD
   note          String?
 
-  recurring     RecurringTransaction @relation(fields: [recurringId], references: [id], onDelete: Cascade)
+  recurring RecurringTransaction @relation(fields: [recurringId], references: [id], onDelete: Cascade)
 
   @@unique([recurringId, occurrenceKey])
   @@index([recurringId, occurredAt])
