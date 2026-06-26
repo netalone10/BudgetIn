@@ -60,8 +60,16 @@ export async function POST(
 
   const userId = session.userId;
 
+  // Goal milik sendiri ATAU goal bersama (familyId) di keluarga user ini.
+  // Family Mode II: anggota mana pun boleh kontribusi ke goal keluarga.
+  const membership = await prisma.familyMember.findUnique({
+    where: { userId },
+    select: { familyId: true },
+  });
   const goal = await prisma.savingsGoal.findFirst({
-    where: { id: goalId, userId },
+    where: membership
+      ? { id: goalId, OR: [{ userId }, { familyId: membership.familyId }] }
+      : { id: goalId, userId },
     select: { id: true, name: true },
   });
   if (!goal) {

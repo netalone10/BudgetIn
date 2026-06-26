@@ -1,4 +1,8 @@
-import { summarizeFamily, type FamilyRawTxn } from "@/lib/family-data";
+import {
+  summarizeFamily,
+  eliminateCrossMemberTransfers,
+  type FamilyRawTxn,
+} from "@/lib/family-data";
 
 function tx(partial: Partial<FamilyRawTxn>): FamilyRawTxn {
   return {
@@ -60,5 +64,25 @@ describe("summarizeFamily", () => {
       new Set(["tabungan"])
     );
     expect(s.expense).toBe(100);
+  });
+});
+
+describe("eliminateCrossMemberTransfers", () => {
+  it("membuang kedua kaki pasangan transfer antar-anggota, menyisakan transaksi biasa", () => {
+    const ftid = "ft-x";
+    const result = eliminateCrossMemberTransfers([
+      tx({ id: "a", familyTransferId: ftid }),
+      tx({ id: "b", familyTransferId: ftid }),
+      tx({ id: "c", category: "Makan" }),
+    ]);
+    expect(result.map((t) => t.id)).toEqual(["c"]);
+  });
+
+  it("mempertahankan transfer dengan hanya 1 kaki (pasangan belum lengkap)", () => {
+    const result = eliminateCrossMemberTransfers([
+      tx({ id: "lonely", familyTransferId: "ft-solo" }),
+      tx({ id: "normal" }),
+    ]);
+    expect(result.map((t) => t.id).sort()).toEqual(["lonely", "normal"]);
   });
 });

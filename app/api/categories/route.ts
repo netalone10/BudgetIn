@@ -17,6 +17,7 @@ type CategoryResponseRow = {
   icon?: string | null;
   isSavings: boolean;
   budgetType?: string | null;
+  hiddenFromFamily?: boolean;
 };
 
 function isMissingBudgetTypeColumnError(error: unknown) {
@@ -47,7 +48,7 @@ async function findCategories(userId: string, includeBudgetType = true): Promise
   try {
     return await prisma.category.findMany({
       where: { userId },
-      select: { id: true, name: true, type: true, icon: true, isSavings: true, budgetType: true },
+      select: { id: true, name: true, type: true, icon: true, isSavings: true, budgetType: true, hiddenFromFamily: true },
       orderBy: { name: "asc" },
     });
   } catch (error) {

@@ -65,12 +65,32 @@ model Family {
   ownerId   String   @map("owner_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  owner   User           @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members FamilyMember[]
-  invites FamilyInvite[]
+  owner        User           @relation("FamilyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members      FamilyMember[]
+  invites      FamilyInvite[]
+  budgets      FamilyBudget[]
+  savingsGoals SavingsGoal[]
 
   @@index([ownerId])
   @@map("families")
+}
+
+// Family Mode II — budget keluarga per kategori (by nama) per bulan.
+// "Spent" dihitung dari ledger konsolidasi (summarizeFamily.byCategory), bukan disimpan.
+model FamilyBudget {
+  id        String   @id @default(uuid())
+  familyId  String   @map("family_id")
+  category  String // nama kategori (kategori per-user dicocokkan by name)
+  month     String // YYYY-MM
+  amount    Decimal  @db.Decimal(19, 4)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, category, month])
+  @@index([familyId, month])
+  @@map("family_budgets")
 }
 
 model FamilyMember {
@@ -145,14 +165,17 @@ model AppMetric {
 }
 
 model Category {
-  id              String  @id @default(uuid())
-  userId          String  @map("user_id")
-  name            String
-  type            String  @default("expense") // "expense" | "income"
-  icon            String? @map("icon") // custom emoji override
-  isSavings       Boolean @default(false) @map("is_savings")
-  rolloverEnabled Boolean @default(false) @map("rollover_enabled")
-  budgetType      String  @default("variable") @map("budget_type")
+  id               String  @id @default(uuid())
+  userId           String  @map("user_id")
+  name             String
+  type             String  @default("expense") // "expense" | "income"
+  icon             String? @map("icon") // custom emoji override
+  isSavings        Boolean @default(false) @map("is_savings")
+  rolloverEnabled  Boolean @default(false) @map("rollover_enabled")
+  budgetType       String  @default("variable") @map("budget_type")
+  // Family Mode II — sembunyikan transaksi kategori ini dari tampilan keluarga
+  // (spending/daftar transaksi); net worth keluarga tetap utuh.
+  hiddenFromFamily Boolean @default(false) @map("hidden_from_family")
 
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   budgets               Budget[]
@@ -180,21 +203,21 @@ model Budget {
 // Transaksi di DB — digunakan untuk semua users (email/password + Google)
 // Google users tetap punya data di Google Sheets, tapi transaksi DB mendukung akun-based fitur
 model Transaction {
-  id               String   @id @default(uuid())
-  userId           String   @map("user_id")
-  date             String // YYYY-MM-DD
-  time             String   @default("00:00") // HH:mm
-  amount           Decimal  @db.Decimal(19, 4)
-  category         String
-  note             String   @default("")
-  type             String   @default("expense") // "expense" | "income" | "transfer_out" | "transfer_in"
-  accountId        String?  @map("account_id")
-  transferId       String?  @map("transfer_id") // shared UUID untuk pasangan transfer_out + transfer_in
-  isInitialBalance Boolean  @default(false) @map("is_initial_balance")
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  date               String // YYYY-MM-DD
+  time               String   @default("00:00") // HH:mm
+  amount             Decimal  @db.Decimal(19, 4)
+  category           String
+  note               String   @default("")
+  type               String   @default("expense") // "expense" | "income" | "transfer_out" | "transfer_in"
+  accountId          String?  @map("account_id")
+  transferId         String?  @map("transfer_id") // shared UUID untuk pasangan transfer_out + transfer_in
+  isInitialBalance   Boolean  @default(false) @map("is_initial_balance")
   // Family Mode (Fase 4) — penanda transfer antar-anggota untuk eliminasi konsolidasi.
-  familyTransferId   String? @map("family_transfer_id") // shared UUID untuk pasangan expense (pengirim) + income (penerima) lintas user
-  counterpartyUserId String? @map("counterparty_user_id") // userId anggota family lawan transaksi
-  createdAt        DateTime @default(now()) @map("created_at")
+  familyTransferId   String?  @map("family_transfer_id") // shared UUID untuk pasangan expense (pengirim) + income (penerima) lintas user
+  counterpartyUserId String?  @map("counterparty_user_id") // userId anggota family lawan transaksi
+  createdAt          DateTime @default(now()) @map("created_at")
 
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   account             Account?             @relation(fields: [accountId], references: [id], onDelete: SetNull)
@@ -214,15 +237,20 @@ model Transaction {
 model SavingsGoal {
   id           String    @id @default(uuid())
   userId       String    @map("user_id")
+  // Family Mode II — goal bersama: kontribusi boleh dari semua anggota family.
+  // null = goal pribadi. Progress diagregasi lintas SavingsContribution semua anggota.
+  familyId     String?   @map("family_id")
   name         String
   targetAmount Decimal   @map("target_amount") @db.Decimal(19, 4)
   deadline     DateTime? @map("deadline")
   createdAt    DateTime  @default(now()) @map("created_at")
 
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  family                Family?                @relation(fields: [familyId], references: [id], onDelete: Cascade)
   contributions         SavingsContribution[]
   recurringTransactions RecurringTransaction[]
 
+  @@index([familyId])
   @@map("savings_goals")
 }
 

@@ -2,6 +2,22 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.16.0] — 2026-06-26
+
+### Added
+- **Shared family budget.** Model baru `FamilyBudget` (familyId + nama kategori + month). `lib/family-data.ts:getFamilyBudgets` menghitung "spent" dari `summarizeFamily.byCategory` (sudah bebas transfer antar-anggota, equity, tabungan, & kategori hidden). API `app/api/family/budget` (GET/POST/DELETE, akses anggota mana pun) + section "Budget Keluarga" di `FamilyClient`.
+- **Joint savings goal.** `SavingsGoal.familyId` menandai goal bersama. API `app/api/family/savings` (GET progress teragregasi lintas anggota + breakdown per orang, POST buat goal). Kontribusi me-reuse penuh `app/api/savings/[goalId]/contributions` — otorisasi goal dilonggarkan agar anggota mana pun bisa kontribusi ke goal keluarganya. Section "Tabungan Bersama" di `FamilyClient`.
+- **Family AI Analyst.** `app/api/family/analyst` me-reuse `computeAnalystMetrics` + `computeCashflowScore`/`computeSavingsRates` (`lib/analyst-metrics.ts`) + narasi Groq (pola `/api/analyst`, rate-limit `analyst:family:<familyId>`, fallback deterministik bila Groq gagal). Ledger di-pra-eliminasi transfer antar-anggota via `eliminateCrossMemberTransfers`. Card "Analisis Keluarga" (lazy, on-demand) di `FamilyClient`.
+- **Privacy per-kategori.** Kolom `Category.hiddenFromFamily`. `getFamilyLedger` membuang transaksi yang kategorinya ditandai hidden oleh pemiliknya — memengaruhi spending, budget, & analyst secara konsisten. Net worth keluarga (berbasis saldo akun) tetap utuh, dengan disclaimer di UI. Toggle "Sembunyikan dari Keluarga" di halaman Kelola Kategori (`PATCH /api/categories/[id]`).
+
+### Changed
+- `lib/family-data.ts`: ekstrak `eliminateCrossMemberTransfers` (dipakai bersama `summarizeFamily` & analyst), tambah `getFamilySavingsCategoryNames`, `getFamilyBudgets`, dan filter privacy di `getFamilyLedger`.
+- Schema: `FamilyBudget` (+ relasi `Family`), `SavingsGoal.familyId` (+ relasi `Family` + index), `Category.hiddenFromFamily`.
+
+### Catatan
+- **Privacy vs net worth**: kategori hidden disembunyikan dari *spending view*, tetapi net worth tetap mencakup semua akun (mengecualikan akan merusak integritas ledger — uangnya beneran keluar dari akun).
+- **Match by nama kategori**: budget & privacy memakai nama kategori; dua anggota dengan kategori bernama sama ("Makan") otomatis tergabung.
+
 ## [1.15.0] — 2026-06-26
 
 ### Added

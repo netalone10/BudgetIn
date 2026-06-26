@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Pencil, Trash2, Plus, X, RotateCcw } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, X, RotateCcw, EyeOff } from "lucide-react";
 import { useApi } from "@/lib/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ interface Category {
   icon?: string | null;
   isSavings: boolean;
   budgetType?: BudgetType;
+  hiddenFromFamily?: boolean;
 }
 
 export default function CategoriesPage() {
@@ -73,6 +74,7 @@ export default function CategoriesPage() {
     name: string;
     icon: string | null;
     budgetType: BudgetType;
+    hiddenFromFamily: boolean;
   }) {
     const original = categories.find((c) => c.id === payload.id);
     if (!original) return;
@@ -83,6 +85,9 @@ export default function CategoriesPage() {
     if (payload.icon !== (original.icon ?? null)) body.icon = payload.icon;
     if (payload.budgetType !== resolveBudgetType(original.name, original.budgetType)) {
       body.budgetType = payload.budgetType;
+    }
+    if (payload.hiddenFromFamily !== !!original.hiddenFromFamily) {
+      body.hiddenFromFamily = payload.hiddenFromFamily;
     }
 
     if (Object.keys(body).length === 0) {
@@ -102,7 +107,7 @@ export default function CategoriesPage() {
         setCategories((prev) =>
           prev.map((c) =>
             c.id === payload.id
-              ? { ...c, name: trimmedName || c.name, icon: payload.icon, budgetType: payload.budgetType }
+              ? { ...c, name: trimmedName || c.name, icon: payload.icon, budgetType: payload.budgetType, hiddenFromFamily: payload.hiddenFromFamily }
               : c
           )
         );
@@ -259,6 +264,11 @@ function CategoryRow({
         <span className="truncate">{c.name}</span>
       </span>
       <div className="flex items-center gap-1.5 shrink-0">
+        {c.hiddenFromFamily && (
+          <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground" title="Disembunyikan dari tampilan Keluarga">
+            <EyeOff className="size-3" /> Privat
+          </span>
+        )}
         {activeTab === "expense" && !c.isSavings && (
           <span className={cn(
             "rounded-full px-2 py-0.5 text-xs font-medium",
@@ -286,7 +296,7 @@ interface EditCategoryModalProps {
   category: Category;
   saving: boolean;
   onClose: () => void;
-  onSave: (payload: { id: string; name: string; icon: string | null; budgetType: BudgetType }) => void;
+  onSave: (payload: { id: string; name: string; icon: string | null; budgetType: BudgetType; hiddenFromFamily: boolean }) => void;
 }
 
 function EditCategoryModal({ category, saving, onClose, onSave }: EditCategoryModalProps) {
@@ -294,12 +304,13 @@ function EditCategoryModal({ category, saving, onClose, onSave }: EditCategoryMo
   const [name, setName] = useState(category.name);
   const [icon, setIcon] = useState<string | null>(category.icon ?? null);
   const [budgetType, setBudgetType] = useState<BudgetType>(resolveBudgetType(category.name, category.budgetType));
+  const [hiddenFromFamily, setHiddenFromFamily] = useState<boolean>(!!category.hiddenFromFamily);
   const defaultIcon = getCategoryIcon(name || category.name);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({ id: category.id, name, icon, budgetType });
+    onSave({ id: category.id, name, icon, budgetType, hiddenFromFamily });
   }
 
   return (
@@ -389,6 +400,36 @@ function EditCategoryModal({ category, saving, onClose, onSave }: EditCategoryMo
               </p>
             </div>
           )}
+
+          {/* Privacy keluarga */}
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => setHiddenFromFamily((v) => !v)}
+              disabled={saving}
+              className={cn(
+                "flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                hiddenFromFamily ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+              )}
+            >
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <EyeOff className="size-4 text-muted-foreground" />
+                Sembunyikan dari Keluarga
+              </span>
+              <span className={cn(
+                "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+                hiddenFromFamily ? "bg-primary" : "bg-muted-foreground/30"
+              )}>
+                <span className={cn(
+                  "absolute top-0.5 size-4 rounded-full bg-white transition-all",
+                  hiddenFromFamily ? "left-[18px]" : "left-0.5"
+                )} />
+              </span>
+            </button>
+            <p className="text-[11px] text-muted-foreground">
+              Transaksi kategori ini tidak muncul di tampilan Keluarga (spending &amp; daftar transaksi). Net Worth keluarga tetap mencakup semua akun.
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 mt-6">

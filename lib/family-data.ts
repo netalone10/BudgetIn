@@ -12,6 +12,7 @@
  */
 import "server-only";
 
+import { prisma } from "@/lib/prisma";
 import { getFamilyContext, type FamilyMemberInfo } from "@/lib/family";
 import { getTransactionsDB } from "@/utils/db-transactions";
 import { getAccountBalances, calculateNetWorth } from "@/utils/account-balance";
@@ -198,6 +199,18 @@ export async function getFamilyLedger(
   const ctx = await getFamilyContext(userId);
   if (!ctx) return null;
 
+  const memberIds = ctx.members.map((m) => m.userId);
+
+  // Privacy (Fase B): kategori yang ditandai hiddenFromFamily oleh pemiliknya
+  // dibuang dari ledger keluarga. Set key = `${userId}::${namaKategori-lowercase}`.
+  const hiddenCats = await prisma.category.findMany({
+    where: { userId: { in: memberIds }, hiddenFromFamily: true },
+    select: { userId: true, name: true },
+  });
+  const hiddenSet = new Set(
+    hiddenCats.map((c) => `${c.userId}::${c.name.toLowerCase()}`)
+  );
+
   const results = await Promise.all(
     ctx.members.map(async (m) => {
       const { transactions, error } = await getMemberLedger(m, period);
@@ -213,11 +226,36 @@ export async function getFamilyLedger(
     })
   );
 
+  let transactions = results.flatMap((r) => r.transactions);
+  if (hiddenSet.size > 0) {
+    transactions = transactions.filter(
+      (t) => !hiddenSet.has(`${t.ownerUserId}::${t.category.toLowerCase()}`)
+    );
+  }
+
   return {
     family: { id: ctx.family.id, name: ctx.family.name },
     members: results.map((r) => r.status),
-    transactions: results.flatMap((r) => r.transactions),
+    transactions,
   };
+}
+
+/**
+ * Buang kedua kaki transfer antar-anggota (pasangan ber-`familyTransferId`
+ * dengan ≥2 kaki dalam ledger). Dipakai bersama oleh summarizeFamily & analyst.
+ */
+export function eliminateCrossMemberTransfers(
+  transactions: FamilyRawTxn[]
+): FamilyRawTxn[] {
+  const legCount = new Map<string, number>();
+  for (const t of transactions) {
+    if (t.familyTransferId) {
+      legCount.set(t.familyTransferId, (legCount.get(t.familyTransferId) ?? 0) + 1);
+    }
+  }
+  return transactions.filter(
+    (t) => !(t.familyTransferId && (legCount.get(t.familyTransferId) ?? 0) >= 2)
+  );
 }
 
 // ─── Net worth (sum per anggota) ──────────────────────────────────────────────
@@ -311,16 +349,8 @@ export function summarizeFamily(
   transactions: FamilyRawTxn[],
   savingsCategoryNames: Set<string> = new Set()
 ): FamilySummary {
-  // Fase 4: kumpulkan familyTransferId yang punya pasangan lengkap (2 kaki) untuk dieliminasi.
-  const transferLegCount = new Map<string, number>();
-  for (const t of transactions) {
-    if (t.familyTransferId) {
-      transferLegCount.set(
-        t.familyTransferId,
-        (transferLegCount.get(t.familyTransferId) ?? 0) + 1
-      );
-    }
-  }
+  // Eliminasi transfer antar-anggota (kedua kaki dimiliki anggota family).
+  const eligible = eliminateCrossMemberTransfers(transactions);
 
   const byCategory = new Map<string, number>();
   const byMember = new Map<
@@ -331,11 +361,7 @@ export function summarizeFamily(
   let income = 0;
   let expense = 0;
 
-  for (const t of transactions) {
-    // Eliminasi transfer antar-anggota (kedua kaki dimiliki anggota family).
-    if (t.familyTransferId && (transferLegCount.get(t.familyTransferId) ?? 0) >= 2) {
-      continue;
-    }
+  for (const t of eligible) {
     if (isEquityTransaction(t)) continue;
 
     const member =
@@ -368,5 +394,83 @@ export function summarizeFamily(
       .map(([category, spent]) => ({ category, spent }))
       .sort((a, b) => b.spent - a.spent),
     byMember: [...byMember.values()],
+  };
+}
+
+/**
+ * Union nama kategori tabungan (lowercase) seluruh anggota — untuk dikecualikan
+ * dari spending. Kategori selalu di Postgres untuk semua user.
+ */
+export async function getFamilySavingsCategoryNames(
+  memberIds: string[]
+): Promise<Set<string>> {
+  const rows = await prisma.category.findMany({
+    where: { userId: { in: memberIds }, isSavings: true },
+    select: { name: true },
+  });
+  return new Set(rows.map((c) => c.name.toLowerCase()));
+}
+
+// ─── Shared family budget (Fase C) ────────────────────────────────────────────
+
+export interface FamilyBudgetItem {
+  id: string;
+  category: string;
+  amount: number;
+  spent: number;
+}
+
+export interface FamilyBudgetData {
+  family: { id: string; name: string };
+  month: string;
+  budgets: FamilyBudgetItem[];
+  /** Kategori dengan pengeluaran tapi belum ada budget keluarga. */
+  unbudgeted: { category: string; spent: number }[];
+}
+
+/**
+ * Budget keluarga + realisasi (spent) per kategori untuk `month` (YYYY-MM).
+ * Spent dihitung dari ledger konsolidasi (summarizeFamily.byCategory — sudah
+ * bebas transfer antar-anggota, equity, tabungan, & kategori hidden).
+ */
+export async function getFamilyBudgets(
+  userId: string,
+  month: string
+): Promise<FamilyBudgetData | null> {
+  const ctx = await getFamilyContext(userId);
+  if (!ctx) return null;
+
+  const memberIds = ctx.members.map((m) => m.userId);
+  const [ledger, savingsNames, rows] = await Promise.all([
+    getFamilyLedger(userId, month),
+    getFamilySavingsCategoryNames(memberIds),
+    prisma.familyBudget.findMany({
+      where: { familyId: ctx.family.id, month },
+      orderBy: { category: "asc" },
+    }),
+  ]);
+
+  const summary = summarizeFamily(ledger?.transactions ?? [], savingsNames);
+  const spentByCat = new Map(
+    summary.byCategory.map((c) => [c.category.toLowerCase(), c.spent])
+  );
+
+  const budgets: FamilyBudgetItem[] = rows.map((b) => ({
+    id: b.id,
+    category: b.category,
+    amount: Number(b.amount),
+    spent: spentByCat.get(b.category.toLowerCase()) ?? 0,
+  }));
+
+  const budgetedNames = new Set(rows.map((b) => b.category.toLowerCase()));
+  const unbudgeted = summary.byCategory
+    .filter((c) => !budgetedNames.has(c.category.toLowerCase()))
+    .map((c) => ({ category: c.category, spent: c.spent }));
+
+  return {
+    family: { id: ctx.family.id, name: ctx.family.name },
+    month,
+    budgets,
+    unbudgeted,
   };
 }

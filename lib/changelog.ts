@@ -14,6 +14,21 @@ export const githubRepositoryUrl = "https://github.com/netalone10/BudgetIn";
 
 export const changelogItems: ChangelogItem[] = [
   {
+    version: "v1.16.0",
+    date: "2026-06-26",
+    title: "Mode Keluarga II — Budget Bersama, Tabungan Bareng & Analisis Keluarga",
+    description: "Melengkapi Mode Keluarga: atur budget keluarga per kategori yang dikonsumsi bersama, kumpulkan tabungan bareng untuk satu goal, dapatkan analisis AI di level keluarga, dan sembunyikan kategori tertentu dari tampilan keluarga untuk privasi.",
+    type: "release",
+    githubUrl: `${githubRepositoryUrl}/tree/v1.16.0`,
+    changes: [
+      "Budget Keluarga: tetapkan budget per kategori (mis. Makan) yang dikonsumsi pengeluaran semua anggota digabung, lengkap dengan progress bar realisasi.",
+      "Tabungan Bersama: buat goal bareng (mis. DP Rumah) yang bisa diisi kontribusi dua-duanya — progres menampilkan total plus rincian kontribusi tiap anggota.",
+      "Analisis Keluarga (AI): ringkasan kondisi keuangan, skor kesehatan, anomali over-budget, dan rekomendasi di level keluarga — tetap menampilkan ringkasan dasar meski layanan AI sedang bermasalah.",
+      "Privasi per-kategori: tandai kategori sebagai \"Sembunyikan dari Keluarga\" — transaksinya tidak muncul di tampilan pengeluaran keluarga. Net Worth keluarga tetap mencakup semua akun.",
+      "Semua fitur tetap mendukung campuran pengguna Google Sheets dan email, dengan kontribusi tabungan yang konsisten di kedua jenis penyimpanan.",
+    ],
+  },
+  {
     version: "v1.15.0",
     date: "2026-06-26",
     title: "Mode Keluarga — Konsolidasi Keuangan Suami & Istri",

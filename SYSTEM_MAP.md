@@ -227,9 +227,13 @@ BudgetIn/
 | `app/api/family/invite/route.ts` + `invite/accept` | invite/accept | Undangan email + terima (validasi email + consent). |
 | `app/api/family/member/[userId]/route.ts` | `DELETE` | Keluar / keluarkan anggota. |
 | `app/api/family/dashboard/route.ts` | `GET` | Data konsolidasi: net worth + summary + ledger. |
-| `app/api/family/accounts/route.ts` | `GET` | Akun per anggota (untuk form transfer). |
+| `app/api/family/accounts/route.ts` | `GET` | Akun per anggota (untuk form transfer/kontribusi). |
 | `app/api/family/transfer/route.ts` | `POST` | Transfer antar-anggota Opsi A (auto 2 kaki, lintas store). |
-| `app/dashboard/family/*` | Family UI | Net worth/spending konsolidasi + kelola anggota + transfer. |
+| `app/api/family/budget/route.ts` | `GET`/`POST`/`DELETE` | Budget keluarga per kategori (Fase C). "Spent" dari summarizeFamily.byCategory. |
+| `app/api/family/savings/route.ts` | `GET`/`POST` | Goal tabungan bersama (Fase D). Kontribusi via endpoint savings existing (otorisasi dilonggarkan). |
+| `app/api/family/analyst/route.ts` | `GET` | Analisis AI level keluarga (Fase E). Reuse computeAnalystMetrics + Groq. |
+| `lib/family-data.ts` (tambahan) | `getFamilyBudgets`, `getFamilySavingsCategoryNames`, `eliminateCrossMemberTransfers` | Budget keluarga + helper savings names + eliminasi transfer (dipakai bersama analyst). Privacy: filter kategori `hiddenFromFamily` di `getFamilyLedger`. |
+| `app/dashboard/family/*` | Family UI | Net worth/spending konsolidasi + analyst + budget + tabungan bersama + transfer + kelola anggota. |
 
 ---
 
@@ -266,6 +270,9 @@ User
 - **`bill_payments`**: monthly bill payment records linked to recurring bills.
 - **`families` / `family_members` / `family_invites`**: Family mode (read-only consolidated). `family_members` `@@unique([userId])` → 1 user = 1 family (MVP). Selalu di Postgres untuk semua user.
 - **`transactions.familyTransferId` / `counterpartyUserId`**: penanda transfer antar-anggota (pasangan expense pengirim + income penerima) untuk eliminasi di family view. Di Sheets disimpan kolom M-N.
+- **`family_budgets`**: budget keluarga per kategori (by nama) per bulan (`@@unique([familyId, category, month])`). Spent dihitung dari ledger, tidak disimpan.
+- **`savings_goals.familyId`**: goal tabungan bersama; kontribusi dari semua anggota (SavingsContribution tetap atas nama userId yang bayar). null = goal pribadi.
+- **`categories.hiddenFromFamily`**: sembunyikan transaksi kategori ini dari spending view keluarga; net worth tetap utuh.
 
 ---
 

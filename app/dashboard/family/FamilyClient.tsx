@@ -14,6 +14,10 @@ import {
   ShieldAlert,
   Crown,
   ArrowLeftRight,
+  Banknote,
+  PiggyBank,
+  Plus,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,6 +173,9 @@ export default function FamilyClient() {
       ) : (
         <>
           {dash && <ConsolidatedView dash={dash} />}
+          <FamilyAnalystSection />
+          <FamilyBudgetSection />
+          <FamilySavingsSection onDone={loadAll} />
           {(info.members?.length ?? 0) >= 2 && <TransferForm onDone={loadAll} />}
           <ManagePanel info={info} onChanged={loadAll} />
         </>
@@ -275,6 +282,9 @@ function ConsolidatedView({ dash }: { dash: DashboardData }) {
             </div>
           ))}
         </div>
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Net Worth mencakup seluruh akun semua anggota — termasuk kategori yang disembunyikan dari tampilan pengeluaran.
+        </p>
       </div>
 
       {/* Income / Expense */}
@@ -382,6 +392,446 @@ function SummaryCard({
         {rp(value)}
       </p>
     </div>
+  );
+}
+
+// ─── Family AI Analyst (Fase E) ───────────────────────────────────────────────
+
+interface FamilyAnalysis {
+  summary: string;
+  aiUnavailable?: boolean;
+  healthScore: number;
+  anomalies: string[];
+  recommendations: string[];
+  totalIncome: number;
+  totalSpent: number;
+  totalSavings: number;
+}
+
+function FamilyAnalystSection() {
+  const [data, setData] = useState<FamilyAnalysis | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function run() {
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/family/analyst");
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error ?? "Gagal menganalisis");
+      }
+      setData(await res.json());
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Gagal menganalisis");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="mb-1 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Analisis Keluarga</h3>
+          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">AI</span>
+        </div>
+        <Button variant="outline" size="sm" onClick={run} disabled={loading}>
+          {loading ? <Loader2 className="size-4 animate-spin" /> : data ? "Refresh" : "Analisa"}
+        </Button>
+      </div>
+
+      {err && <p className="text-sm text-destructive">{err}</p>}
+
+      {!data && !err && !loading && (
+        <p className="text-xs text-muted-foreground">
+          Klik “Analisa” untuk insight keuangan keluarga bulan ini.
+        </p>
+      )}
+
+      {data && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full border-2 border-primary text-lg font-bold tabular-nums text-primary">
+              {data.healthScore}
+            </div>
+            <p className="text-sm text-foreground">{data.summary || "—"}</p>
+          </div>
+
+          {data.aiUnavailable && (
+            <p className="text-[11px] text-amber-600">Narasi AI sedang tidak tersedia — menampilkan ringkasan dasar.</p>
+          )}
+
+          {data.anomalies.length > 0 && (
+            <div className="space-y-1">
+              {data.anomalies.map((a, i) => (
+                <p key={i} className="text-xs text-rose-600">⚠️ {a}</p>
+              ))}
+            </div>
+          )}
+
+          {data.recommendations.length > 0 && (
+            <ul className="space-y-1">
+              {data.recommendations.map((r, i) => (
+                <li key={i} className="text-xs text-muted-foreground">💡 {r}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared family budget (Fase C) ────────────────────────────────────────────
+
+interface FamilyBudgetItem {
+  id: string;
+  category: string;
+  amount: number;
+  spent: number;
+}
+
+function FamilyBudgetSection() {
+  const [budgets, setBudgets] = useState<FamilyBudgetItem[] | null>(null);
+  const [category, setCategory] = useState("");
+  const [amount, setAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/family/budget");
+      if (res.ok) {
+        const d = await res.json();
+        setBudgets(d.budgets ?? []);
+      }
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function addBudget(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseFloat(amount);
+    if (!category.trim() || !amt || amt <= 0) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/family/budget", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: category.trim(), amount: amt }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Gagal menyimpan budget");
+      }
+      setCategory("");
+      setAmount("");
+      load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal menyimpan budget");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function removeBudget(cat: string) {
+    if (!confirm(`Hapus budget keluarga "${cat}"?`)) return;
+    try {
+      const res = await fetch(`/api/family/budget?category=${encodeURIComponent(cat)}`, { method: "DELETE" });
+      if (res.ok) load();
+    } catch {
+      /* silent */
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-1">
+        <Banknote className="size-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">Budget Keluarga</h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Budget per kategori yang dikonsumsi pengeluaran semua anggota (bulan ini).
+      </p>
+
+      {budgets === null ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {budgets.map((b) => {
+            const ratio = b.amount > 0 ? b.spent / b.amount : 0;
+            const pct = Math.min(100, Math.round(ratio * 100));
+            const over = b.spent > b.amount;
+            return (
+              <div key={b.id} className="group">
+                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <span className="font-medium text-foreground">{b.category}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("tabular-nums", over ? "text-rose-600" : "text-muted-foreground")}>
+                      {rp(b.spent)} / {rp(b.amount)}
+                    </span>
+                    <button
+                      onClick={() => removeBudget(b.category)}
+                      className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      title="Hapus"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn("h-full rounded-full", over ? "bg-rose-500" : "bg-primary")}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+          {budgets.length === 0 && (
+            <p className="text-sm text-muted-foreground">Belum ada budget keluarga.</p>
+          )}
+
+          <form onSubmit={addBudget} className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row">
+            <Input
+              placeholder="Kategori (mis. Makan)"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              disabled={submitting}
+            />
+            <Input
+              type="number"
+              placeholder="Budget (Rp)"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min={1}
+              disabled={submitting}
+              className="sm:max-w-[180px]"
+            />
+            <Button type="submit" disabled={submitting} className="shrink-0">
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : "Set"}
+            </Button>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Joint savings (Fase D) ───────────────────────────────────────────────────
+
+interface FamilyGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  deadline: string | null;
+  totalContributed: number;
+  perMember: { userId: string; name: string; amount: number }[];
+}
+
+function FamilySavingsSection({ onDone }: { onDone: () => void }) {
+  const [goals, setGoals] = useState<FamilyGoal[] | null>(null);
+  const [selfAccounts, setSelfAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState("");
+  const [target, setTarget] = useState("");
+  const [contributeFor, setContributeFor] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [gRes, aRes] = await Promise.all([
+        fetch("/api/family/savings"),
+        fetch("/api/family/accounts"),
+      ]);
+      if (gRes.ok) setGoals((await gRes.json()).goals ?? []);
+      if (aRes.ok) {
+        const d = await aRes.json();
+        const self = (d.members ?? []).find((m: { isSelf: boolean }) => m.isSelf);
+        setSelfAccounts(self?.accounts ?? []);
+      }
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function createGoal(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseFloat(target);
+    if (!name.trim() || !amt || amt <= 0) return;
+    try {
+      const res = await fetch("/api/family/savings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), targetAmount: amt }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Gagal membuat goal");
+      }
+      setName("");
+      setTarget("");
+      setShowCreate(false);
+      load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal membuat goal");
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+      <div className="mb-1 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <PiggyBank className="size-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-foreground">Tabungan Bersama</h3>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShowCreate((v) => !v)}>
+          <Plus className="size-3.5" /> Goal
+        </Button>
+      </div>
+      <p className="mb-4 text-xs text-muted-foreground">
+        Goal bareng yang diisi kontribusi dua-duanya (mis. DP Rumah).
+      </p>
+
+      {showCreate && (
+        <form onSubmit={createGoal} className="mb-4 flex flex-col gap-2 rounded-xl border border-border/60 p-3 sm:flex-row">
+          <Input placeholder="Nama goal (mis. DP Rumah)" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input type="number" placeholder="Target (Rp)" value={target} onChange={(e) => setTarget(e.target.value)} min={1} className="sm:max-w-[160px]" />
+          <Button type="submit" className="shrink-0">Buat</Button>
+        </form>
+      )}
+
+      {goals === null ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : goals.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Belum ada goal bersama.</p>
+      ) : (
+        <div className="space-y-4">
+          {goals.map((g) => {
+            const pct = g.targetAmount > 0 ? Math.min(100, Math.round((g.totalContributed / g.targetAmount) * 100)) : 0;
+            return (
+              <div key={g.id} className="rounded-xl border border-border/60 p-3">
+                <div className="mb-1 flex items-center justify-between gap-2 text-sm">
+                  <span className="font-medium text-foreground">{g.name}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {rp(g.totalContributed)} / {rp(g.targetAmount)} ({pct}%)
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                </div>
+                {g.perMember.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                    {g.perMember.map((m) => (
+                      <span key={m.userId}>{m.name}: {rp(m.amount)}</span>
+                    ))}
+                  </div>
+                )}
+                {contributeFor === g.id ? (
+                  <ContributeForm
+                    goalId={g.id}
+                    accounts={selfAccounts}
+                    onCancel={() => setContributeFor(null)}
+                    onDone={() => {
+                      setContributeFor(null);
+                      load();
+                      onDone();
+                    }}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setContributeFor(g.id)}
+                    className="mt-2 text-xs font-medium text-primary hover:underline"
+                  >
+                    + Kontribusi
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContributeForm({
+  goalId,
+  accounts,
+  onCancel,
+  onDone,
+}: {
+  goalId: string;
+  accounts: { id: string; name: string }[];
+  onCancel: () => void;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0 || !accountId) {
+      alert("Pilih akun & nominal.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/savings/${goalId}/contributions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amt,
+          accountId,
+          date: new Date().toISOString().slice(0, 10),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Gagal kontribusi");
+      }
+      onDone();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gagal kontribusi");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-2 flex flex-col gap-2 sm:flex-row">
+      <select
+        className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+        value={accountId}
+        onChange={(e) => setAccountId(e.target.value)}
+      >
+        <option value="">Dari akun…</option>
+        {accounts.map((a) => (
+          <option key={a.id} value={a.id}>{a.name}</option>
+        ))}
+      </select>
+      <Input type="number" placeholder="Nominal" value={amount} onChange={(e) => setAmount(e.target.value)} min={1} disabled={submitting} className="sm:max-w-[140px]" />
+      <Button type="submit" size="sm" disabled={submitting} className="shrink-0">
+        {submitting ? <Loader2 className="size-4 animate-spin" /> : "Simpan"}
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={submitting}>Batal</Button>
+    </form>
   );
 }
 
