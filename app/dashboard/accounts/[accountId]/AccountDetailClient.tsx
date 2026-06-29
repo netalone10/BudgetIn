@@ -64,6 +64,18 @@ function promptMentionsAccount(prompt: string, accounts: AccountOption[]): boole
   return accounts.some((a) => a.name && normalized.includes(a.name.toLocaleLowerCase("id-ID")));
 }
 
+// Bedakan timeout (request keburu di-abort) dari putus koneksi sungguhan supaya
+// pesan ke user akurat — bukan selalu "Koneksi gagal".
+function promptErrorMessage(err: unknown): string {
+  if (err instanceof DOMException && err.name === "AbortError") {
+    return "Server lambat merespons — coba lagi.";
+  }
+  if (err instanceof TypeError && err.message.includes("fetch")) {
+    return "Koneksi terputus — coba lagi.";
+  }
+  return "Koneksi gagal. Coba lagi.";
+}
+
 function dateInPeriod(date: string, period: Period): boolean {
   if (period === "semua") return true;
   const [y, m] = date.split("-").map(Number);
@@ -308,7 +320,7 @@ export default function AccountDetailClient({ initialData }: Props) {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       const res = await fetch("/api/record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -337,8 +349,8 @@ export default function AccountDetailClient({ initialData }: Props) {
         setPrompt("");
         handleTransactionCreated();
       }
-    } catch {
-      setPromptResult({ error: "Koneksi gagal. Coba lagi." });
+    } catch (err) {
+      setPromptResult({ error: promptErrorMessage(err) });
     } finally {
       setPromptLoading(false);
     }
@@ -350,7 +362,7 @@ export default function AccountDetailClient({ initialData }: Props) {
     setPromptLoading(true);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       const res = await fetch("/api/record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -377,8 +389,8 @@ export default function AccountDetailClient({ initialData }: Props) {
         setPrompt("");
         handleTransactionCreated();
       }
-    } catch {
-      setPromptResult({ error: "Koneksi gagal. Coba lagi." });
+    } catch (err) {
+      setPromptResult({ error: promptErrorMessage(err) });
     } finally {
       setPromptLoading(false);
     }

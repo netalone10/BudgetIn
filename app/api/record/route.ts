@@ -19,6 +19,11 @@ import { invalidateDashboardCache } from "@/lib/cache";
 
 const TIMEZONE = "Asia/Jakarta";
 
+// Submit chain (token refresh → Sheets read → Groq classify → Sheets/DB write)
+// can spike past Vercel's default function timeout on cold starts, causing the
+// connection to drop mid-request → client melihat "Koneksi gagal". Beri ruang.
+export const maxDuration = 30;
+
 // ── GET — load riwayat transaksi ──────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
@@ -122,7 +127,6 @@ export async function POST(req: NextRequest) {
   if (useSheets) {
     try {
       accessToken = await getValidToken(userId);
-      await ensureAccountHeader(user!.sheetsId!, accessToken).catch(() => {});
     } catch {
       return NextResponse.json(
         { error: "Sesi expired. Silakan login ulang." },
@@ -130,7 +134,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const sheetsAccounts = await getAccounts(user!.sheetsId!, accessToken);
+    // Header check (row 1) dan baca akun (A2:J) saling independen → jalankan
+    // paralel supaya hemat satu round-trip Sheets di jalur blocking.
+    const [, sheetsAccounts] = await Promise.all([
+      ensureAccountHeader(user!.sheetsId!, accessToken).catch(() => {}),
+      getAccounts(user!.sheetsId!, accessToken),
+    ]);
     userAccounts = sheetsAccounts.map((account) => ({
       id: account.id,
       name: account.name,
