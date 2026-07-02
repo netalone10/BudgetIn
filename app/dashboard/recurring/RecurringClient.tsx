@@ -52,8 +52,8 @@ export default function RecurringClient() {
     setLoading(true);
     try {
       const [itemsRes, summaryRes] = await Promise.all([
-        fetch("/api/recurring"),
-        fetch(`/api/recurring/summary?period=${format(new Date(), "yyyy-MM")}`),
+        fetch("/api/recurring", { cache: "no-store" }),
+        fetch(`/api/recurring/summary?period=${format(new Date(), "yyyy-MM")}`, { cache: "no-store" }),
       ]);
       if (itemsRes.ok) {
         // /api/recurring mengembalikan { data, pagination }. Toleransi juga

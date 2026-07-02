@@ -78,13 +78,16 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const earliestTarget = targets[0];
+  const startDate = `${earliestTarget.year}-${String(earliestTarget.month).padStart(2, "0")}-01`;
+
   const [accounts, allTx] = await Promise.all([
     prisma.account.findMany({
       where: { userId: session.userId, isActive: true },
       include: { accountType: true },
     }),
     prisma.transaction.findMany({
-      where: { userId: session.userId, accountId: { not: null } },
+      where: { userId: session.userId, accountId: { not: null }, date: { gte: startDate } },
       select: { accountId: true, type: true, amount: true, date: true },
       orderBy: { date: "asc" },
     }),

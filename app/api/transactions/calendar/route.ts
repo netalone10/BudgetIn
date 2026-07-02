@@ -103,7 +103,16 @@ export async function GET(req: NextRequest) {
       userId: session.userId,
       date: { startsWith: prefix },
     },
-    include: { account: true },
+    select: {
+      id: true,
+      date: true,
+      time: true,
+      amount: true,
+      category: true,
+      note: true,
+      type: true,
+      account: { select: { name: true } },
+    },
     orderBy: [{ date: "asc" }, { time: "asc" }],
   });
 

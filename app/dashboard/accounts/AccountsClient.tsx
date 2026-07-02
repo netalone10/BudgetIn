@@ -633,7 +633,7 @@ export default function AccountsPage() {
         setError(null);
       }
       try {
-        const fetchOpts = opts?.noStore ? { cache: "no-store" as const } : undefined;
+        const fetchOpts = { cache: "no-store" as const };
         const [accRes, typeRes, recentRes] = await Promise.all([
           fetch("/api/accounts", fetchOpts),
           fetch("/api/account-types", fetchOpts),

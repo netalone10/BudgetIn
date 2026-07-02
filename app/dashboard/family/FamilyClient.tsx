@@ -115,12 +115,12 @@ export default function FamilyClient() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/family");
+      const res = await fetch("/api/family", { cache: "no-store" });
       if (!res.ok) throw new Error();
       const data: FamilyInfo = await res.json();
       setInfo(data);
       if (data.family) {
-        const dres = await fetch("/api/family/dashboard");
+        const dres = await fetch("/api/family/dashboard", { cache: "no-store" });
         if (dres.ok) setDash(await dres.json());
       } else {
         setDash(null);
@@ -417,7 +417,7 @@ function FamilyAnalystSection() {
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch("/api/family/analyst");
+      const res = await fetch("/api/family/analyst", { cache: "no-store" });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error ?? "Gagal menganalisis");
@@ -502,7 +502,7 @@ function FamilyBudgetSection() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/family/budget");
+      const res = await fetch("/api/family/budget", { cache: "no-store" });
       if (res.ok) {
         const d = await res.json();
         setBudgets(d.budgets ?? []);
@@ -649,8 +649,8 @@ function FamilySavingsSection({ onDone }: { onDone: () => void }) {
   const load = useCallback(async () => {
     try {
       const [gRes, aRes] = await Promise.all([
-        fetch("/api/family/savings"),
-        fetch("/api/family/accounts"),
+        fetch("/api/family/savings", { cache: "no-store" }),
+        fetch("/api/family/accounts", { cache: "no-store" }),
       ]);
       if (gRes.ok) setGoals((await gRes.json()).goals ?? []);
       if (aRes.ok) {
@@ -856,7 +856,7 @@ function TransferForm({ onDone }: { onDone: () => void }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetch("/api/family/accounts")
+    fetch("/api/family/accounts", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setMembers(d.members))
       .catch(() => {});

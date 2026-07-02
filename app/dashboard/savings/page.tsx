@@ -62,7 +62,7 @@ export default function SavingsPage() {
   async function fetchHistory() {
     setHistoryLoading(true);
     try {
-      const res = await fetch("/api/savings/history");
+      const res = await fetch("/api/savings/history", { cache: "no-store" });
       if (!res.ok) throw new Error();
       const data = await res.json();
       setHistory(data.transactions ?? []);
@@ -77,7 +77,7 @@ export default function SavingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/savings");
+      const res = await fetch("/api/savings", { cache: "no-store" });
       if (!res.ok) throw new Error("Gagal memuat data");
       const data = await res.json();
       setGoals(data.goals ?? []);

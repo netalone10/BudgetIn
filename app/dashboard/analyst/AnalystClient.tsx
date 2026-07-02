@@ -64,7 +64,7 @@ export default function AIAnalystPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/analyst?period=bulan ini");
+      const res = await fetch("/api/analyst?period=bulan ini", { cache: "no-store" });
       if (!res.ok) throw new Error("Gagal mengambil analisis");
       const data = await res.json();
       setReport(data);
@@ -79,7 +79,7 @@ export default function AIAnalystPage() {
     setPredLoading(true);
     setPredError(null);
     try {
-      const res = await fetch("/api/prediction");
+      const res = await fetch("/api/prediction", { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal mengambil prediksi");
       setPrediction(data);
@@ -93,7 +93,7 @@ export default function AIAnalystPage() {
   const handleDownloadCsv = async () => {
     setDownloadingCsv(true);
     try {
-      const res = await fetch("/api/record?period=bulan ini");
+      const res = await fetch("/api/record?period=bulan ini", { cache: "no-store" });
       const data = await res.json();
       const txs = data.transactions || [];
       

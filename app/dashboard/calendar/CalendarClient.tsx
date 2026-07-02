@@ -89,7 +89,7 @@ export default function CalendarClient() {
   const load = useCallback((y: number, m: number) => {
     setLoading(true);
     setSelectedDay(null);
-    fetch(`/api/transactions/calendar?year=${y}&month=${m}`)
+    fetch(`/api/transactions/calendar?year=${y}&month=${m}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setCalData(d ?? null))
       .catch(() => setCalData(null))

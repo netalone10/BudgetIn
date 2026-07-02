@@ -527,7 +527,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     if (!isClientFetch) return;
 
     // Fetch user profile for greeting name
-    fetch("/api/user")
+    fetch("/api/user", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.user) {
@@ -538,11 +538,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
     // Fetch all dashboard data in parallel
     Promise.all([
-      fetch("/api/record?period=bulan+ini").then((r) => (r.ok ? r.json() : { transactions: [] })),
-      fetch("/api/record?period=bulan+lalu").then((r) => (r.ok ? r.json() : { transactions: [] })),
-      fetch("/api/budget").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/accounts").then((r) => (r.ok ? r.json() : { accounts: [] })),
-      fetch("/api/categories").then((r) => (r.ok ? r.json() : { categories: [] })),
+      fetch("/api/record?period=bulan+ini", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { transactions: [] })),
+      fetch("/api/record?period=bulan+lalu", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { transactions: [] })),
+      fetch("/api/budget", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+      fetch("/api/accounts", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { accounts: [] })),
+      fetch("/api/categories", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { categories: [] })),
     ])
       .then(([txData, lastTxData, budgetResult, acctData, catData]) => {
         if (txData?.transactions) setTransactions(txData.transactions);

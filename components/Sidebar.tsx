@@ -5,8 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
-import * as m from "framer-motion/m";
-import { LazyMotion, domAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   LayoutGrid,
   Menu,
@@ -96,12 +95,12 @@ function NavSection({
   return (
     <div className="space-y-2">
       {!isCollapsed && (
-        <m.p
+        <motion.p
           variants={labelVariants}
           className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55"
         >
           {title}
-        </m.p>
+        </motion.p>
       )}
       <div className="space-y-1">
         {items.map((item) => {
@@ -129,15 +128,15 @@ function NavSection({
               )}
               <Icon className="size-4 shrink-0" />
               {!isCollapsed && (
-                <m.span
+                <motion.span
                   variants={labelVariants}
                   className="min-w-0 flex-1 truncate text-sm font-medium"
                 >
                   {item.name}
-                </m.span>
+                </motion.span>
               )}
               {!isCollapsed && item.badge && (
-                <m.span
+                <motion.span
                   variants={labelVariants}
                   className={cn(
                     "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
@@ -147,7 +146,7 @@ function NavSection({
                   )}
                 >
                   {item.badge}
-                </m.span>
+                </motion.span>
               )}
             </Link>
           );
@@ -235,7 +234,7 @@ export default function Sidebar() {
   }
 
   const desktopSidebar = (
-    <m.aside
+    <motion.aside
       className="hidden md:sticky md:top-0 md:z-40 md:flex md:h-screen shrink-0 overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
       initial={isCollapsed ? "collapsed" : "expanded"}
       animate={isCollapsed ? "collapsed" : "expanded"}
@@ -258,12 +257,12 @@ export default function Sidebar() {
               <Layers3 className="size-4" />
             </div>
             {!isCollapsed && (
-              <m.div variants={labelVariants} className="min-w-0">
+              <motion.div variants={labelVariants} className="min-w-0">
                 <p className="truncate text-sm font-semibold leading-tight">BudgetIn</p>
                 <p className="truncate text-[11px] text-sidebar-foreground/55">
                   {isPinned ? "Pinned" : "Workspace"}
                 </p>
-              </m.div>
+              </motion.div>
             )}
             <button
               type="button"
@@ -302,12 +301,12 @@ export default function Sidebar() {
 
           <div className="space-y-2">
             {!isCollapsed && (
-              <m.p
+              <motion.p
                 variants={labelVariants}
                 className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-sidebar-foreground/55"
               >
                 Tools
-              </m.p>
+              </motion.p>
             )}
 
             <Link
@@ -322,9 +321,9 @@ export default function Sidebar() {
             >
               <ListPlus className="size-4 shrink-0" />
               {!isCollapsed && (
-                <m.span variants={labelVariants} className="truncate text-sm font-medium">
+                <motion.span variants={labelVariants} className="truncate text-sm font-medium">
                   Kelola Kategori
-                </m.span>
+                </motion.span>
               )}
             </Link>
 
@@ -347,9 +346,9 @@ export default function Sidebar() {
               >
                 <KeyRound className="size-4 shrink-0" />
                 {!isCollapsed && (
-                  <m.span variants={labelVariants} className="truncate text-sm font-medium">
+                  <motion.span variants={labelVariants} className="truncate text-sm font-medium">
                     Ganti Password
-                  </m.span>
+                  </motion.span>
                 )}
               </button>
             )}
@@ -390,32 +389,32 @@ export default function Sidebar() {
                 </div>
 
                 {!isCollapsed && (
-                  <m.div variants={labelVariants} className="min-w-0 flex-1">
+                  <motion.div variants={labelVariants} className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-sidebar-foreground">
                       {session.user.name}
                     </p>
                     <p className="truncate text-[11px] text-sidebar-foreground/60" title={session.user.email ?? ""}>
                       {session.user.email}
                     </p>
-                  </m.div>
+                  </motion.div>
                 )}
 
                 {!isCollapsed && (
-                  <m.button
+                  <motion.button
                     variants={labelVariants}
                     onClick={() => signOut({ callbackUrl: "/" })}
                     className="cursor-pointer rounded-md border border-sidebar-border bg-sidebar p-1.5 text-sidebar-foreground/70 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                     title="Logout"
                   >
                     <LogOut className="size-4" />
-                  </m.button>
+                  </motion.button>
                 )}
               </div>
             </div>
           )}
         </div>
       </div>
-    </m.aside>
+    </motion.aside>
   );
 
   const mobileTopbarAndNav = (
@@ -461,7 +460,7 @@ export default function Sidebar() {
           tabIndex={-1}
         />
 
-        <m.div
+        <motion.div
           className={cn(
             "relative h-full w-[86vw] max-w-[360px] border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground"
           )}
@@ -617,14 +616,13 @@ export default function Sidebar() {
               )}
             </div>
           </div>
-        </m.div>
+        </motion.div>
       </div>
     </div>
   );
 
   return (
-    <LazyMotion features={domAnimation}>
-      <>
+    <>
       {desktopSidebar}
       {mobileTopbarAndNav}
 
@@ -639,7 +637,6 @@ export default function Sidebar() {
       {showOnboarding && (
         <OnboardingModal onClose={() => setOnboardingFor(null)} />
       )}
-      </>
-    </LazyMotion>
+    </>
   );
 }
