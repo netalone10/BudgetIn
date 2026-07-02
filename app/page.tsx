@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import LandingPage, { type LandingStats, type LandingTestimonial } from "@/components/landing/LandingPage";
+import LandingAnimations from "@/components/landing/LandingAnimations";
 import { getAppMetrics, formatMetricCount, formatRating } from "@/lib/app-metrics";
 import { prisma } from "@/lib/prisma";
 
@@ -58,5 +59,10 @@ export default async function Page() {
         ratingLabel: "—",
       };
 
-  return <LandingPage stats={stats} testimonials={testimonials} />;
+  return (
+    <>
+      <LandingPage stats={stats} testimonials={testimonials} />
+      <LandingAnimations />
+    </>
+  );
 }
