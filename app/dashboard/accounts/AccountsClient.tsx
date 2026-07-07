@@ -776,23 +776,23 @@ export default function AccountsPage() {
         <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
           <div className="grid grid-cols-3 gap-2 text-center sm:gap-4">
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground mb-1">Total Aset</p>
-              <p className="break-words text-[clamp(0.75rem,3vw,1.125rem)] font-bold leading-tight text-emerald-600 tabular-nums dark:text-emerald-400">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 truncate">Total Aset</p>
+              <p className="truncate text-[clamp(0.65rem,2.8vw,1.125rem)] font-bold leading-tight text-emerald-600 tabular-nums dark:text-emerald-400">
                 {formatIDR(assetTotal)}
               </p>
             </div>
-            <div className="min-w-0 border-x border-border px-2">
-              <p className="text-xs text-muted-foreground mb-1">Kekayaan Bersih</p>
+            <div className="min-w-0 border-x border-border px-1 sm:px-2">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 truncate">Kekayaan Bersih</p>
               <p className={cn(
-                "break-words text-[clamp(0.75rem,3vw,1.25rem)] font-bold leading-tight tabular-nums",
+                "truncate text-[clamp(0.65rem,2.8vw,1.25rem)] font-bold leading-tight tabular-nums",
                 isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"
               )}>
                 {formatIDR(netWorth)}
               </p>
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground mb-1">Total Utang</p>
-              <p className="break-words text-[clamp(0.75rem,3vw,1.125rem)] font-bold leading-tight text-red-500 tabular-nums">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 truncate">Total Utang</p>
+              <p className="truncate text-[clamp(0.65rem,2.8vw,1.125rem)] font-bold leading-tight text-red-500 tabular-nums">
                 {formatIDR(liabTotal)}
               </p>
             </div>
