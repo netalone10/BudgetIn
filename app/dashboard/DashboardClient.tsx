@@ -35,6 +35,7 @@ import { SectionCard } from "@/components/dashboard/SectionCard";
 import RunwayKasCard from "@/components/dashboard/RunwayKasCard";
 import BudgetAlertCard from "@/components/dashboard/BudgetAlertCard";
 import SafeToSpendCard from "@/components/dashboard/SafeToSpendCard";
+import InstallmentDashboardCard from "@/components/dashboard/InstallmentDashboardCard";
 import { computeSafeToSpend } from "@/lib/safe-to-spend";
 
 // ---------------------------------------------------------------------------
@@ -1491,6 +1492,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 categoryBreakdown={categoryBreakdown}
               />
               <SavingsGoalMiniCard goal={data.activeSavingsGoal} />
+              <InstallmentDashboardCard />
             </div>
           </div>
       {/* End Secondary Section */}

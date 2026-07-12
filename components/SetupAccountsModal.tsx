@@ -16,6 +16,9 @@ interface DraftAccount {
   classification: "asset" | "liability";
   saldoAwal: number;
   currency: string;
+  creditLimit?: number;
+  tanggalSettlement?: number;
+  tanggalJatuhTempo?: number;
 }
 
 type Phase = "prompt" | "preview" | "result";
@@ -217,6 +220,56 @@ export default function SetupAccountsModal({
                       className="rounded-lg border border-input bg-background px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
+                  {d.typeName === "Kartu Kredit" && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={d.creditLimit || ""}
+                        onChange={(e) =>
+                          updateDraft(i, {
+                            creditLimit:
+                              Math.max(0, Number(e.target.value) || 0) || undefined,
+                          })
+                        }
+                        placeholder="Limit (Rp)"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        step="1"
+                        value={d.tanggalSettlement || ""}
+                        onChange={(e) =>
+                          updateDraft(i, {
+                            tanggalSettlement:
+                              Math.min(31, Math.max(1, Number(e.target.value) || 0)) ||
+                              undefined,
+                          })
+                        }
+                        placeholder="Settlement"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        step="1"
+                        value={d.tanggalJatuhTempo || ""}
+                        onChange={(e) =>
+                          updateDraft(i, {
+                            tanggalJatuhTempo:
+                              Math.min(31, Math.max(1, Number(e.target.value) || 0)) ||
+                              undefined,
+                          })
+                        }
+                        placeholder="Jatuh tempo"
+                        className="rounded-lg border border-input bg-background px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
               <button

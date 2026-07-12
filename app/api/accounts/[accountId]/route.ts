@@ -13,6 +13,7 @@ import {
 import { blockDemoResponse } from "@/lib/demo-account";
 import { invalidateDashboardCache } from "@/lib/cache";
 import { checkRateLimit, RATE_LIMIT_ACCOUNT_MUTATION } from "@/lib/rate-limit";
+import { Decimal } from "@prisma/client/runtime/library";
 
 function rateLimitResponse(rl: { resetAt: number }) {
   return NextResponse.json(
@@ -57,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
   }
-  const { accountTypeId, accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo } = body;
+  const { accountTypeId, accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo, creditLimit, billingCycleDay } = body;
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -91,6 +92,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         note: note ?? existingAccount.note,
         tanggalSettlement: tanggalSettlement ?? existingAccount.tanggalSettlement,
         tanggalJatuhTempo: tanggalJatuhTempo ?? existingAccount.tanggalJatuhTempo,
+        creditLimit: creditLimit !== undefined ? creditLimit : existingAccount.creditLimit,
+        billingCycleDay: billingCycleDay !== undefined ? billingCycleDay : existingAccount.billingCycleDay,
       });
 
       invalidateDashboardCache(session.userId);
@@ -107,6 +110,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           transactionCount: 0,
           tanggalSettlement: tanggalSettlement ?? existingAccount.tanggalSettlement,
           tanggalJatuhTempo: tanggalJatuhTempo ?? existingAccount.tanggalJatuhTempo,
+          creditLimit: creditLimit !== undefined ? creditLimit : existingAccount.creditLimit,
+          billingCycleDay: billingCycleDay !== undefined ? billingCycleDay : existingAccount.billingCycleDay,
         } 
       });
     } catch (e) {
@@ -160,6 +165,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
   }
 
+  if (creditLimit !== undefined) {
+    if (creditLimit !== null && (typeof creditLimit !== "number" || creditLimit < 0)) {
+      return NextResponse.json({ error: "Credit limit harus angka positif atau null." }, { status: 400 });
+    }
+  }
+  if (billingCycleDay !== undefined) {
+    if (billingCycleDay !== null && (billingCycleDay < 1 || billingCycleDay > 31)) {
+      return NextResponse.json({ error: "Billing cycle day harus antara 1-31." }, { status: 400 });
+    }
+  }
+
   const effectiveAccountTypeName = accountType?.name ?? (await prisma.accountType.findUnique({ where: { id: existing.accountTypeId }, select: { name: true } }))?.name;
 
   if (effectiveAccountTypeName === "Kartu Kredit") {
@@ -185,6 +201,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...(currency !== undefined && { currency }),
       ...(tanggalSettlement !== undefined && { tanggalSettlement }),
       ...(tanggalJatuhTempo !== undefined && { tanggalJatuhTempo }),
+      ...(creditLimit !== undefined && { creditLimit: creditLimit !== null ? new Decimal(creditLimit) : null }),
+      ...(billingCycleDay !== undefined && { billingCycleDay }),
     },
     include: { accountType: true },
   });

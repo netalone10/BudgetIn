@@ -35,6 +35,7 @@ import {
   FileText,
   ListTree,
   Users,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -210,6 +211,7 @@ export default function Sidebar() {
     { name: "Tabungan", href: "/dashboard/savings", icon: PiggyBank },
     { name: "Akun & Dompet", href: "/dashboard/accounts", icon: Wallet },
     { name: "Berulang", href: "/dashboard/recurring", icon: Bell },
+    { name: "Cicilan", href: "/dashboard/installments", icon: CreditCard },
     { name: "Keluarga", href: "/dashboard/family", icon: Users, badge: "Beta" },
   ];
 
