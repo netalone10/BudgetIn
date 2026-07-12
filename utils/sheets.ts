@@ -76,7 +76,7 @@ export async function createGoogleSheet(
   // Akun sheet headers
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Akun!A1:J1",
+    range: "Akun!A1:L1",
     valueInputOption: "RAW",
     requestBody: {
       values: [[
@@ -90,6 +90,8 @@ export async function createGoogleSheet(
         "note",
         "tanggalSettlement",
         "tanggalJatuhTempo",
+        "creditLimit",
+        "billingCycleDay",
       ]],
     },
   });
@@ -403,6 +405,8 @@ export interface AccountData {
   note: string | null;
   tanggalSettlement: number | null;
   tanggalJatuhTempo: number | null;
+  creditLimit: number | null;
+  billingCycleDay: number | null;
 }
 
 export async function appendAccount(
@@ -424,11 +428,13 @@ export async function appendAccount(
     data.note ?? "",
     data.tanggalSettlement ?? "",
     data.tanggalJatuhTempo ?? "",
+    data.creditLimit ?? "",
+    data.billingCycleDay ?? "",
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Akun!A:J",
+    range: "Akun!A:L",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -449,7 +455,7 @@ export async function getAccounts(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Akun!A2:J",
+    range: "Akun!A2:L",
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
@@ -468,6 +474,8 @@ export async function getAccounts(
       note: row[7] || null,
       tanggalSettlement: row[8] ? Number(row[8]) : null,
       tanggalJatuhTempo: row[9] ? Number(row[9]) : null,
+      creditLimit: row[10] ? parseFloat(row[10]) || null : null,
+      billingCycleDay: row[11] ? parseInt(row[11], 10) || null : null,
     }));
 
   setCached(cacheKey, accounts);
@@ -487,7 +495,7 @@ export async function updateAccount(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Akun!A${rowIndex}:J${rowIndex}`,
+    range: `Akun!A${rowIndex}:L${rowIndex}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
@@ -504,11 +512,13 @@ export async function updateAccount(
     data.note ?? current[7] ?? "",
     data.tanggalSettlement ?? current[8] ?? "",
     data.tanggalJatuhTempo ?? current[9] ?? "",
+    data.creditLimit ?? current[10] ?? "",
+    data.billingCycleDay ?? current[11] ?? "",
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetsId,
-    range: `Akun!A${rowIndex}:J${rowIndex}`,
+    range: `Akun!A${rowIndex}:L${rowIndex}`,
     valueInputOption: "RAW",
     requestBody: { values: [updated] },
   });
@@ -572,13 +582,13 @@ export async function ensureAccountHeader(sheetsId: string, accessToken: string)
   const sheets = getSheetsClient(accessToken);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Akun!A1:J1",
+    range: "Akun!A1:L1",
   });
   const header = res.data.values?.[0] ?? [];
-  if (header.length < 10) {
+  if (header.length < 12) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetsId,
-      range: "Akun!A1:J1",
+      range: "Akun!A1:L1",
       valueInputOption: "RAW",
       requestBody: {
         values: [[
@@ -592,6 +602,8 @@ export async function ensureAccountHeader(sheetsId: string, accessToken: string)
           "note",
           "tanggalSettlement",
           "tanggalJatuhTempo",
+          "creditLimit",
+          "billingCycleDay",
         ]],
       },
     });
@@ -607,7 +619,7 @@ export async function clearBudgetInSheetData(sheetsId: string, accessToken: stri
   await sheets.spreadsheets.values.batchClear({
     spreadsheetId: sheetsId,
     requestBody: {
-      ranges: ["Transaksi!A2:N", "Budget!A2:C", "Akun!A2:J"],
+      ranges: ["Transaksi!A2:N", "Budget!A2:C", "Akun!A2:L"],
     },
   });
   sheetsCache.delete(`tx:${sheetsId}:${accessToken.slice(0, 20)}`);

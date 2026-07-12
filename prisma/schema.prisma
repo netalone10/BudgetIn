@@ -314,12 +314,15 @@ model Account {
   // Hanya applicable kalau accountType.name = "Kartu Kredit"
   tanggalSettlement Int? @map("tanggal_settlement") // 1-31
   tanggalJatuhTempo Int? @map("tanggal_jatuh_tempo") // 1-31
+  creditLimit       Decimal? @map("credit_limit") @db.Decimal(19, 4)
+  billingCycleDay   Int?     @map("billing_cycle_day")
 
-  user          User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   accountType   AccountType            @relation(fields: [accountTypeId], references: [id], onDelete: Restrict)
-  transactions  Transaction[]
-  recurringFrom RecurringTransaction[] @relation("RecurringFromAccount")
-  recurringTo   RecurringTransaction[] @relation("RecurringToAccount")
+  transactions      Transaction[]
+  recurringFrom     RecurringTransaction[] @relation("RecurringFromAccount")
+  recurringTo       RecurringTransaction[] @relation("RecurringToAccount")
+  recurringLiability RecurringTransaction[] @relation("LiabilityAccount")
 
   @@index([userId, isActive])
   @@index([accountTypeId])
@@ -354,6 +357,14 @@ model RecurringTransaction {
 
   isActive  Boolean  @default(true) @map("is_active")
   note      String?
+
+  // Installment fields
+  installmentTotal    Decimal?  @map("installment_total") @db.Decimal(19, 4)
+  installmentPaid     Int?      @map("installment_paid") @default(0)
+  installmentTenor    Int?      @map("installment_tenor")
+  installmentSource   String?   @map("installment_source") @db.VarChar(100)
+  liabilityAccountId  String?   @map("liability_account_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -361,10 +372,12 @@ model RecurringTransaction {
   category    Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   account     Account?              @relation("RecurringFromAccount", fields: [accountId], references: [id], onDelete: SetNull)
   toAccount   Account?              @relation("RecurringToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
-  savingsGoal SavingsGoal?          @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
-  occurrences RecurringOccurrence[]
+  savingsGoal     SavingsGoal?          @relation(fields: [savingsGoalId], references: [id], onDelete: SetNull)
+  liabilityAccount Account?             @relation("LiabilityAccount", fields: [liabilityAccountId], references: [id], onDelete: SetNull)
+  occurrences     RecurringOccurrence[]
 
   @@index([userId, isActive, nextDueDate])
+  @@index([liabilityAccountId])
   @@map("recurring_transactions")
 }
 
