@@ -51,20 +51,30 @@ export async function runRecurringOccurrence(
     : r.amount;
   const note = noteOverride ?? r.note ?? `${r.name} (otomatis)`;
 
+  // Detect installment type
+  const isInstallment = !!(r.installmentTotal && r.installmentTenor && r.liabilityAccountId);
+
   // Validate per-type prerequisites
-  if (r.type === "expense" || r.type === "income") {
-    if (!r.accountId) return { ok: false, error: "Akun belum diatur untuk transaksi ini.", status: 400 };
-  }
-  if (r.type === "transfer") {
-    if (!r.accountId || !r.toAccountId) return { ok: false, error: "Akun sumber & tujuan wajib diatur untuk transfer.", status: 400 };
+  if (!isInstallment) {
+    if (r.type === "expense" || r.type === "income") {
+      if (!r.accountId) return { ok: false, error: "Akun belum diatur untuk transaksi ini.", status: 400 };
+    }
+    if (r.type === "transfer") {
+      if (!r.accountId || !r.toAccountId) return { ok: false, error: "Akun sumber & tujuan wajib diatur untuk transfer.", status: 400 };
+    }
+  } else {
+    if (!r.accountId) return { ok: false, error: "Akun sumber belum diatur untuk cicilan ini.", status: 400 };
   }
 
   const nextDueDate = calcNextOccurrence(r.frequency as "daily" | "weekly" | "monthly" | "yearly", r.interval, r.startDate, occurredDay);
 
+  // Installment note: "Name (cicilan X/Y)"
+  const installmentNumber = (r.installmentPaid ?? 0) + 1;
+  const installmentNote = isInstallment
+    ? `${r.name} (cicilan ${installmentNumber}/${r.installmentTenor})`
+    : note;
+
   // ── GOOGLE SHEETS PATH ──────────────────────────────────────────────────────
-  // User Google Sheets: ledger ada di Sheets, bukan Postgres. Tanpa cabang ini
-  // transaksi recurring tertulis ke DB tapi tak pernah muncul di dashboard/report
-  // (yang membaca dari Sheets). Tulis ke Sheets, occurrence tetap dicatat di DB.
   const user = await prisma.user.findUnique({
     where: { id: r.userId },
     select: { sheetsId: true },
@@ -84,7 +94,22 @@ export async function runRecurringOccurrence(
     let sheetsTransferId: string | null = null;
 
     try {
-      if (r.type === "expense" || r.type === "income") {
+      if (isInstallment) {
+        // Installment: expense from source account to liability account, category "Cicilan"
+        const appended = await appendTransaction(user.sheetsId, accessToken, {
+          date: dateStr,
+          time,
+          amount: amountNum,
+          category: "Cicilan",
+          note: installmentNote,
+          type: "expense",
+          fromAccountId: r.accountId ?? undefined,
+          fromAccountName: r.account?.name,
+          toAccountId: r.liabilityAccountId!,
+          toAccountName: undefined,
+        });
+        sheetsTxId = appended.id;
+      } else if (r.type === "expense" || r.type === "income") {
         const appended = await appendTransaction(user.sheetsId, accessToken, {
           date: dateStr,
           time,
@@ -98,7 +123,6 @@ export async function runRecurringOccurrence(
         });
         sheetsTxId = appended.id;
       } else if (r.type === "transfer") {
-        // Transfer = 1 row "Transfer" dengan akun asal+tujuan (sama seperti input manual).
         const appended = await appendTransaction(user.sheetsId, accessToken, {
           date: dateStr,
           time,
@@ -120,11 +144,8 @@ export async function runRecurringOccurrence(
     }
 
     await prisma.$transaction(async (tx) => {
-      // Kontribusi tabungan butuh FK ke Transaction. User Sheets tidak punya baris
-      // DB, jadi tulis mirror Transaction (id = baris Sheets) + SavingsContribution
-      // sebagai anchor supaya progres goal ikut update. Pola sama dengan
-      // app/api/savings/[goalId]/contributions/route.ts. Lihat [[savings-sheets-mirror]].
-      if (r.savingsGoalId && sheetsTxId) {
+      // Mirror Transaction in Postgres for Sheets users (needed for FK references)
+      if (sheetsTxId) {
         await tx.transaction.create({
           data: {
             id: sheetsTxId,
@@ -132,11 +153,16 @@ export async function runRecurringOccurrence(
             date: dateStr,
             time,
             amount,
-            category: r.category?.name ?? "Tabungan",
-            note,
+            category: isInstallment ? "Cicilan" : (r.category?.name ?? (r.type === "income" ? "Pendapatan" : r.type === "expense" ? "Tagihan" : "Transfer")),
+            note: installmentNote,
             type: "expense",
+            accountId: r.accountId,
           },
         });
+      }
+
+      // Savings contribution
+      if (r.savingsGoalId && sheetsTxId && !isInstallment) {
         await tx.savingsContribution.create({
           data: {
             userId: r.userId,
@@ -144,7 +170,7 @@ export async function runRecurringOccurrence(
             transactionId: sheetsTxId,
             amount,
             date: dateStr,
-            note,
+            note: installmentNote,
           },
         });
       }
@@ -157,12 +183,25 @@ export async function runRecurringOccurrence(
           occurredAt: occurredDay,
           amount,
           occurrenceKey: key,
-          note,
+          note: installmentNote,
         },
       });
+
+      // Update recurring record
+      const updateData: any = { lastRunAt: occurredDay, nextDueDate };
+
+      // Installment: increment paid count, deactivate if complete
+      if (isInstallment) {
+        const newPaid = installmentNumber;
+        updateData.installmentPaid = { increment: 1 };
+        if (newPaid >= r.installmentTenor!) {
+          updateData.isActive = false;
+        }
+      }
+
       await tx.recurringTransaction.update({
         where: { id: r.id },
-        data: { lastRunAt: occurredDay, nextDueDate },
+        data: updateData,
       });
     });
 
@@ -175,7 +214,37 @@ export async function runRecurringOccurrence(
   let createdTransferId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
-    if (r.type === "expense" || r.type === "income") {
+    if (isInstallment) {
+      // Installment: create transfer_out from source + transfer_in to liability
+      const transferId = randomUUID();
+      createdTransferId = transferId;
+
+      const out = await tx.transaction.create({
+        data: {
+          userId: r.userId,
+          accountId: r.accountId,
+          type: "transfer_out",
+          amount,
+          category: "Cicilan",
+          date: dateStr,
+          note: installmentNote,
+          transferId,
+        },
+      });
+      await tx.transaction.create({
+        data: {
+          userId: r.userId,
+          accountId: r.liabilityAccountId!,
+          type: "transfer_in",
+          amount,
+          category: "Cicilan",
+          date: dateStr,
+          note: installmentNote,
+          transferId,
+        },
+      });
+      createdTxId = out.id;
+    } else if (r.type === "expense" || r.type === "income") {
       const txn = await tx.transaction.create({
         data: {
           userId: r.userId,
@@ -253,13 +322,25 @@ export async function runRecurringOccurrence(
         occurredAt: occurredDay,
         amount,
         occurrenceKey: key,
-        note,
+        note: installmentNote,
       },
     });
 
+    // Update recurring record
+    const updateData: any = { lastRunAt: occurredDay, nextDueDate };
+
+    // Installment: increment paid count, deactivate if complete
+    if (isInstallment) {
+      const newPaid = installmentNumber;
+      updateData.installmentPaid = { increment: 1 };
+      if (newPaid >= r.installmentTenor!) {
+        updateData.isActive = false;
+      }
+    }
+
     await tx.recurringTransaction.update({
       where: { id: r.id },
-      data: { lastRunAt: occurredDay, nextDueDate },
+      data: updateData,
     });
   });
 

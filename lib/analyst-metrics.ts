@@ -60,6 +60,9 @@ export function computeAnalystMetrics(
     }
     if (!isExpenseTransaction(t)) continue;
 
+    // Cicilan payments settle liability — bukan expense riil
+    if (t.category === "Cicilan") continue;
+
     if (isSavingsTransaction(t.category, savingsCategoryNames)) {
       totalSavings += t.amount;
       savingsByCategory[t.category] = (savingsByCategory[t.category] ?? 0) + t.amount;
