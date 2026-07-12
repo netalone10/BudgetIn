@@ -17,6 +17,7 @@ async function loadForExecution(id: string) {
       category: { select: { name: true } },
       account: { select: { id: true, name: true } },
       toAccount: { select: { id: true, name: true } },
+      liabilityAccount: { select: { id: true, name: true } },
       savingsGoal: { select: { id: true, name: true } },
     },
   });
@@ -106,7 +107,7 @@ export async function runRecurringOccurrence(
           fromAccountId: r.accountId ?? undefined,
           fromAccountName: r.account?.name,
           toAccountId: r.liabilityAccountId!,
-          toAccountName: undefined,
+          toAccountName: r.liabilityAccount?.name,
         });
         sheetsTxId = appended.id;
       } else if (r.type === "expense" || r.type === "income") {

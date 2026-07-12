@@ -9,38 +9,27 @@ import { useDataEvent, emitDataChanged } from "@/lib/data-events";
 import { formatCompactIDR, formatIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { SectionCard } from "@/components/dashboard/SectionCard";
+import type { InstallmentListItem } from "@/lib/installment-utils";
 
 const InstallmentInputModal = dynamic(
   () => import("@/components/InstallmentInputModal"),
   { ssr: false }
 );
 
-interface InstallmentItem {
-  id: string;
-  name: string;
-  totalAmount: number;
-  tenor: number;
-  startMonth: string;
-  paidCount: number;
-  paidAmount: number;
-  remainingAmount: number;
-  monthlyPayment: number;
-  lunasMonth: string;
-  status: string;
-}
-
-interface InstallmentSummary {
-  activeCount: number;
-  totalMonthly: number;
-  totalOutstanding: number;
-  lastLunasMonth: string | null;
-  items: InstallmentItem[];
+interface SummaryResponse {
+  activeInstallments: InstallmentListItem[];
+  summary: {
+    totalMonthlyPayment: number;
+    totalOutstanding: number;
+    activeCount: number;
+  };
+  monthlyProjection: { month: string; totalPayment: number; activeCount: number; freedCount: number; freedAmount: number }[];
 }
 
 export default function InstallmentDashboardCard({ className }: { className?: string }) {
   const [showModal, setShowModal] = useState(false);
 
-  const { data, mutate } = useApi<InstallmentSummary>("/api/installments/summary");
+  const { data, mutate } = useApi<SummaryResponse>("/api/installments/summary");
 
   useDataEvent("transactions", () => {
     mutate();
@@ -67,10 +56,23 @@ export default function InstallmentDashboardCard({ className }: { className?: st
     );
   }
 
-  const { activeCount, totalMonthly, totalOutstanding, lastLunasMonth, items } = data;
+  const { activeInstallments, summary } = data;
+  const { activeCount, totalMonthlyPayment, totalOutstanding } = summary;
+
+  // Compute last freedom date
+  const lastLunasMonth = activeInstallments.length > 0
+    ? activeInstallments.reduce((latest, item) => {
+        const fd = item.freedomDate;
+        return fd > latest ? fd : latest;
+      }, activeInstallments[0].freedomDate)
+    : null;
+
+  const lastLunasLabel = lastLunasMonth
+    ? new Date(lastLunasMonth).toLocaleDateString("id-ID", { month: "long", year: "numeric" })
+    : null;
 
   // Empty state
-  if (activeCount === 0 && items.length === 0) {
+  if (activeCount === 0) {
     return (
       <>
         <div
@@ -129,10 +131,10 @@ export default function InstallmentDashboardCard({ className }: { className?: st
               Per Bulan
             </div>
             <p className="text-[15px] font-bold tracking-tight text-primary">
-              {formatCompactIDR(totalMonthly)}
+              {formatCompactIDR(totalMonthlyPayment)}
             </p>
           </div>
-          <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 px-3 py-2.5">
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2.5">
             <div className="mb-0.5 flex items-center gap-1 text-[10.5px] font-medium text-amber-700 dark:text-amber-400">
               <CalendarCheck className="size-3" />
               Sisa Utang
@@ -149,18 +151,17 @@ export default function InstallmentDashboardCard({ className }: { className?: st
             <CreditCard className="size-3" />
             {activeCount} cicilan aktif
           </span>
-          {lastLunasMonth && (
+          {lastLunasLabel && (
             <span className="text-[11px] text-muted-foreground">
-              Lunas terakhir: <span className="font-medium text-foreground">{lastLunasMonth}</span>
+              Lunas terakhir: <span className="font-medium text-foreground">{lastLunasLabel}</span>
             </span>
           )}
         </div>
 
         {/* Per-item progress bars */}
         <div className="space-y-2.5">
-          {items.slice(0, 5).map((item) => {
-            const pct =
-              item.tenor > 0 ? Math.min(100, (item.paidCount / item.tenor) * 100) : 0;
+          {activeInstallments.slice(0, 5).map((item) => {
+            const pct = item.progressPercent;
             return (
               <div key={item.id} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
@@ -168,7 +169,7 @@ export default function InstallmentDashboardCard({ className }: { className?: st
                     {item.name}
                   </span>
                   <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                    {item.paidCount}/{item.tenor}
+                    {item.paid}/{item.tenor}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -183,14 +184,14 @@ export default function InstallmentDashboardCard({ className }: { className?: st
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  {formatIDR(item.monthlyPayment)}/bln · sisa {formatCompactIDR(item.remainingAmount)}
+                  {formatIDR(item.monthlyAmount)}/bln · sisa {formatCompactIDR(item.outstandingDebt)}
                 </p>
               </div>
             );
           })}
         </div>
 
-        {items.length > 5 && (
+        {activeInstallments.length > 5 && (
           <Link
             href="/dashboard/installments"
             className="mt-3 inline-block text-[12px] font-medium text-primary hover:underline"

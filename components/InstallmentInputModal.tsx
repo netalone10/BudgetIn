@@ -128,33 +128,33 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
     if (!Number.isInteger(parsedTen) || parsedTen <= 0)
       return setError("Tenor tidak valid.");
     if (!startMonth) return setError("Mulai cicilan wajib diisi.");
+    if (!accountId) return setError("Sumber pembayaran wajib dipilih.");
 
     setLoading(true);
     try {
       const payload = {
-        id: editItem?.id,
         name: trimmedName,
         totalAmount: parsedAmount,
         tenor: parsedTen,
         startMonth,
-        accountId: accountId || null,
+        sourceAccountId: accountId || null,
         categoryId: categoryId || null,
         source: source || "Manual",
         note: note.trim() || null,
       };
 
-      onSaved();
-      onClose();
-
       const res = await fetch("/api/installments", {
-        method: editItem ? "PUT" : "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const msg = await readErrorMessage(res);
         toast.error(msg || "Gagal menyimpan cicilan.");
+        return;
       }
+      onSaved();
+      onClose();
     } catch {
       toast.error("Gagal menyimpan. Coba lagi.");
     } finally {

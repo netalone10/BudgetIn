@@ -187,6 +187,9 @@ export default function InstallmentDetailPage() {
     const paidMap = new Map<string, Occurrence>();
     for (const occ of item!.occurrences) {
       paidMap.set(occ.occurrenceKey, occ);
+      // Also index by YYYY-MM for month-level lookup
+      const monthKey = occ.occurrenceKey.slice(0, 7);
+      paidMap.set(monthKey, occ);
     }
 
     for (let i = 0; i < item!.tenor; i++) {

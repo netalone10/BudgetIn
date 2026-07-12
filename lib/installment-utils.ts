@@ -98,7 +98,7 @@ export function computeProjection(
   now: Date = new Date()
 ): MonthProjection[] {
   const projections: MonthProjection[] = [];
-  const activeList = installments.filter((i) => i.isActive);
+  const activeList = installments.filter((i) => i.isActive && i.remaining > 0);
 
   for (let m = 0; m < months; m++) {
     const targetDate = addMonths(now, m);
@@ -110,15 +110,15 @@ export function computeProjection(
     let freedAmount = 0;
 
     for (const inst of activeList) {
-      if (inst.remaining <= 0) continue;
+      // Check if this installment still has payments due in this month
+      // m=0 means next month payment (first remaining), m=1 means month after, etc.
+      if (m >= inst.remaining) continue; // already paid off before this month
 
-      // Cicilan aktif di bulan ini
       totalPayment += inst.monthlyAmount;
       activeCount++;
 
-      // Bulan freedom = bulan where cicilan selesai
-      const freedomMonth = format(new Date(inst.freedomDate), "yyyy-MM");
-      if (monthKey === freedomMonth) {
+      // This is the last payment month for this installment
+      if (m === inst.remaining - 1) {
         freedCount++;
         freedAmount += inst.monthlyAmount;
       }
