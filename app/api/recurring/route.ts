@@ -64,11 +64,9 @@ async function resolveAccountId(userId: string, accountId: unknown): Promise<str
       color: sheetAccount.color,
       note: sheetAccount.note ?? "",
       tanggalSettlement: sheetAccount.tanggalSettlement,
-      tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: sheetAccount.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay,
+      tanggalJatuhTempo: sheetAccount.tanggalJatuhTempo,
+      creditLimit: sheetAccount.creditLimit ?? null,
+      billingCycleDay: sheetAccount.billingCycleDay ?? null,
     },
   });
 

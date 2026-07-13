@@ -20,10 +20,10 @@ export interface AccountDetailData {
     color: string | null;
     note: string;
     tanggalSettlement: number | null;
-    tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: number | null;
-    accountType: {
+    tanggalJatuhTempo: number | null;
+    creditLimit: number | null;
+    billingCycleDay: number | null;
+  };
       name: string;
       classification: string;
       icon?: string;
@@ -130,11 +130,9 @@ async function fetchDbAccountDetail(
       color: account.color,
       note: account.note,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay,
+      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      creditLimit: account.creditLimit ?? null,
+      billingCycleDay: account.billingCycleDay ?? null,
       accountType: {
         name: account.accountType.name,
         classification: account.accountType.classification,
@@ -208,11 +206,9 @@ async function fetchSheetsAccountDetail(
       color: account.color,
       note: account.note ?? "",
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay,
+      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      creditLimit: account.creditLimit ?? null,
+      billingCycleDay: account.billingCycleDay ?? null,
       accountType: {
         name: account.type,
         classification: account.classification,

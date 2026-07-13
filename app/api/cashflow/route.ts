@@ -96,9 +96,7 @@ function aggregateSheetsCashflow(
 }
 
 function buildCashflowCard(
-  account: Pick<AccountData, "id" | "name" | "tanggalSettlement" | "tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay">,
+  account: Pick<AccountData, "id" | "name" | "tanggalSettlement" | "tanggalJatuhTempo">,
   month: number,
   year: number,
   totalSpend: Decimal,
@@ -106,9 +104,7 @@ function buildCashflowCard(
   transactions: TxItem[] = []
 ) {
   const settlementDate = account.tanggalSettlement || 17;
-  const jatuhTempoDate = account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay || 5;
+  const jatuhTempoDate = account.tanggalJatuhTempo || 5;
   const { start, end } = getCreditCardPeriod(settlementDate, month, year);
   const dueDate = getDueDate(month, year, jatuhTempoDate);
   const outstanding = totalSpend.minus(totalPayment);
@@ -192,8 +188,8 @@ export async function GET(req: NextRequest) {
         id: true,
         name: true,
         tanggalSettlement: true,
-        tanggalJatuhTempo,
-        creditLimit,
+        tanggalJatuhTempo: true,
+        creditLimit: true,
         billingCycleDay: true,
       },
     });

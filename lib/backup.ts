@@ -64,9 +64,9 @@ type CanonicalAccount = {
   note: string;
   isActive: boolean;
   tanggalSettlement: number | null;
-  tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: number | null;
+  tanggalJatuhTempo: number | null;
+  creditLimit: number | null;
+  billingCycleDay: number | null;
 };
 
 type CanonicalTransaction = {
@@ -507,11 +507,9 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
       note: account.note,
       isActive: account.isActive,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay,
+      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      creditLimit: account.creditLimit ?? null,
+      billingCycleDay: account.billingCycleDay ?? null,
     })),
     transactions: canonicalTransactions.sort((a, b) => `${a.date}${a.createdAt}`.localeCompare(`${b.date}${b.createdAt}`)),
     budgets: budgets.map((budget) => ({
@@ -570,11 +568,9 @@ async function exportSheetsData(userId: string, sheetsId: string, categories: Ca
       note: account.note ?? "",
       isActive: true,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay,
+      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      creditLimit: account.creditLimit ?? null,
+      billingCycleDay: account.billingCycleDay ?? null,
     })),
     transactions: sheetTransactions.map((transaction) => ({
       id: transaction.id,
@@ -1035,11 +1031,9 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
           note: account.note,
           isActive: account.isActive,
           tanggalSettlement: account.tanggalSettlement,
-          tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay: account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay,
+          tanggalJatuhTempo: account.tanggalJatuhTempo,
+      creditLimit: account.creditLimit ?? null,
+      billingCycleDay: account.billingCycleDay ?? null,
         },
       });
       maps.accountId.set(account.id, restored.id);
@@ -1166,9 +1160,9 @@ async function restoreToSheets(
       account.color ?? "",
       account.note ?? "",
       account.tanggalSettlement ?? "",
-      account.tanggalJatuhTempo,
-        creditLimit,
-        billingCycleDay ?? "",
+      account.tanggalJatuhTempo ?? "",
+      account.creditLimit?.toString() ?? "",
+      account.billingCycleDay?.toString() ?? "",
     ];
   });
 
