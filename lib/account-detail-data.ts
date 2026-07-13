@@ -131,7 +131,7 @@ async function fetchDbAccountDetail(
       note: account.note,
       tanggalSettlement: account.tanggalSettlement,
       tanggalJatuhTempo: account.tanggalJatuhTempo,
-      creditLimit: account.creditLimit ?? null,
+      creditLimit: account.creditLimit?.toNumber() ?? null,
       billingCycleDay: account.billingCycleDay ?? null,
       accountType: {
         name: account.accountType.name,
@@ -207,7 +207,7 @@ async function fetchSheetsAccountDetail(
       note: account.note ?? "",
       tanggalSettlement: account.tanggalSettlement,
       tanggalJatuhTempo: account.tanggalJatuhTempo,
-      creditLimit: account.creditLimit ?? null,
+      creditLimit: account.creditLimit?.toNumber() ?? null,
       billingCycleDay: account.billingCycleDay ?? null,
       accountType: {
         name: account.type,

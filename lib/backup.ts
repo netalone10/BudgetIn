@@ -508,8 +508,8 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
       isActive: account.isActive,
       tanggalSettlement: account.tanggalSettlement,
       tanggalJatuhTempo: account.tanggalJatuhTempo,
-      creditLimit: account.creditLimit ?? null,
-      billingCycleDay: account.billingCycleDay ?? null,
+      creditLimit: toNumber(account.creditLimit),
+      billingCycleDay: account.billingCycleDay,
     })),
     transactions: canonicalTransactions.sort((a, b) => `${a.date}${a.createdAt}`.localeCompare(`${b.date}${b.createdAt}`)),
     budgets: budgets.map((budget) => ({
