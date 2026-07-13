@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
       userId: session.userId,
       installmentTotal: { not: null },
       installmentTenor: { not: null },
+      isActive: true,
     },
     include: includeRelations,
     orderBy: { createdAt: "desc" },
