@@ -73,6 +73,8 @@ export async function createAccountWithOpeningBalance(
       note,
       tanggalSettlement,
       tanggalJatuhTempo,
+      creditLimit: null,
+      billingCycleDay: null,
     });
 
     if (saldo > 0) {

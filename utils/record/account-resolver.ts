@@ -86,6 +86,8 @@ export function buildAccountResolver(ctx: AccountResolverContext) {
         note: "Auto-created from transaction input",
         tanggalSettlement: inferred.typeName === "Kartu Kredit" ? 17 : null,
         tanggalJatuhTempo: inferred.typeName === "Kartu Kredit" ? 5 : null,
+        creditLimit: null,
+        billingCycleDay: null,
       });
       const account: RuntimeAccount = { id: created.id, name: created.name, classification: inferred.classification };
       userAccounts.push(account);

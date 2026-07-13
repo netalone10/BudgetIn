@@ -398,6 +398,8 @@ export async function PUT(req: NextRequest) {
           note: acc.note,
           tanggalSettlement: acc.tanggalSettlement,
           tanggalJatuhTempo: acc.tanggalJatuhTempo,
+          creditLimit: acc.creditLimit?.toNumber() ?? null,
+          billingCycleDay: acc.billingCycleDay,
         });
         migrated++;
       } else {
