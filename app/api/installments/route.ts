@@ -193,6 +193,47 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // Mirror source account to Postgres if missing (FK requirement)
+      if (sourceAccountId) {
+        const existingSource = await prisma.account.findUnique({ where: { id: sourceAccountId } });
+        if (!existingSource) {
+          const { getAccounts: getSheetAccounts } = await import("@/utils/sheets");
+          const sheetSource = (await getSheetAccounts(user!.sheetsId!, accessToken)).find(a => a.id === sourceAccountId);
+          if (sheetSource) {
+            const sourceType = await prisma.accountType.upsert({
+              where: { userId_name: { userId: session.userId, name: sheetSource.type || "Lainnya" } },
+              update: {},
+              create: {
+                userId: session.userId,
+                name: sheetSource.type || "Lainnya",
+                classification: sheetSource.classification === "liability" ? "liability" : "asset",
+                icon: "wallet",
+                color: sheetSource.color ?? "#6b7280",
+                sortOrder: 100,
+              },
+            });
+            await prisma.account.create({
+              data: {
+                id: sheetSource.id,
+                userId: session.userId,
+                accountTypeId: sourceType.id,
+                name: sheetSource.name,
+                initialBalance: 0,
+                currency: sheetSource.currency || "IDR",
+                color: sheetSource.color,
+                note: sheetSource.note ?? "",
+                tanggalSettlement: sheetSource.tanggalSettlement,
+                tanggalJatuhTempo: sheetSource.tanggalJatuhTempo,
+                creditLimit: sheetSource.creditLimit ?? null,
+                billingCycleDay: sheetSource.billingCycleDay ?? null,
+              },
+            });
+          } else {
+            return NextResponse.json({ error: "Akun sumber tidak ditemukan." }, { status: 400 });
+          }
+        }
+      }
+
       // Create initial expense in Sheets (TOTAL amount, not monthly)
       const appended = await appendTransaction(user!.sheetsId!, accessToken, {
         date: dateStr,

@@ -2,6 +2,25 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 
+## [1.17.0] — 2026-07-12
+
+### Added
+- **Installment Tracker (Cicilan).** Input cicilan dari marketplace (Shopee, Tokopedia, dll) atau sumber manual. Sistem mencatat expense total saat pembelian + membuat liability account + recurring monthly payment. Dashboard card menampilkan progress bar per cicilan, total per bulan, dan sisa utang. Halaman detail menampilkan riwayat pembayaran per bulan. Proyeksi cashflow 12 bulan ke depan.
+- **Credit Card Limit.** Set limit kartu kredit per akun tipe "Kartu Kredit". Utilization card menampilkan limit, terpakai, tersedia, dan warning level (<50% hijau, 50-75% kuning, 75-90% orange, >90% merah). Input limit, tanggal settlement, dan jatuh tempo saat buat akun Kartu Kredit.
+- **Dual storage support.** Fitur cicilan dan credit card limit bekerja untuk kedua storage backend: Google Sheets users (ledger di Sheets + metadata di Postgres) dan DB users (email/password, semua di Postgres). Sheets sign rule: `from` on liability = +amount, `to` on liability = -amount.
+- **API endpoints:** `POST/GET /api/installments` (create + list), `GET /api/installments/summary` (dashboard data + 12mo projection), `GET/PATCH/DELETE /api/installments/[id]` (detail, edit, deactivate), `GET /api/accounts/[id]/credit-utilization`.
+- **UI components:** `InstallmentInputModal` (form + live preview), `InstallmentDashboardCard` (progress bars), `CreditUtilizationCard` (limit + warning), installment list page (`/dashboard/installments`), installment detail page (`/dashboard/installments/[id]`).
+- **Sidebar** "Cicilan" navigation item.
+
+### Changed
+- **Schema:** `Account` +`creditLimit` (Decimal?), +`billingCycleDay` (Int?). `RecurringTransaction` +`installmentTotal`, +`installmentPaid`, +`installmentTenor`, +`installmentSource`, +`liabilityAccountId` (FK ke Account).
+- **Google Sheets:** "Akun" sheet header extended dari A-J ke A-L (+creditLimit, +billingCycleDay). `AccountData` interface, `appendAccount`, `updateAccount`, `getAccounts`, `createGoogleSheet`, `ensureAccountHeader` updated.
+- **`utils/recurring-executor.ts`:** Installment payment path — Sheets: `appendTransaction` from=source, to=liability; DB: transfer_out + transfer_in pair. Auto-deactivate saat `installmentPaid >= installmentTenor`.
+- **`lib/analyst-metrics.ts`:** Exclude kategori "Cicilan" dari expense counting (cicilan settle utang, bukan expense baru).
+
+### Fixed
+- **Migration:** `add-installment-and-cc-limit` — nullable columns, no data loss, backward compatible.
+
 ## [1.16.0] — 2026-06-26
 
 ### Added
