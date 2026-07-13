@@ -12,6 +12,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/), semver.
 - **UI components:** `InstallmentInputModal` (form + live preview), `InstallmentDashboardCard` (progress bars), `CreditUtilizationCard` (limit + warning), installment list page (`/dashboard/installments`), installment detail page (`/dashboard/installments/[id]`).
 - **Sidebar** "Cicilan" navigation item.
 
+### Fixed
+- **Cicilan POST FK constraint error.** Sheets users: source account (e.g. "Jenius D-Card") existed in Google Sheets but not in Postgres. Creating mirrored transaction violated `transactions_account_id_fkey`. Fix: mirror source account from Sheets to Postgres before creating transaction. Also added 400 error when source account not found in either storage.
+
 ### Changed
 - **Schema:** `Account` +`creditLimit` (Decimal?), +`billingCycleDay` (Int?). `RecurringTransaction` +`installmentTotal`, +`installmentPaid`, +`installmentTenor`, +`installmentSource`, +`liabilityAccountId` (FK ke Account).
 - **Google Sheets:** "Akun" sheet header extended dari A-J ke A-L (+creditLimit, +billingCycleDay). `AccountData` interface, `appendAccount`, `updateAccount`, `getAccounts`, `createGoogleSheet`, `ensureAccountHeader` updated.
