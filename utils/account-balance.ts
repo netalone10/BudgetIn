@@ -42,6 +42,8 @@ export async function getAccountBalances(userId: string): Promise<AccountWithBal
         accountTypeId: true,
         tanggalSettlement: true,
         tanggalJatuhTempo: true,
+        creditLimit: true,
+        billingCycleDay: true,
         accountType: {
           select: {
             id: true,
@@ -117,6 +119,8 @@ export async function getAccountBalancesAsOf(
         accountTypeId: true,
         tanggalSettlement: true,
         tanggalJatuhTempo: true,
+        creditLimit: true,
+        billingCycleDay: true,
         accountType: {
           select: {
             id: true,

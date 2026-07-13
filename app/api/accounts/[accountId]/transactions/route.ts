@@ -102,7 +102,11 @@ async function handleSheetsUser(
       color: account.color,
       note: account.note,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay: account.tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay,
     };
   }
   return NextResponse.json(response);
@@ -187,7 +191,11 @@ async function handleDbUser(
       color: account.color,
       note: account.note,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay: account.tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay,
     },
     transactions,
     summary: {

@@ -64,7 +64,9 @@ type CanonicalAccount = {
   note: string;
   isActive: boolean;
   tanggalSettlement: number | null;
-  tanggalJatuhTempo: number | null;
+  tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay: number | null;
 };
 
 type CanonicalTransaction = {
@@ -505,7 +507,11 @@ async function exportDbData(userId: string, categories: CanonicalCategory[]) {
       note: account.note,
       isActive: account.isActive,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay: account.tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay,
     })),
     transactions: canonicalTransactions.sort((a, b) => `${a.date}${a.createdAt}`.localeCompare(`${b.date}${b.createdAt}`)),
     budgets: budgets.map((budget) => ({
@@ -564,7 +570,11 @@ async function exportSheetsData(userId: string, sheetsId: string, categories: Ca
       note: account.note ?? "",
       isActive: true,
       tanggalSettlement: account.tanggalSettlement,
-      tanggalJatuhTempo: account.tanggalJatuhTempo,
+      tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay: account.tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay,
     })),
     transactions: sheetTransactions.map((transaction) => ({
       id: transaction.id,
@@ -1025,7 +1035,11 @@ async function restoreToDatabase(userId: string, backup: BudgetInBackup) {
           note: account.note,
           isActive: account.isActive,
           tanggalSettlement: account.tanggalSettlement,
-          tanggalJatuhTempo: account.tanggalJatuhTempo,
+          tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay: account.tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay,
         },
       });
       maps.accountId.set(account.id, restored.id);
@@ -1152,7 +1166,9 @@ async function restoreToSheets(
       account.color ?? "",
       account.note ?? "",
       account.tanggalSettlement ?? "",
-      account.tanggalJatuhTempo ?? "",
+      account.tanggalJatuhTempo,
+        creditLimit,
+        billingCycleDay ?? "",
     ];
   });
 
