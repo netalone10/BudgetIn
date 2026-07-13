@@ -23,7 +23,7 @@ export interface AccountDetailData {
     tanggalJatuhTempo: number | null;
     creditLimit: number | null;
     billingCycleDay: number | null;
-  };
+    accountType: {
       name: string;
       classification: string;
       icon?: string;
