@@ -3,22 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Decimal } from "@prisma/client/runtime/library";
-import { randomUUID } from "crypto";
-import { addMonths, format } from "date-fns";
-import { getValidToken } from "@/utils/token";
-import { appendAccount, appendTransaction } from "@/utils/sheets";
+import { addMonths } from "date-fns";
 import { blockDemoResponse } from "@/lib/demo-account";
 import { sanitizeErrorForProduction } from "@/lib/api-error";
 import { invalidateDashboardCache } from "@/lib/cache";
-import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { computeInstallmentMeta, type InstallmentListItem } from "@/lib/installment-utils";
-import { calcNextOccurrence, occurrenceKey } from "@/utils/recurring-utils";
+import { calcNextOccurrence } from "@/utils/recurring-utils";
 
 const includeRelations = {
   category: { select: { id: true, name: true } },
   account: { select: { id: true, name: true } },
   toAccount: { select: { id: true, name: true } },
-  liabilityAccount: { select: { id: true, name: true } },
   savingsGoal: { select: { id: true, name: true } },
   occurrences: { orderBy: { occurredAt: "desc" as const }, take: 5 },
 };
@@ -50,7 +45,6 @@ function serializeInstallment(r: any): InstallmentListItem {
     freedomDate: meta?.freedomDate instanceof Date ? meta.freedomDate.toISOString() : "",
     startDate: startDate.toISOString(),
     source: r.installmentSource ?? null,
-    liabilityAccountId: r.liabilityAccountId ?? null,
     nextDueDate: r.nextDueDate instanceof Date ? r.nextDueDate.toISOString() : String(r.nextDueDate),
     isActive: r.isActive,
   };
@@ -119,206 +113,6 @@ export async function POST(request: NextRequest) {
     if (Number.isNaN(startDate.getTime())) {
       return NextResponse.json({ error: "Bulan mulai tidak valid." }, { status: 400 });
     }
-    const dateStr = format(startDate, "yyyy-MM-dd");
-
-    // Load user to detect storage type
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { sheetsId: true },
-    });
-    const isSheetsUser = !!user?.sheetsId;
-
-    // Resolve source account
-    const sourceAccount = await prisma.account.findFirst({
-      where: { id: sourceAccountId, userId: session.userId, isActive: true },
-    });
-    if (!sourceAccount && !isSheetsUser) {
-      return NextResponse.json({ error: "Akun sumber tidak ditemukan." }, { status: 400 });
-    }
-
-    let liabilityAccountId: string;
-    let liabilityAccountName: string;
-    let initialTxId: string | null = null;
-
-    if (isSheetsUser) {
-      let accessToken: string;
-      try {
-        accessToken = await getValidToken(session.userId);
-      } catch {
-        return NextResponse.json({ error: "Sesi Google expired." }, { status: 401 });
-      }
-
-      // Create liability account in Sheets
-      const liabilityAccount = await appendAccount(user!.sheetsId!, accessToken, {
-        name: `Cicilan ${trimmedName}`,
-        type: "Hutang",
-        classification: "liability",
-        balance: 0,
-        currency: "IDR",
-        color: "#ef4444",
-        note: `Cicilan ${trimmedName} - ${parsedTenor}x`,
-        tanggalSettlement: null,
-        tanggalJatuhTempo: null,
-        creditLimit: null,
-        billingCycleDay: null,
-      });
-      liabilityAccountId = liabilityAccount.id;
-      liabilityAccountName = liabilityAccount.name;
-
-      // Mirror liability account in Postgres
-      await ensureDefaultAccountTypes(session.userId);
-      const hutangType = await prisma.accountType.upsert({
-        where: { userId_name: { userId: session.userId, name: "Hutang" } },
-        update: {},
-        create: {
-          userId: session.userId,
-          name: "Hutang",
-          classification: "liability",
-          icon: "credit-card",
-          color: "#ef4444",
-          sortOrder: 90,
-        },
-      });
-
-      await prisma.account.create({
-        data: {
-          id: liabilityAccountId,
-          userId: session.userId,
-          accountTypeId: hutangType.id,
-          name: liabilityAccountName,
-          initialBalance: 0,
-          currency: "IDR",
-          color: "#ef4444",
-          note: `Cicilan ${trimmedName} - ${parsedTenor}x`,
-        },
-      });
-
-      // Mirror source account to Postgres if missing (FK requirement)
-      if (sourceAccountId) {
-        const existingSource = await prisma.account.findUnique({ where: { id: sourceAccountId } });
-        if (!existingSource) {
-          const { getAccounts: getSheetAccounts } = await import("@/utils/sheets");
-          const sheetSource = (await getSheetAccounts(user!.sheetsId!, accessToken)).find(a => a.id === sourceAccountId);
-          if (sheetSource) {
-            const sourceType = await prisma.accountType.upsert({
-              where: { userId_name: { userId: session.userId, name: sheetSource.type || "Lainnya" } },
-              update: {},
-              create: {
-                userId: session.userId,
-                name: sheetSource.type || "Lainnya",
-                classification: sheetSource.classification === "liability" ? "liability" : "asset",
-                icon: "wallet",
-                color: sheetSource.color ?? "#6b7280",
-                sortOrder: 100,
-              },
-            });
-            await prisma.account.create({
-              data: {
-                id: sheetSource.id,
-                userId: session.userId,
-                accountTypeId: sourceType.id,
-                name: sheetSource.name,
-                initialBalance: 0,
-                currency: sheetSource.currency || "IDR",
-                color: sheetSource.color,
-                note: sheetSource.note ?? "",
-                tanggalSettlement: sheetSource.tanggalSettlement,
-                tanggalJatuhTempo: sheetSource.tanggalJatuhTempo,
-                creditLimit: sheetSource.creditLimit ?? null,
-                billingCycleDay: sheetSource.billingCycleDay ?? null,
-              },
-            });
-          } else {
-            return NextResponse.json({ error: "Akun sumber tidak ditemukan." }, { status: 400 });
-          }
-        }
-      }
-
-      // Create initial expense in Sheets (TOTAL amount, not monthly)
-      const appended = await appendTransaction(user!.sheetsId!, accessToken, {
-        date: dateStr,
-        amount: parsedTotal,
-        category: "Cicilan",
-        note: `${trimmedName} (pembelian cicilan ${parsedTenor}x)`,
-        type: "expense",
-        fromAccountId: sourceAccountId,
-        fromAccountName: sourceAccount?.name,
-        toAccountId: liabilityAccountId,
-        toAccountName: liabilityAccountName,
-      });
-      initialTxId = appended.id;
-
-      // Mirror transaction in Postgres
-      await prisma.transaction.create({
-        data: {
-          id: initialTxId,
-          userId: session.userId,
-          date: dateStr,
-          amount: new Decimal(parsedTotal),
-          category: "Cicilan",
-          note: `${trimmedName} (pembelian cicilan ${parsedTenor}x)`,
-          type: "expense",
-          accountId: sourceAccountId,
-        },
-      });
-    } else {
-      // DB path: create liability account
-      await ensureDefaultAccountTypes(session.userId);
-      const hutangType = await prisma.accountType.upsert({
-        where: { userId_name: { userId: session.userId, name: "Hutang" } },
-        update: {},
-        create: {
-          userId: session.userId,
-          name: "Hutang",
-          classification: "liability",
-          icon: "credit-card",
-          color: "#ef4444",
-          sortOrder: 90,
-        },
-      });
-
-      const liabilityAccount = await prisma.account.create({
-        data: {
-          userId: session.userId,
-          accountTypeId: hutangType.id,
-          name: `Cicilan ${trimmedName}`,
-          initialBalance: 0,
-          currency: "IDR",
-          color: "#ef4444",
-          note: `Cicilan ${trimmedName} - ${parsedTenor}x`,
-        },
-      });
-      liabilityAccountId = liabilityAccount.id;
-      liabilityAccountName = liabilityAccount.name;
-
-      // Initial expense: transfer from source to liability (TOTAL amount)
-      const transferId = randomUUID();
-      const out = await prisma.transaction.create({
-        data: {
-          userId: session.userId,
-          accountId: sourceAccountId,
-          type: "transfer_out",
-          amount: new Decimal(parsedTotal),
-          category: "Cicilan",
-          date: dateStr,
-          note: `${trimmedName} (pembelian cicilan ${parsedTenor}x)`,
-          transferId,
-        },
-      });
-      await prisma.transaction.create({
-        data: {
-          userId: session.userId,
-          accountId: liabilityAccountId,
-          type: "transfer_in",
-          amount: new Decimal(parsedTotal),
-          category: "Cicilan",
-          date: dateStr,
-          note: `${trimmedName} (pembelian cicilan ${parsedTenor}x)`,
-          transferId,
-        },
-      });
-      initialTxId = out.id;
-    }
 
     // Create recurring transaction — starts NEXT month
     const nextDueDate = calcNextOccurrence("monthly", 1, startDate);
@@ -335,10 +129,9 @@ export async function POST(request: NextRequest) {
         nextDueDate,
         endDate: addMonths(startDate, parsedTenor),
         accountId: sourceAccountId,
-        liabilityAccountId,
         installmentTotal,
         installmentTenor: parsedTenor,
-        installmentPaid: 0, // first payment will be when recurring runs
+        installmentPaid: 0,
         installmentSource: source ?? null,
         categoryId: categoryId || null,
         autoRecord: false,
@@ -353,8 +146,6 @@ export async function POST(request: NextRequest) {
     const serialized = serializeInstallment(recurring);
     return NextResponse.json({
       recurring: serialized,
-      liabilityAccount: { id: liabilityAccountId, name: liabilityAccountName },
-      initialTransaction: { id: initialTxId },
     }, { status: 201 });
   } catch (error) {
     console.error("[installments:POST]", error);

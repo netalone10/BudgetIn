@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
       },
       include: {
         account: { select: { id: true, name: true } },
-        liabilityAccount: { select: { id: true, name: true } },
       },
       orderBy: { nextDueDate: "asc" },
     });
@@ -63,7 +62,6 @@ export async function GET(request: NextRequest) {
         freedomDate: meta.freedomDate instanceof Date ? meta.freedomDate.toISOString() : "",
         startDate: startDate.toISOString(),
         source: r.installmentSource ?? null,
-        liabilityAccountId: r.liabilityAccountId ?? null,
         nextDueDate: r.nextDueDate instanceof Date ? r.nextDueDate.toISOString() : String(r.nextDueDate),
         isActive: r.isActive,
       });

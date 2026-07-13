@@ -1,6 +1,5 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import { format, startOfDay } from "date-fns";
-import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { calcNextOccurrence, occurrenceKey } from "@/utils/recurring-utils";
 import { getValidToken } from "@/utils/token";
@@ -17,7 +16,6 @@ async function loadForExecution(id: string) {
       category: { select: { name: true } },
       account: { select: { id: true, name: true } },
       toAccount: { select: { id: true, name: true } },
-      liabilityAccount: { select: { id: true, name: true } },
       savingsGoal: { select: { id: true, name: true } },
     },
   });
@@ -52,19 +50,15 @@ export async function runRecurringOccurrence(
     : r.amount;
   const note = noteOverride ?? r.note ?? `${r.name} (otomatis)`;
 
-  // Detect installment type
-  const isInstallment = !!(r.installmentTotal && r.installmentTenor && r.liabilityAccountId);
+  // Detect installment type (metadata only, no liability account)
+  const isInstallment = !!(r.installmentTotal && r.installmentTenor);
 
   // Validate per-type prerequisites
-  if (!isInstallment) {
-    if (r.type === "expense" || r.type === "income") {
-      if (!r.accountId) return { ok: false, error: "Akun belum diatur untuk transaksi ini.", status: 400 };
-    }
-    if (r.type === "transfer") {
-      if (!r.accountId || !r.toAccountId) return { ok: false, error: "Akun sumber & tujuan wajib diatur untuk transfer.", status: 400 };
-    }
-  } else {
-    if (!r.accountId) return { ok: false, error: "Akun sumber belum diatur untuk cicilan ini.", status: 400 };
+  if (r.type === "expense" || r.type === "income") {
+    if (!r.accountId) return { ok: false, error: "Akun belum diatur untuk transaksi ini.", status: 400 };
+  }
+  if (r.type === "transfer") {
+    if (!r.accountId || !r.toAccountId) return { ok: false, error: "Akun sumber & tujuan wajib diatur untuk transfer.", status: 400 };
   }
 
   const nextDueDate = calcNextOccurrence(r.frequency as "daily" | "weekly" | "monthly" | "yearly", r.interval, r.startDate, occurredDay);
@@ -92,11 +86,10 @@ export async function runRecurringOccurrence(
     const time = currentJakartaTime();
     const amountNum = amount.toNumber();
     let sheetsTxId: string | null = null;
-    let sheetsTransferId: string | null = null;
 
     try {
       if (isInstallment) {
-        // Installment: expense from source account to liability account, category "Cicilan"
+        // Cicilan = simple expense from source account, category "Cicilan"
         const appended = await appendTransaction(user.sheetsId, accessToken, {
           date: dateStr,
           time,
@@ -106,8 +99,6 @@ export async function runRecurringOccurrence(
           type: "expense",
           fromAccountId: r.accountId ?? undefined,
           fromAccountName: r.account?.name,
-          toAccountId: r.liabilityAccountId!,
-          toAccountName: r.liabilityAccount?.name,
         });
         sheetsTxId = appended.id;
       } else if (r.type === "expense" || r.type === "income") {
@@ -136,7 +127,6 @@ export async function runRecurringOccurrence(
           toAccountId: r.toAccountId ?? undefined,
           toAccountName: r.toAccount?.name,
         });
-        sheetsTransferId = appended.id;
         sheetsTxId = appended.id;
       }
     } catch (error) {
@@ -180,7 +170,6 @@ export async function runRecurringOccurrence(
         data: {
           recurringId: r.id,
           transactionId: sheetsTxId,
-          transferId: sheetsTransferId,
           occurredAt: occurredDay,
           amount,
           occurrenceKey: key,
@@ -212,54 +201,24 @@ export async function runRecurringOccurrence(
 
   // ── POSTGRES PATH (user email/password) ──────────────────────────────────────
   let createdTxId: string | null = null;
-  let createdTransferId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
-    if (isInstallment) {
-      // Installment: create transfer_out from source + transfer_in to liability
-      const transferId = randomUUID();
-      createdTransferId = transferId;
-
-      const out = await tx.transaction.create({
-        data: {
-          userId: r.userId,
-          accountId: r.accountId,
-          type: "transfer_out",
-          amount,
-          category: "Cicilan",
-          date: dateStr,
-          note: installmentNote,
-          transferId,
-        },
-      });
-      await tx.transaction.create({
-        data: {
-          userId: r.userId,
-          accountId: r.liabilityAccountId!,
-          type: "transfer_in",
-          amount,
-          category: "Cicilan",
-          date: dateStr,
-          note: installmentNote,
-          transferId,
-        },
-      });
-      createdTxId = out.id;
-    } else if (r.type === "expense" || r.type === "income") {
+    if (isInstallment || r.type === "expense" || r.type === "income") {
+      // Cicilan and regular expense/income: single transaction
       const txn = await tx.transaction.create({
         data: {
           userId: r.userId,
           accountId: r.accountId,
           type: r.type,
           amount,
-          category: r.category?.name ?? (r.type === "income" ? "Pendapatan" : "Tagihan"),
+          category: isInstallment ? "Cicilan" : (r.category?.name ?? (r.type === "income" ? "Pendapatan" : "Tagihan")),
           date: dateStr,
-          note,
+          note: installmentNote,
         },
       });
       createdTxId = txn.id;
 
-      if (r.savingsGoalId) {
+      if (r.savingsGoalId && !isInstallment) {
         await tx.savingsContribution.create({
           data: {
             userId: r.userId,
@@ -272,8 +231,7 @@ export async function runRecurringOccurrence(
         });
       }
     } else if (r.type === "transfer") {
-      const transferId = randomUUID();
-      createdTransferId = transferId;
+      const transferId = crypto.randomUUID();
 
       const out = await tx.transaction.create({
         data: {
@@ -319,7 +277,6 @@ export async function runRecurringOccurrence(
       data: {
         recurringId: r.id,
         transactionId: createdTxId,
-        transferId: createdTransferId,
         occurredAt: occurredDay,
         amount,
         occurrenceKey: key,

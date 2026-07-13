@@ -35,7 +35,6 @@ export interface InstallmentListItem {
   freedomDate: string;
   startDate: string;
   source: string | null;
-  liabilityAccountId: string | null;
   nextDueDate: string;
   isActive: boolean;
 }

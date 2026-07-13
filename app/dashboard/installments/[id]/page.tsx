@@ -54,7 +54,6 @@ interface InstallmentDetail {
   isActive: boolean;
   note: string | null;
   account: { id: string; name: string } | null;
-  liabilityAccount: { id: string; name: string } | null;
   category: { id: string; name: string } | null;
   occurrences: Occurrence[];
 }
@@ -411,16 +410,6 @@ export default function InstallmentDetailPage() {
               <p className="text-muted-foreground text-xs">Tenor</p>
               <p className="font-medium text-foreground">{item!.tenor} bulan</p>
             </div>
-            {item!.liabilityAccount && (
-              <div>
-                <p className="text-muted-foreground text-xs">
-                  Akun Liability
-                </p>
-                <p className="font-medium text-foreground">
-                  {item!.liabilityAccount.name}
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
@@ -519,9 +508,8 @@ export default function InstallmentDetailPage() {
               Hapus Cicilan?
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
-              Cicilan <strong>{item!.name}</strong> akan dinonaktifkan. Akun
-              liability terkait juga akan dinonaktifkan. Tindakan ini tidak
-              dapat dibatalkan.
+              Cicilan <strong>{item!.name}</strong> akan dinonaktifkan.
+              Tindakan ini tidak dapat dibatalkan.
             </p>
             <div className="flex gap-3">
               <button

@@ -11,7 +11,6 @@ import { computeInstallmentMeta, type InstallmentListItem } from "@/lib/installm
 const includeRelations = {
   category: { select: { id: true, name: true } },
   account: { select: { id: true, name: true } },
-  liabilityAccount: { select: { id: true, name: true } },
   savingsGoal: { select: { id: true, name: true } },
   occurrences: { orderBy: { occurredAt: "desc" as const }, take: 50 },
 };
@@ -47,7 +46,6 @@ function serializeDetail(r: any) {
     isActive: r.isActive,
     note: r.note,
     account: r.account,
-    liabilityAccount: r.liabilityAccount,
     category: r.category,
     occurrences: (r.occurrences ?? []).map((o: any) => ({
       id: o.id,
@@ -175,15 +173,6 @@ export async function DELETE(
       where: { id },
       data: { isActive: false },
     });
-
-    // Optionally soft-delete liability account
-    const body = await request.json().catch(() => ({}));
-    if (body.deactivateLiability && existing.liabilityAccountId) {
-      await prisma.account.update({
-        where: { id: existing.liabilityAccountId },
-        data: { isActive: false },
-      }).catch(() => {});
-    }
 
     invalidateDashboardCache(session.userId);
     return NextResponse.json({ success: true });
