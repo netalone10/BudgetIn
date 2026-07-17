@@ -35,6 +35,12 @@ import { SectionCard } from "@/components/dashboard/SectionCard";
 import RunwayKasCard from "@/components/dashboard/RunwayKasCard";
 import BudgetAlertCard from "@/components/dashboard/BudgetAlertCard";
 import SafeToSpendCard from "@/components/dashboard/SafeToSpendCard";
+import SpendingVelocityCard from "@/components/dashboard/SpendingVelocityCard";
+import UpcomingBillsCard from "@/components/dashboard/UpcomingBillsCard";
+import AnomalyAlertCard from "@/components/dashboard/AnomalyAlertCard";
+import MonthlyComparisonCard from "@/components/dashboard/MonthlyComparisonCard";
+import CollapsibleCard from "@/components/dashboard/CollapsibleCard";
+import CashFlowTrendCard from "@/components/dashboard/CashFlowTrendCard";
 import InstallmentDashboardCard from "@/components/dashboard/InstallmentDashboardCard";
 import { computeSafeToSpend } from "@/lib/safe-to-spend";
 
@@ -403,6 +409,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
   const [inputMode, setInputMode] = useState<"ai" | "manual">("ai");
   const [user, setUser] = useState(data.user);
   const [lastMonthTotals, setLastMonthTotals] = useState(data.lastMonthTotals);
+  const [recurringItems, setRecurringItems] = useState<{ id: string; name: string; amount: number; nextDueDate: string; category?: { name: string } | null; account?: { name: string } | null; type: string }[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -452,6 +459,11 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     const savingsRate = income > 0 ? (surplus / income) * 100 : 0;
     return { income, expense, surplus, savingsRate };
   }, [transactions, currentMonth, savingsCategoryNames]);
+
+  const totalBudget = useMemo(() => {
+    if (!budgetData?.budgets) return 0;
+    return budgetData.budgets.reduce((s, b) => s + b.budget + (b.rollover ?? 0), 0);
+  }, [budgetData]);
 
   const categoryBreakdown = useMemo(() => {
     const inMonth = transactions.filter((t) => t.date.startsWith(currentMonth));
@@ -544,12 +556,14 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       fetch("/api/budget", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       fetch("/api/accounts", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { accounts: [] })),
       fetch("/api/categories", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { categories: [] })),
+      fetch("/api/recurring?limit=50", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
     ])
-      .then(([txData, lastTxData, budgetResult, acctData, catData]) => {
+      .then(([txData, lastTxData, budgetResult, acctData, catData, recurringData]) => {
         if (txData?.transactions) setTransactions(txData.transactions);
         if (budgetResult) setBudgetData(budgetResult);
         if (acctData?.accounts) setAccounts(acctData.accounts);
         setAccountsLoaded(true);
+        if (recurringData?.data) setRecurringItems(recurringData.data);
         if (catData?.categories) {
           const cats = catData.categories;
           setTransactionCategories(cats.map((c: { name: string; type: string; isSavings?: boolean }) => ({ name: c.name, type: c.type, isSavings: c.isSavings })));
@@ -593,11 +607,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     return () => window.removeEventListener("categoriesChanged", handleCategoryChange);
   }, []);
 
-  useDataEvent(["transactions", "budget", "accounts", "categories"], (topic) => {
+  useDataEvent(["transactions", "budget", "accounts", "categories", "recurring"], (topic) => {
     if (topic === "transactions") fetchTransactions(true);
     if (topic === "budget") fetchBudget(true);
     if (topic === "accounts") fetchAccounts(true);
     if (topic === "categories") fetchCategories();
+    if (topic === "recurring") fetchRecurring();
   });
 
   async function fetchCategories() {
@@ -723,12 +738,27 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     }
   }
 
+  async function fetchRecurring() {
+    try {
+      const result = await swrFetch<{ data?: any[] }>(
+        "/api/recurring?limit=50",
+        etagStoreRef
+      );
+      if (result?.data?.data) {
+        setRecurringItems(result.data.data);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleManualRefresh() {
     await Promise.all([
       fetchTransactions(false),
       fetchBudget(false),
       fetchAccounts(false),
       fetchCategories(),
+      fetchRecurring(),
     ]);
   }
 
@@ -1471,28 +1501,61 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
             </div>
 
             <div className="flex min-w-0 flex-col gap-5 md:gap-6">
-              <BudgetAlertCard budgets={budgetData?.budgets} />
-              <SafeToSpendCard result={safeToSpend} />
-              <MiniCashflowCard
-                transactions={transactions}
-                monthlyIncome={monthlyStats.income}
-                monthlyExpense={monthlyStats.expense}
-                surplus={monthlyStats.surplus}
-                month={currentMonth}
-                today={todayStr}
-              />
+              {/* Row 1: Spending Velocity + Safe to Spend */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {totalBudget > 0 && (
+                  <SpendingVelocityCard
+                    totalBudget={totalBudget}
+                    totalSpent={monthlyStats.expense}
+                  />
+                )}
+                <SafeToSpendCard result={safeToSpend} />
+              </div>
+
+              {/* Row 2: Upcoming Bills + Budget Alerts */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <UpcomingBillsCard recurring={recurringItems} />
+                <BudgetAlertCard budgets={budgetData?.budgets} />
+              </div>
+
+              {/* Row 3: Cash Flow Weekly + Trend + Runway */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <MiniCashflowCard
+                  transactions={transactions}
+                  monthlyIncome={monthlyStats.income}
+                  monthlyExpense={monthlyStats.expense}
+                  surplus={monthlyStats.surplus}
+                  month={currentMonth}
+                  today={todayStr}
+                />
+                <CashFlowTrendCard transactions={transactions} />
+              </div>
               <RunwayKasCard
                 months={runway.months}
                 liquid={runway.liquid}
                 avgBurn={runway.avgBurn}
               />
-              <BudgetMiniListCard
-                budgets={budgetData?.budgets}
-                loading={budgetLoading}
-                categoryBreakdown={categoryBreakdown}
-              />
-              <SavingsGoalMiniCard goal={data.activeSavingsGoal} />
-              <InstallmentDashboardCard />
+
+              {/* Row 4: Budget List (collapsible) */}
+              <CollapsibleCard cardId="budget-list" title="Budget per Kategori">
+                <BudgetMiniListCard
+                  budgets={budgetData?.budgets}
+                  loading={budgetLoading}
+                  categoryBreakdown={categoryBreakdown}
+                />
+              </CollapsibleCard>
+
+              {/* Row 5: Savings Goal + Installments */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <SavingsGoalMiniCard goal={data.activeSavingsGoal} />
+                <InstallmentDashboardCard />
+              </div>
+
+              {/* Anomaly Alerts (only if detected) */}
+              <AnomalyAlertCard transactions={transactions} />
+
+              {/* Monthly Comparison */}
+              <MonthlyComparisonCard transactions={transactions} />
             </div>
           </div>
       {/* End Secondary Section */}
