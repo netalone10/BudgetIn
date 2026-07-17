@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export type DataTopic = "transactions" | "budget" | "accounts" | "categories";
+export type DataTopic = "transactions" | "budget" | "accounts" | "categories" | "recurring";
 
 const EVENT_PREFIX = "budgetin:data:";
 const CHANNEL_NAME = "budgetin-data";
