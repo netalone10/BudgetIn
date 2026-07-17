@@ -1528,7 +1528,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   month={currentMonth}
                   today={todayStr}
                 />
-                <CashFlowTrendCard transactions={transactions} />
+                <CashFlowTrendCard />
               </div>
               <RunwayKasCard
                 months={runway.months}

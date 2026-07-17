@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import type { Transaction } from "@/components/TransactionCard";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * Cash Flow Trend Card — 6-month bar chart showing income vs expense per month.
+ * Fetches its own data independently (not tied to dashboard's "bulan ini" fetch).
  * Uses pure CSS bars (no recharts dependency) for minimal bundle size.
  */
 
 interface Props {
-  transactions: Transaction[];
   className?: string;
 }
 
@@ -36,6 +36,16 @@ function getLast6Months(): string[] {
   return months;
 }
 
+function getDateRange6Months(): { from: string; to: string } {
+  const now = new Date();
+  const firstMonth = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return {
+    from: firstMonth.toISOString().slice(0, 10),
+    to: lastDay.toISOString().slice(0, 10),
+  };
+}
+
 function formatMonthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
   return ID_MONTH_SHORT[m - 1];
@@ -46,16 +56,30 @@ interface MonthData {
   expense: number;
 }
 
-export default function CashFlowTrendCard({ transactions, className }: Props) {
+export default function CashFlowTrendCard({ className }: Props) {
   const months = useMemo(() => getLast6Months(), []);
   const currentMonth = useMemo(() => getMonthKey(new Date().toISOString()), []);
+  const [allTx, setAllTx] = useState<Transaction[]>([]);
+
+  // Fetch 6 months of data independently
+  useEffect(() => {
+    const { from, to } = getDateRange6Months();
+    fetch(`/api/record?period=custom:${from}:${to}`, {
+      headers: { "Cache-Control": "no-cache" },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.transactions) setAllTx(data.transactions);
+      })
+      .catch(() => {});
+  }, []);
 
   const monthData = useMemo(() => {
     const data: Record<string, MonthData> = {};
     for (const m of months) {
       data[m] = { income: 0, expense: 0 };
     }
-    for (const tx of transactions) {
+    for (const tx of allTx) {
       const mk = getMonthKey(tx.date);
       if (!data[mk]) continue;
       if (tx.type === "income") {
@@ -65,7 +89,7 @@ export default function CashFlowTrendCard({ transactions, className }: Props) {
       }
     }
     return data;
-  }, [transactions, months]);
+  }, [allTx, months]);
 
   const maxValue = Math.max(
     1,
