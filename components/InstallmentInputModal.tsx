@@ -354,7 +354,8 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
           </div>
         )}
 
-        {/* Kategori */}
+        {/* Kategori — only for expense type */}
+        {transactionType === "expense" && (
           <div>
             <label htmlFor="inst-cat" className={labelCls}>
               Kategori
@@ -373,84 +374,85 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
               ))}
             </select>
           </div>
+        )}
 
-          {/* Sumber Cicilan */}
-          <div>
-            <label htmlFor="inst-source" className={labelCls}>
-              Sumber Cicilan
-            </label>
-            <select
-              id="inst-source"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-              className={inputCls}
-            >
-              {SOURCE_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Sumber Cicilan */}
+        <div>
+          <label htmlFor="inst-source" className={labelCls}>
+            Sumber Cicilan
+          </label>
+          <select
+            id="inst-source"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            className={inputCls}
+          >
+            {SOURCE_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Catatan */}
-          <div>
-            <label htmlFor="inst-note" className={labelCls}>
-              Catatan
-            </label>
-            <textarea
-              id="inst-note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="opsional"
-              rows={2}
-              className={inputCls}
-            />
-          </div>
+        {/* Catatan */}
+        <div>
+          <label htmlFor="inst-note" className={labelCls}>
+            Catatan
+          </label>
+          <textarea
+            id="inst-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="opsional"
+            rows={2}
+            className={inputCls}
+          />
+        </div>
 
-          {/* Preview Panel */}
-          {parsedTotal > 0 && parsedTenor > 0 && (
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">
-                Preview Cicilan
-              </p>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Cicilan/bulan</span>
-                <span className="font-bold tabular-nums text-foreground">
-                  {formatCompactIDR(monthlyPayment)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Total cicilan</span>
-                <span className="font-medium tabular-nums text-foreground">
-                  {formatCompactIDR(totalPaid)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Lunas</span>
-                <span className="font-medium text-foreground">{lunasMonth}</span>
-              </div>
+        {/* Preview Panel */}
+        {parsedTotal > 0 && parsedTenor > 0 && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">
+              Preview Cicilan
+            </p>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Cicilan/bulan</span>
+              <span className="font-bold tabular-nums text-foreground">
+                {formatCompactIDR(monthlyPayment)}
+              </span>
             </div>
-          )}
-
-          {error && <p className="text-sm text-destructive">{error}</p>}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60"
-            >
-              {loading ? "Menyimpan…" : editItem ? "Simpan" : "Tambah"}
-            </button>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Total cicilan</span>
+              <span className="font-medium tabular-nums text-foreground">
+                {formatCompactIDR(totalPaid)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Lunas</span>
+              <span className="font-medium text-foreground">{lunasMonth}</span>
+            </div>
           </div>
+        )}
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60"
+          >
+            {loading ? "Menyimpan…" : editItem ? "Simpan" : "Tambah"}
+          </button>
+        </div>
         </form>
       </div>
     </div>
