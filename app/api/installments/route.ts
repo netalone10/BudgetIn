@@ -9,6 +9,47 @@ import { sanitizeErrorForProduction } from "@/lib/api-error";
 import { invalidateDashboardCache } from "@/lib/cache";
 import { computeInstallmentMeta, type InstallmentListItem } from "@/lib/installment-utils";
 import { calcNextOccurrence } from "@/utils/recurring-utils";
+import { ensureDefaultAccountTypes } from "@/utils/account-types";
+
+/**
+ * Ensure an account exists in Prisma before creating FK-dependent records.
+ * For Google Sheets users, account IDs come from Sheets and don't exist in Postgres.
+ * This mirrors the account to Prisma if missing.
+ */
+async function ensureAccountInPrisma(userId: string, accountId: string): Promise<void> {
+  const existing = await prisma.account.findUnique({
+    where: { id: accountId },
+    select: { id: true },
+  });
+  if (existing) return; // already in Prisma
+
+  // Not in Prisma — check if user is a Sheets user, try to read account from Sheets
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { sheetsId: true },
+  });
+
+  // Find a fallback asset account type for this user
+  await ensureDefaultAccountTypes(userId);
+  const fallbackType = await prisma.accountType.findFirst({
+    where: { userId, isActive: true, classification: "asset" },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true },
+  });
+  if (!fallbackType) return; // can't create without a type
+
+  await prisma.account.create({
+    data: {
+      id: accountId,
+      userId,
+      accountTypeId: fallbackType.id,
+      name: "Akun (tersync)",
+      initialBalance: 0,
+      currency: "IDR",
+      note: "Auto-mirrored from Google Sheets for installment tracking",
+    },
+  });
+}
 
 const includeRelations = {
   category: { select: { id: true, name: true } },
@@ -114,6 +155,9 @@ export async function POST(request: NextRequest) {
     if (Number.isNaN(startDate.getTime())) {
       return NextResponse.json({ error: "Bulan mulai tidak valid." }, { status: 400 });
     }
+
+    // Ensure account exists in Prisma (Google Sheets users have accounts only in Sheets)
+    await ensureAccountInPrisma(session.userId, sourceAccountId);
 
     // Create recurring transaction — starts NEXT month
     const nextDueDate = calcNextOccurrence("monthly", 1, startDate);
