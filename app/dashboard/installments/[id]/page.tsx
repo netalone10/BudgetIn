@@ -53,6 +53,8 @@ interface InstallmentDetail {
   source: string | null;
   isActive: boolean;
   note: string | null;
+  toAccountId: string | null;
+  syncedAccounting: boolean;
   account: { id: string; name: string } | null;
   category: { id: string; name: string } | null;
   occurrences: Occurrence[];
@@ -66,6 +68,7 @@ export default function InstallmentDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const {
     data: item,
@@ -103,6 +106,27 @@ export default function InstallmentDetailPage() {
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch(`/api/installments/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error ?? "Gagal sinkronisasi.");
+        return;
+      }
+      mutate();
+      emitDataChanged("transactions");
+    } catch {
+      alert("Gagal sinkronisasi. Coba lagi.");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -306,6 +330,16 @@ export default function InstallmentDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {!item!.syncedAccounting && item!.isActive && (
+                <button
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="px-3 py-2 rounded-lg border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-sm font-medium transition-colors disabled:opacity-50"
+                  title="Sinkronisasi ke Akuntansi"
+                >
+                  {syncing ? "Syncing..." : "Sync"}
+                </button>
+              )}
               <button
                 onClick={() => setShowEditModal(true)}
                 className="p-2 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

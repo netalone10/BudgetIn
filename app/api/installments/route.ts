@@ -10,6 +10,7 @@ import { invalidateDashboardCache } from "@/lib/cache";
 import { computeInstallmentMeta, type InstallmentListItem } from "@/lib/installment-utils";
 import { calcNextOccurrence } from "@/utils/recurring-utils";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
+import { randomUUID } from "crypto";
 
 /**
  * Ensure an account exists in Prisma before creating FK-dependent records.
@@ -127,6 +128,8 @@ export async function POST(request: NextRequest) {
       categoryId,
       source,
       note,
+      transactionType,
+      targetAccountId,
     } = body;
 
     // Validate
@@ -145,6 +148,9 @@ export async function POST(request: NextRequest) {
 
     if (!startMonth) return NextResponse.json({ error: "Bulan mulai wajib diisi." }, { status: 400 });
     if (!sourceAccountId) return NextResponse.json({ error: "Akun sumber wajib diisi." }, { status: 400 });
+    if (transactionType === "transfer" && !targetAccountId) {
+      return NextResponse.json({ error: "Akun tujuan wajib dipilih untuk tipe transfer." }, { status: 400 });
+    }
 
     const monthlyAmount = Math.ceil(parsedTotal / parsedTenor);
     const installmentTotal = new Decimal(parsedTotal);
@@ -158,6 +164,11 @@ export async function POST(request: NextRequest) {
 
     // Ensure account exists in Prisma (Google Sheets users have accounts only in Sheets)
     await ensureAccountInPrisma(session.userId, sourceAccountId);
+
+    // For transfer type, ensure target account exists in Prisma too
+    if (transactionType === "transfer" && targetAccountId) {
+      await ensureAccountInPrisma(session.userId, targetAccountId);
+    }
 
     // Create recurring transaction — starts NEXT month
     const nextDueDate = calcNextOccurrence("monthly", 1, startDate);
@@ -174,6 +185,7 @@ export async function POST(request: NextRequest) {
         nextDueDate,
         endDate: addMonths(startDate, parsedTenor),
         accountId: sourceAccountId,
+        toAccountId: transactionType === "transfer" && targetAccountId ? targetAccountId : null,
         installmentTotal,
         installmentTenor: parsedTenor,
         installmentPaid: 0,
@@ -185,6 +197,55 @@ export async function POST(request: NextRequest) {
       },
       include: includeRelations,
     });
+    // ── Create accounting transactions ──────────────────────────────────
+    const dateStr = startDate.toISOString().slice(0, 10);
+    const categoryLabel = `[Cicilan] ${trimmedName}`;
+    const noteLabel = `[installment:${recurring.id}]`;
+
+    if (transactionType === "expense" || !transactionType) {
+      // Legacy (no type) creates nothing; explicit expense creates entry
+      if (transactionType === "expense") {
+        await prisma.transaction.create({
+          data: {
+            userId: session.userId,
+            date: dateStr,
+            amount: installmentTotal,
+            category: categoryLabel,
+            note: noteLabel,
+            type: "expense",
+            accountId: sourceAccountId,
+          },
+        });
+      }
+    } else if (transactionType === "transfer" && targetAccountId) {
+      const sharedTransferId = randomUUID();
+      await prisma.$transaction([
+        prisma.transaction.create({
+          data: {
+            userId: session.userId,
+            date: dateStr,
+            amount: installmentTotal,
+            category: categoryLabel,
+            note: noteLabel,
+            type: "transfer_out",
+            accountId: sourceAccountId,
+            transferId: sharedTransferId,
+          },
+        }),
+        prisma.transaction.create({
+          data: {
+            userId: session.userId,
+            date: dateStr,
+            amount: installmentTotal,
+            category: categoryLabel,
+            note: noteLabel,
+            type: "transfer_in",
+            accountId: targetAccountId,
+            transferId: sharedTransferId,
+          },
+        }),
+      ]);
+    }
 
     invalidateDashboardCache(session.userId);
 

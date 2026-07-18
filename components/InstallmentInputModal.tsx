@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useApi } from "@/lib/hooks/use-api";
 import { formatCompactIDR } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface Account {
   id: string;
@@ -62,6 +63,8 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
   const [note, setNote] = useState(editItem?.note ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [transactionType, setTransactionType] = useState<"expense" | "transfer">("expense");
+  const [targetAccountId, setTargetAccountId] = useState("");
 
   const { data: accountsData } = useApi<{ accounts: Account[] }>("/api/accounts");
   const accounts = accountsData?.accounts ?? [];
@@ -84,6 +87,15 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
       );
     });
   }, [accounts]);
+
+  // Filter accounts for target: asset classification only, exclude source account
+  const targetAccounts = useMemo(() => {
+    return accounts.filter((a) => {
+      if (a.id === accountId) return false;
+      const cls = a.accountType?.classification?.toLowerCase() ?? "";
+      return cls === "asset";
+    });
+  }, [accounts, accountId]);
 
   // Filter categories: expense only
   const expenseCategories = useMemo(
@@ -129,6 +141,8 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
       return setError("Tenor tidak valid.");
     if (!startMonth) return setError("Mulai cicilan wajib diisi.");
     if (!accountId) return setError("Sumber pembayaran wajib dipilih.");
+    if (transactionType === "transfer" && !targetAccountId)
+      return setError("Akun tujuan wajib dipilih untuk tipe transfer.");
 
     setLoading(true);
     try {
@@ -141,6 +155,8 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
         categoryId: categoryId || null,
         source: source || "Manual",
         note: note.trim() || null,
+        transactionType,
+        targetAccountId: transactionType === "transfer" ? targetAccountId : null,
       };
 
       const res = await fetch("/api/installments", {
@@ -276,10 +292,69 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
                   {a.name}
                 </option>
               ))}
+          </select>
+        </div>
+
+        {/* Tipe Cicilan */}
+        <div>
+          <label className={labelCls}>Tipe Cicilan</label>
+          <div className="flex gap-0 rounded-lg border border-border overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setTransactionType("expense");
+                setTargetAccountId("");
+              }}
+              className={cn(
+                "flex-1 py-2 text-sm font-medium transition-colors",
+                transactionType === "expense"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-foreground hover:bg-muted"
+              )}
+            >
+              Pengeluaran
+            </button>
+            <button
+              type="button"
+              onClick={() => setTransactionType("transfer")}
+              className={cn(
+                "flex-1 py-2 text-sm font-medium transition-colors",
+                transactionType === "transfer"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-foreground hover:bg-muted"
+              )}
+            >
+              Transfer
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {transactionType === "expense" ? "Beli barang habis pakai" : "Beli aset (laptop, HP, dll.)"}
+          </p>
+        </div>
+
+        {/* Akun Tujuan — only when Transfer */}
+        {transactionType === "transfer" && (
+          <div>
+            <label htmlFor="inst-target-acc" className={labelCls}>
+              Akun Tujuan
+            </label>
+            <select
+              id="inst-target-acc"
+              value={targetAccountId}
+              onChange={(e) => setTargetAccountId(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">-- Pilih akun tujuan --</option>
+              {targetAccounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
             </select>
           </div>
+        )}
 
-          {/* Kategori */}
+        {/* Kategori */}
           <div>
             <label htmlFor="inst-cat" className={labelCls}>
               Kategori
