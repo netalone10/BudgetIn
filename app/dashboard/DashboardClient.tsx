@@ -1114,7 +1114,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         </div>
 
       {/* Secondary Section: Input + Transactions + Budget */}
-          <div className="grid min-w-0 items-start gap-5 md:gap-6 lg:grid-cols-[1.62fr_1fr]">
+          <div className="grid min-w-0 items-start gap-5 md:gap-6 lg:grid-cols-2">
+            {/* LEFT COLUMN */}
             <div className="flex min-w-0 flex-col gap-5 md:gap-6">
               {accountsLoaded && accounts.length === 0 && (
                 <div className="flex flex-col gap-3 rounded-[22px] border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1133,8 +1134,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 </div>
               )}
               <SectionCard
-                eyebrow="Input · AI Capture"
-                title="Tulis seperti ngobrol"
+                eyebrow="Input"
+                title="Catat transaksi"
               >
         <div className="mb-4 grid min-w-0 grid-cols-2 gap-1 rounded-[14px] bg-muted/40 p-1">
           <button
@@ -1176,8 +1177,8 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    rows={5}
-                    className="min-h-[132px] resize-y rounded-[18px] border-border/70 bg-card pr-14 pt-4 shadow-none focus-visible:ring-primary"
+                    rows={2}
+                    className="min-h-[72px] resize-none rounded-[18px] border-border/70 bg-card pr-14 pt-4 shadow-none focus-visible:ring-primary"
                     disabled={loading}
                   />
                   <Button
@@ -1194,19 +1195,17 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   </Button>
                 </div>
 
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-muted-foreground">Coba:</span>
-                    <button
-                      type="button"
-                      onClick={randomizePromptExamples}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      title="Acak saran prompt"
-                    >
-                      <Dices className="size-3" />
-                      Acak
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-muted-foreground">Coba:</span>
+                  <button
+                    type="button"
+                    onClick={randomizePromptExamples}
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border bg-background px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    title="Acak saran prompt"
+                  >
+                    <Dices className="size-3" />
+                    Acak
+                  </button>
                 </div>
 
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -1226,9 +1225,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   ))}
                 </div>
 
-                <p className="px-1 text-[12px] font-medium text-muted-foreground">
-                  Enter untuk kirim. Shift+Enter untuk baris baru.
-                </p>
+
               </form>
             </div>
 
@@ -1498,10 +1495,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                 onDelete={handleDeleteTx}
                 onUpdate={handleUpdateTx}
               />
-            </div>
-
-            <div className="flex min-w-0 flex-col gap-5 md:gap-6">
-              {/* Row 1: Spending Velocity + Safe to Spend */}
+              {/* Cash Flow Trend (6-month chart) */}
+              <CashFlowTrendCard />
+              {/* Spending Velocity + Mini Cashflow */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {totalBudget > 0 && (
                   <SpendingVelocityCard
@@ -1509,17 +1505,6 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     totalSpent={monthlyStats.expense}
                   />
                 )}
-                <SafeToSpendCard result={safeToSpend} />
-              </div>
-
-              {/* Row 2: Upcoming Bills + Budget Alerts */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <UpcomingBillsCard recurring={recurringItems} />
-                <BudgetAlertCard budgets={budgetData?.budgets} />
-              </div>
-
-              {/* Row 3: Cash Flow Weekly + Trend + Runway */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <MiniCashflowCard
                   transactions={transactions}
                   monthlyIncome={monthlyStats.income}
@@ -1528,15 +1513,20 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   month={currentMonth}
                   today={todayStr}
                 />
-                <CashFlowTrendCard />
               </div>
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className="flex min-w-0 flex-col gap-5 md:gap-6">
+              {/* Safe to Spend */}
+              <SafeToSpendCard result={safeToSpend} />
+              {/* Runway Kas */}
               <RunwayKasCard
                 months={runway.months}
                 liquid={runway.liquid}
                 avgBurn={runway.avgBurn}
               />
-
-              {/* Row 4: Budget List (collapsible) */}
+              {/* Budget per Kategori (collapsible) */}
               <CollapsibleCard cardId="budget-list" title="Budget per Kategori">
                 <BudgetMiniListCard
                   budgets={budgetData?.budgets}
@@ -1544,18 +1534,21 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                   categoryBreakdown={categoryBreakdown}
                 />
               </CollapsibleCard>
-
-              {/* Row 5: Savings Goal + Installments */}
+              {/* Upcoming Bills + Budget Alerts */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <SavingsGoalMiniCard goal={data.activeSavingsGoal} />
-                <InstallmentDashboardCard />
+                <UpcomingBillsCard recurring={recurringItems} />
+                <BudgetAlertCard budgets={budgetData?.budgets} />
               </div>
-
-              {/* Anomaly Alerts (only if detected) */}
-              <AnomalyAlertCard transactions={transactions} />
-
-              {/* Monthly Comparison */}
-              <MonthlyComparisonCard transactions={transactions} />
+              {/* Cicilan + Savings Goal */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <InstallmentDashboardCard />
+                <SavingsGoalMiniCard goal={data.activeSavingsGoal} />
+              </div>
+              {/* Anomaly + Monthly Comparison */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <AnomalyAlertCard transactions={transactions} />
+                <MonthlyComparisonCard transactions={transactions} />
+              </div>
             </div>
           </div>
       {/* End Secondary Section */}
