@@ -63,7 +63,7 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
   const [note, setNote] = useState(editItem?.note ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [transactionType, setTransactionType] = useState<"expense" | "transfer">("expense");
+  const [transactionType, setTransactionType] = useState<"expense" | "transfer" | "recorded">("expense");
   const [targetAccountId, setTargetAccountId] = useState("");
 
   const { data: accountsData } = useApi<{ accounts: Account[] }>("/api/accounts");
@@ -316,7 +316,9 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
             </button>
             <button
               type="button"
-              onClick={() => setTransactionType("transfer")}
+              onClick={() => {
+                setTransactionType("transfer");
+              }}
               className={cn(
                 "flex-1 py-2 text-sm font-medium transition-colors",
                 transactionType === "transfer"
@@ -326,9 +328,27 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
             >
               Transfer
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTransactionType("recorded");
+                setTargetAccountId("");
+                setCategoryId("");
+              }}
+              className={cn(
+                "flex-1 py-2 text-sm font-medium transition-colors",
+                transactionType === "recorded"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-foreground hover:bg-muted"
+              )}
+            >
+              Sudah Tercatat
+            </button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            {transactionType === "expense" ? "Beli barang habis pakai" : "Beli aset (laptop, HP, dll.)"}
+            {transactionType === "expense" && "Beli barang habis pakai"}
+            {transactionType === "transfer" && "Beli aset (laptop, HP, dll.)"}
+            {transactionType === "recorded" && "Sudah tercatat di akuntansi, hanya tracking"}
           </p>
         </div>
 

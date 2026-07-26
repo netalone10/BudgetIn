@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.userId,
         name: trimmedName,
-        type: "expense",
+        type: transactionType === "transfer" ? "transfer" : "expense",
         amount: new Decimal(monthlyAmount),
         frequency: "monthly",
         interval: 1,
