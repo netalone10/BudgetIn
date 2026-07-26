@@ -89,18 +89,30 @@ export async function runRecurringOccurrence(
 
     try {
       if (isInstallment) {
-        // Cicilan = simple expense from source account, category "Cicilan"
-        const appended = await appendTransaction(user.sheetsId, accessToken, {
-          date: dateStr,
-          time,
-          amount: amountNum,
-          category: "Cicilan",
-          note: installmentNote,
-          type: "expense",
-          fromAccountId: r.accountId ?? undefined,
-          fromAccountName: r.account?.name,
-        });
-        sheetsTxId = appended.id;
+        // Installment: check if transfer type (has toAccountId)
+        if (r.type === "transfer" && r.toAccountId && r.toAccount) {
+          // Transfer installment: single row with both from + to
+          const appended = await appendTransaction(user.sheetsId, accessToken, {
+            date: dateStr, time, amount: amountNum,
+            category: "Cicilan", note: installmentNote,
+            type: "expense",
+            fromAccountId: r.accountId ?? undefined,
+            fromAccountName: r.account?.name,
+            toAccountId: r.toAccountId,
+            toAccountName: r.toAccount.name,
+          });
+          sheetsTxId = appended.id;
+        } else {
+          // Expense installment: simple expense from source account
+          const appended = await appendTransaction(user.sheetsId, accessToken, {
+            date: dateStr, time, amount: amountNum,
+            category: "Cicilan", note: installmentNote,
+            type: "expense",
+            fromAccountId: r.accountId ?? undefined,
+            fromAccountName: r.account?.name,
+          });
+          sheetsTxId = appended.id;
+        }
       } else if (r.type === "expense" || r.type === "income") {
         const appended = await appendTransaction(user.sheetsId, accessToken, {
           date: dateStr,
@@ -137,19 +149,33 @@ export async function runRecurringOccurrence(
     await prisma.$transaction(async (tx) => {
       // Mirror Transaction in Postgres for Sheets users (needed for FK references)
       if (sheetsTxId) {
-        await tx.transaction.create({
-          data: {
-            id: sheetsTxId,
-            userId: r.userId,
-            date: dateStr,
-            time,
-            amount,
-            category: isInstallment ? "Cicilan" : (r.category?.name ?? (r.type === "income" ? "Pendapatan" : r.type === "expense" ? "Tagihan" : "Transfer")),
-            note: installmentNote,
-            type: "expense",
-            accountId: r.accountId,
-          },
-        });
+        if (isInstallment && r.type === "transfer" && r.toAccountId) {
+          // Transfer installment: mirror both transfer_out and transfer_in
+          const transferId = crypto.randomUUID();
+          await tx.transaction.create({
+            data: {
+              id: sheetsTxId, userId: r.userId, date: dateStr, time, amount,
+              category: "Cicilan", note: installmentNote,
+              type: "transfer_out", accountId: r.accountId, transferId,
+            },
+          });
+          await tx.transaction.create({
+            data: {
+              userId: r.userId, date: dateStr, time, amount,
+              category: "Cicilan", note: installmentNote,
+              type: "transfer_in", accountId: r.toAccountId, transferId,
+            },
+          });
+        } else {
+          // Expense/income/installment: single transaction
+          await tx.transaction.create({
+            data: {
+              id: sheetsTxId, userId: r.userId, date: dateStr, time, amount,
+              category: isInstallment ? "Cicilan" : (r.category?.name ?? (r.type === "income" ? "Pendapatan" : r.type === "expense" ? "Tagihan" : "Transfer")),
+              note: installmentNote, type: "expense", accountId: r.accountId,
+            },
+          });
+        }
       }
 
       // Savings contribution
@@ -203,7 +229,7 @@ export async function runRecurringOccurrence(
   let createdTxId: string | null = null;
 
   await prisma.$transaction(async (tx) => {
-    if (isInstallment || r.type === "expense" || r.type === "income") {
+    if ((isInstallment && r.type !== "transfer") || r.type === "expense" || r.type === "income") {
       // Cicilan and regular expense/income: single transaction
       const txn = await tx.transaction.create({
         data: {

@@ -11,6 +11,9 @@ import { computeInstallmentMeta, type InstallmentListItem } from "@/lib/installm
 import { calcNextOccurrence } from "@/utils/recurring-utils";
 import { ensureDefaultAccountTypes } from "@/utils/account-types";
 import { randomUUID } from "crypto";
+import { appendTransaction } from "@/utils/sheets";
+import { getValidToken } from "@/utils/token";
+import { currentJakartaTime } from "@/lib/transaction-time";
 
 /**
  * Ensure an account exists in Prisma before creating FK-dependent records.
@@ -202,7 +205,16 @@ export async function POST(request: NextRequest) {
     const categoryLabel = `[Cicilan] ${trimmedName}`;
     const noteLabel = `[installment:${recurring.id}]`;
 
-    if (transactionType === "expense" || !transactionType) {
+    // Check if Sheets user
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { sheetsId: true },
+    });
+    const isSheetsUser = !!user?.sheetsId;
+
+    if (transactionType === "recorded") {
+      // Sudah Tercatat: no accounting transaction, just tracking
+    } else if (transactionType === "expense" || !transactionType) {
       // Legacy (no type) creates nothing; explicit expense creates entry
       if (transactionType === "expense") {
         await prisma.transaction.create({
@@ -216,35 +228,48 @@ export async function POST(request: NextRequest) {
             accountId: sourceAccountId,
           },
         });
+        // Also write to Sheets for Sheets users
+        if (isSheetsUser) {
+          const accessToken = await getValidToken(session.userId);
+          const time = currentJakartaTime();
+          await appendTransaction(user!.sheetsId!, accessToken, {
+            date: dateStr, time, amount: installmentTotal.toNumber(),
+            category: categoryLabel, note: noteLabel, type: "expense",
+            fromAccountId: sourceAccountId,
+          });
+        }
       }
     } else if (transactionType === "transfer" && targetAccountId) {
       const sharedTransferId = randomUUID();
       await prisma.$transaction([
         prisma.transaction.create({
           data: {
-            userId: session.userId,
-            date: dateStr,
-            amount: installmentTotal,
-            category: categoryLabel,
-            note: noteLabel,
-            type: "transfer_out",
-            accountId: sourceAccountId,
-            transferId: sharedTransferId,
+            userId: session.userId, date: dateStr, amount: installmentTotal,
+            category: categoryLabel, note: noteLabel,
+            type: "transfer_out", accountId: sourceAccountId, transferId: sharedTransferId,
           },
         }),
         prisma.transaction.create({
           data: {
-            userId: session.userId,
-            date: dateStr,
-            amount: installmentTotal,
-            category: categoryLabel,
-            note: noteLabel,
-            type: "transfer_in",
-            accountId: targetAccountId,
-            transferId: sharedTransferId,
+            userId: session.userId, date: dateStr, amount: installmentTotal,
+            category: categoryLabel, note: noteLabel,
+            type: "transfer_in", accountId: targetAccountId, transferId: sharedTransferId,
           },
         }),
       ]);
+      // Also write to Sheets for Sheets users
+      if (isSheetsUser) {
+        const accessToken = await getValidToken(session.userId);
+        const time = currentJakartaTime();
+        const amt = installmentTotal.toNumber();
+        // Single row with both from + to accounts
+        await appendTransaction(user!.sheetsId!, accessToken, {
+          date: dateStr, time, amount: amt,
+          category: categoryLabel, note: noteLabel, type: "expense",
+          fromAccountId: sourceAccountId,
+          toAccountId: targetAccountId,
+        });
+      }
     }
 
     invalidateDashboardCache(session.userId);
