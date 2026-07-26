@@ -217,11 +217,13 @@ export async function POST(request: NextRequest) {
     } else if (transactionType === "expense" || !transactionType) {
       // Legacy (no type) creates nothing; explicit expense creates entry
       if (transactionType === "expense") {
+        // Expense: record monthly payment only (not full total)
+        const monthlyAmt = new Decimal(monthlyAmount);
         await prisma.transaction.create({
           data: {
             userId: session.userId,
             date: dateStr,
-            amount: installmentTotal,
+            amount: monthlyAmt,
             category: categoryLabel,
             note: noteLabel,
             type: "expense",
@@ -233,7 +235,7 @@ export async function POST(request: NextRequest) {
           const accessToken = await getValidToken(session.userId);
           const time = currentJakartaTime();
           await appendTransaction(user!.sheetsId!, accessToken, {
-            date: dateStr, time, amount: installmentTotal.toNumber(),
+            date: dateStr, time, amount: monthlyAmount,
             category: categoryLabel, note: noteLabel, type: "expense",
             fromAccountId: sourceAccountId,
           });
