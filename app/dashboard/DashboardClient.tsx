@@ -606,6 +606,10 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     window.addEventListener("categoriesChanged", handleCategoryChange);
     return () => window.removeEventListener("categoriesChanged", handleCategoryChange);
   }, []);
+  // ── Fetch recurring items on mount (not in server-side DashboardInitialData) ──
+  useEffect(() => {
+    fetchRecurring();
+  }, []);
 
   useDataEvent(["transactions", "budget", "accounts", "categories", "recurring"], (topic) => {
     if (topic === "transactions") fetchTransactions(true);
