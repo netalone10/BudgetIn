@@ -7,6 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { randomUUID } from "crypto";
 import { normalizeTransactionTime } from "@/lib/transaction-time";
 
+/** Strip internal [installment:uuid] marker from note for display. */
+function stripInstallmentMarker(note: string): string {
+  return note.replace(/^\[installment:[^\]]+\]\s*/, "");
+}
+
 export interface DbTransaction {
   id: string;
   date: string;
@@ -17,6 +22,10 @@ export interface DbTransaction {
   created_at: string;
   type: "expense" | "income" | "transfer_out" | "transfer_in";
   accountId: string | null;
+  fromAccountId?: string | null;
+  fromAccountName?: string | null;
+  toAccountId?: string | null;
+  toAccountName?: string | null;
   familyTransferId?: string | null;
   counterpartyUserId?: string | null;
 }
@@ -143,25 +152,61 @@ export async function getTransactionsDB(
       createdAt: true,
       type: true,
       accountId: true,
+      transferId: true,
       familyTransferId: true,
       counterpartyUserId: true,
     },
     orderBy: [{ date: "desc" }, { time: "desc" }],
   });
 
-  return rows.map((r) => ({
+  // ── Resolve transfer pairs via transferId ───────────────────────────────
+  // Postgres stores transfers as two rows (transfer_out + transfer_in) linked
+  // by transferId. The edit modal needs fromAccountId/toAccountId on BOTH legs.
+  const txns = rows.map((r) => ({
     id: r.id,
     date: r.date,
     time: r.time,
     amount: r.amount.toNumber(),
     category: r.category,
-    note: r.note,
+    note: stripInstallmentMarker(r.note),
     created_at: r.createdAt.toISOString(),
     type: r.type as DbTransaction["type"],
     accountId: r.accountId,
+    transferId: r.transferId,
     familyTransferId: r.familyTransferId,
     counterpartyUserId: r.counterpartyUserId,
   }));
+
+  // Build transferId → partner accountId lookup
+  const transferPartners = new Map<string, { sourceAccountId: string; targetAccountId: string }>();
+  const transferTxns = txns.filter((t) => t.transferId && (t.type === "transfer_out" || t.type === "transfer_in"));
+
+  for (const t of transferTxns) {
+    if (!transferPartners.has(t.transferId!)) {
+      // Find the pair in this batch
+      const partner = transferTxns.find(
+        (p) => p.transferId === t.transferId && p.id !== t.id
+      );
+      if (partner) {
+        const sourceAccountId = t.type === "transfer_out" ? t.accountId! : partner.accountId!;
+        const targetAccountId = t.type === "transfer_in" ? t.accountId! : partner.accountId!;
+        transferPartners.set(t.transferId!, { sourceAccountId, targetAccountId });
+      }
+    }
+  }
+
+  // Populate fromAccountId/toAccountId on transfer legs
+  return txns.map((t) => {
+    if (t.transferId && transferPartners.has(t.transferId)) {
+      const { sourceAccountId, targetAccountId } = transferPartners.get(t.transferId)!;
+      return {
+        ...t,
+        fromAccountId: sourceAccountId,
+        toAccountId: targetAccountId,
+      };
+    }
+    return t;
+  });
 }
 
 // ── UPDATE ────────────────────────────────────────────────────────────────────

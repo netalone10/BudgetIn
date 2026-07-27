@@ -474,10 +474,10 @@ async function fetchRawTransactions(
       note: t.note,
       type: t.type,
       accountId: t.accountId,
-      fromAccountId: null,
-      fromAccountName: null,
-      toAccountId: null,
-      toAccountName: null,
+      fromAccountId: t.fromAccountId ?? null,
+      fromAccountName: t.fromAccountName ?? null,
+      toAccountId: t.toAccountId ?? null,
+      toAccountName: t.toAccountName ?? null,
       created_at: t.created_at ?? new Date().toISOString(),
     }));
   } catch (error) {
@@ -514,27 +514,55 @@ async function fetchTwoMonthTransactions(
         createdAt: true,
         type: true,
         accountId: true,
+        transferId: true,
         familyTransferId: true,
         counterpartyUserId: true,
       },
       orderBy: [{ date: "desc" }, { time: "desc" }],
     });
 
-    return rows.map((r) => ({
+    const txns = rows.map((r) => ({
       id: r.id,
       date: r.date,
       time: normalizeTransactionTime(r.time),
       amount: r.amount.toNumber(),
       category: r.category,
-      note: r.note,
+      note: r.note.replace(/^\[installment:[^\]]+\]\s*/, ""),
       type: r.type as RawTxn["type"],
       accountId: r.accountId,
-      fromAccountId: null,
-      fromAccountName: null,
-      toAccountId: null,
-      toAccountName: null,
+      transferId: r.transferId,
       created_at: r.createdAt.toISOString(),
     }));
+
+    // Resolve transfer pairs (same logic as getTransactionsDB)
+    const transferPartners = new Map<string, { sourceAccountId: string; targetAccountId: string }>();
+    const transferTxns = txns.filter((t) => t.transferId && (t.type === "transfer_out" || t.type === "transfer_in"));
+    for (const t of transferTxns) {
+      if (!transferPartners.has(t.transferId!)) {
+        const partner = transferTxns.find((p) => p.transferId === t.transferId && p.id !== t.id);
+        if (partner) {
+          const sourceAccountId = t.type === "transfer_out" ? t.accountId! : partner.accountId!;
+          const targetAccountId = t.type === "transfer_in" ? t.accountId! : partner.accountId!;
+          transferPartners.set(t.transferId!, { sourceAccountId, targetAccountId });
+        }
+      }
+    }
+
+    return txns.map((t) => {
+      if (t.transferId && transferPartners.has(t.transferId)) {
+        const { sourceAccountId, targetAccountId } = transferPartners.get(t.transferId)!;
+        return {
+          ...t,
+          fromAccountId: sourceAccountId,
+          toAccountId: targetAccountId,
+        };
+      }
+      return {
+        ...t,
+        fromAccountId: null,
+        toAccountId: null,
+      };
+    });
   } catch (error) {
     console.error("Failed to fetch two-month transactions:", error);
     return [];
@@ -549,7 +577,7 @@ function mapTxnsForDisplay(raw: RawTxn[]): Transaction[] {
     time: normalizeTransactionTime(t.time),
     amount: t.amount,
     category: t.category,
-    note: t.note,
+    note: t.note?.replace(/^\[installment:[^\]]+\]\s*/, "") ?? "",
     type: t.type,
     accountId: t.accountId,
     fromAccountId: t.fromAccountId ?? null,
