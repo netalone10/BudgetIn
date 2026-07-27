@@ -556,14 +556,12 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       fetch("/api/budget", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       fetch("/api/accounts", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { accounts: [] })),
       fetch("/api/categories", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { categories: [] })),
-      fetch("/api/recurring?limit=50", { cache: "no-store" }).then((r) => (r.ok ? r.json() : { data: [] })),
     ])
-      .then(([txData, lastTxData, budgetResult, acctData, catData, recurringData]) => {
+      .then(([txData, lastTxData, budgetResult, acctData, catData]) => {
         if (txData?.transactions) setTransactions(txData.transactions);
         if (budgetResult) setBudgetData(budgetResult);
         if (acctData?.accounts) setAccounts(acctData.accounts);
         setAccountsLoaded(true);
-        if (recurringData?.data) setRecurringItems(recurringData.data);
         if (catData?.categories) {
           const cats = catData.categories;
           setTransactionCategories(cats.map((c: { name: string; type: string; isSavings?: boolean }) => ({ name: c.name, type: c.type, isSavings: c.isSavings })));
