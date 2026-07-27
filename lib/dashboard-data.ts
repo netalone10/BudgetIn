@@ -253,25 +253,18 @@ export async function fetchDashboardData(
       activeSavingsGoal = null;
     }
   } else {
-    const [
-      txThis,
-      txLast,
-      accts,
-      cats,
-      b1,
-      b2,
-      savings,
-    ] = await Promise.all([
-      fetchRawTransactions(resolvedUserId, null, "bulan ini"),
-      fetchRawTransactions(resolvedUserId, null, lastMonth),
+    // Two months of transactions in one Prisma query (OR date filter) — saves 1 roundtrip
+    const [txBoth, accts, cats, b1, b2, savings] = await Promise.all([
+      fetchTwoMonthTransactions(resolvedUserId, currentMonth, lastMonth),
       fetchAccounts(resolvedUserId, null),
       getCachedCategories(resolvedUserId),
       findBudgetsWithCategory({ userId: resolvedUserId, month: currentMonth }, { category: { name: "asc" } }).catch(() => []),
       findBudgetsWithCategory({ userId: resolvedUserId, month: lastMonth }).catch(() => []),
       fetchActiveSavingsGoal(resolvedUserId),
     ]);
-    txThisMonthRaw = txThis;
-    txLastMonthRaw = txLast;
+    // split combined results by month
+    txThisMonthRaw = txBoth.filter((t) => t.date.startsWith(currentMonth));
+    txLastMonthRaw = txBoth.filter((t) => t.date.startsWith(lastMonth));
     accounts = accts;
     categories = cats;
     budgets = b1;
@@ -489,6 +482,61 @@ async function fetchRawTransactions(
     }));
   } catch (error) {
     console.error(`Failed to fetch transactions (${period}):`, error);
+    return [];
+  }
+}
+
+/**
+ * Fetch two months of transactions in a single Prisma query using OR date filter.
+ * Replaces two separate fetchRawTransactions calls — saves 1 database roundtrip on cold start.
+ */
+async function fetchTwoMonthTransactions(
+  userId: string,
+  currentMonth: string,
+  lastMonth: string
+): Promise<RawTxn[]> {
+  try {
+    const rows = await prisma.transaction.findMany({
+      where: {
+        userId,
+        OR: [
+          { date: { gte: `${currentMonth}-01`, lte: `${currentMonth}-31` } },
+          { date: { gte: `${lastMonth}-01`, lte: `${lastMonth}-31` } },
+        ],
+      },
+      select: {
+        id: true,
+        date: true,
+        time: true,
+        amount: true,
+        category: true,
+        note: true,
+        createdAt: true,
+        type: true,
+        accountId: true,
+        familyTransferId: true,
+        counterpartyUserId: true,
+      },
+      orderBy: [{ date: "desc" }, { time: "desc" }],
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      date: r.date,
+      time: normalizeTransactionTime(r.time),
+      amount: r.amount.toNumber(),
+      category: r.category,
+      note: r.note,
+      type: r.type as RawTxn["type"],
+      accountId: r.accountId,
+      fromAccountId: null,
+      fromAccountName: null,
+      toAccountId: null,
+      toAccountName: null,
+      created_at: r.createdAt.toISOString(),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch two-month transactions:", error);
     return [];
   }
 }
