@@ -28,7 +28,7 @@ async function main() {
     for (const r of installments) {
       const startDate = r.startDate.toISOString().slice(0, 10);
       const categoryLabel = `[Cicilan] ${r.name}`;
-      const noteLabel = `[installment:${r.id}]`;
+      const noteLabel = `[installment:${r.id}] Cicilan ${r.name}`;
       const monthlyAmount = r.amount;
       const sharedTransferId = `cicilan-${r.id}-initial`;
 

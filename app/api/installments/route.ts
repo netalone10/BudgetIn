@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
     // ── Create accounting transactions ──────────────────────────────────
     const dateStr = startDate.toISOString().slice(0, 10);
     const categoryLabel = `[Cicilan] ${trimmedName}`;
-    const noteLabel = `[installment:${recurring.id}]`;
+    const noteLabel = `[installment:${recurring.id}] Cicilan ${trimmedName}`;
 
     // Check if Sheets user
     const user = await prisma.user.findUnique({

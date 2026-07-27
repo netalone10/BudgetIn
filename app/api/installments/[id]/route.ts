@@ -231,7 +231,7 @@ export async function POST(
       ? r.startDate.toISOString().slice(0, 10)
       : new Date(r.startDate).toISOString().slice(0, 10);
     const categoryLabel = `[Cicilan] ${r.name}`;
-    const noteLabel = `[installment:${r.id}]`;
+    const noteLabel = `[installment:${r.id}] Cicilan ${r.name}`;
     const total = r.installmentTotal;
 
     if (r.toAccountId) {
