@@ -90,6 +90,8 @@ function serializeInstallment(r: any): InstallmentListItem {
     freedomDate: meta?.freedomDate instanceof Date ? meta.freedomDate.toISOString() : "",
     startDate: startDate.toISOString(),
     source: r.installmentSource ?? null,
+    transactionType: r.type === "transfer" ? "transfer" : r.type === "recorded" ? "recorded" : "expense",
+    toAccountId: r.toAccountId ?? null,
     nextDueDate: r.nextDueDate instanceof Date ? r.nextDueDate.toISOString() : String(r.nextDueDate),
     isActive: r.isActive,
   };

@@ -35,6 +35,8 @@ export interface InstallmentListItem {
   freedomDate: string;
   startDate: string;
   source: string | null;
+  transactionType: "expense" | "transfer" | "recorded";
+  toAccountId: string | null;
   nextDueDate: string;
   isActive: boolean;
 }

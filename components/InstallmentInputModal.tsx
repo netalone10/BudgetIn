@@ -29,6 +29,8 @@ interface InstallmentItem {
   categoryId?: string | null;
   source?: string | null;
   note?: string | null;
+  transactionType?: "expense" | "transfer" | "recorded";
+  toAccountId?: string | null;
 }
 
 interface Props {
@@ -63,8 +65,8 @@ export default function InstallmentInputModal({ onClose, onSaved, editItem }: Pr
   const [note, setNote] = useState(editItem?.note ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [transactionType, setTransactionType] = useState<"expense" | "transfer" | "recorded">("expense");
-  const [targetAccountId, setTargetAccountId] = useState("");
+  const [transactionType, setTransactionType] = useState<"expense" | "transfer" | "recorded">(editItem?.transactionType ?? "expense");
+  const [targetAccountId, setTargetAccountId] = useState(editItem?.toAccountId ?? "");
 
   const { data: accountsData } = useApi<{ accounts: Account[] }>("/api/accounts");
   const accounts = accountsData?.accounts ?? [];
