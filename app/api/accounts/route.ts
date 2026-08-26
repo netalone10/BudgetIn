@@ -27,6 +27,7 @@ import { normalizePaginationParams } from "@/lib/pagination";
 import { sanitizeErrorForProduction } from "@/lib/api-error";
 import { invalidateDashboardCache } from "@/lib/cache";
 import { createAccountWithOpeningBalance } from "@/utils/setup/create-account-with-balance";
+import { accountMatchesStatus } from "@/lib/account-archive";
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
 
   // Parse pagination params
   const { searchParams } = new URL(req.url);
+  const accountStatus = searchParams.get("status");
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "50", 10);
   const { page: normalizedPage, limit: normalizedLimit, skip } = normalizePaginationParams({ page, limit });
@@ -64,7 +66,7 @@ export async function GET(req: NextRequest) {
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: user.sheetsId,
-          range: "Akun!A1:J1",
+          range: "Akun!A1:M1",
           valueInputOption: "RAW",
           requestBody: {
             values: [[
@@ -78,6 +80,9 @@ export async function GET(req: NextRequest) {
               "note",
               "tanggalSettlement",
               "tanggalJatuhTempo",
+              "creditLimit",
+              "billingCycleDay",
+              "isActive",
             ]],
           },
         });
@@ -88,7 +93,8 @@ export async function GET(req: NextRequest) {
         ensureTransaksiHeader(user.sheetsId, accessToken).catch(() => {}),
       ]);
       // Pure-ledger: balance dihitung runtime dari sheet Transaksi, kolom Akun!E diabaikan.
-      const sheetsAccounts = await getAccountsWithBalance(user.sheetsId, accessToken);
+      const sheetsAccounts = (await getAccountsWithBalance(user.sheetsId, accessToken, { includeArchived: true }))
+        .filter((account) => accountMatchesStatus(account.isActive !== false, accountStatus));
 
       // Hitung total assets dan liabilities dari Sheets
       let assets = 0;
@@ -105,6 +111,7 @@ export async function GET(req: NextRequest) {
         transactionCount: 0,
         tanggalSettlement: a.tanggalSettlement,
         tanggalJatuhTempo: a.tanggalJatuhTempo,
+        isActive: a.isActive !== false,
       }));
 
       for (const acc of accounts) {
@@ -161,7 +168,7 @@ export async function GET(req: NextRequest) {
 
   // User non-Google: baca dari Prisma
   await ensureDefaultAccountTypes(session.userId);
-  const accounts = await getAccountBalances(session.userId);
+  const accounts = await getAccountBalances(session.userId, accountStatus !== "archived");
   const summary = calculateNetWorth(accounts);
 
   const serializedAccounts = accounts.map(serializeAccountWithBalance);

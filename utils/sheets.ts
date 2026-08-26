@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { randomUUID } from "crypto";
 import { normalizeTransactionTime } from "@/lib/transaction-time";
+import { filterAccountsByArchivedOption, parseSheetAccountActive } from "@/lib/account-archive";
 
 const TIMEZONE = "Asia/Jakarta";
 const SHEETS_CACHE_TTL_MS = 15_000;
@@ -76,7 +77,7 @@ export async function createGoogleSheet(
   // Akun sheet headers
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: "Akun!A1:L1",
+    range: "Akun!A1:M1",
     valueInputOption: "RAW",
     requestBody: {
       values: [[
@@ -92,6 +93,7 @@ export async function createGoogleSheet(
         "tanggalJatuhTempo",
         "creditLimit",
         "billingCycleDay",
+        "isActive",
       ]],
     },
   });
@@ -407,6 +409,7 @@ export interface AccountData {
   tanggalJatuhTempo: number | null;
   creditLimit: number | null;
   billingCycleDay: number | null;
+  isActive?: boolean;
 }
 
 export async function appendAccount(
@@ -430,32 +433,35 @@ export async function appendAccount(
     data.tanggalJatuhTempo ?? "",
     data.creditLimit ?? "",
     data.billingCycleDay ?? "",
+    data.isActive !== false,
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetsId,
-    range: "Akun!A:L",
+    range: "Akun!A:M",
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
   });
 
-  return { id, ...data };
+  sheetsCache.delete(`acc:${sheetsId}:${accessToken.slice(0, 20)}`);
+  return { id, ...data, isActive: data.isActive !== false };
 }
 
 export async function getAccounts(
   sheetsId: string,
-  accessToken: string
+  accessToken: string,
+  opts?: { includeArchived?: boolean }
 ): Promise<AccountData[]> {
   const cacheKey = `acc:${sheetsId}:${accessToken.slice(0, 20)}`;
   let accounts = getCached<AccountData[]>(cacheKey);
-  if (accounts) return accounts;
+  if (accounts) return filterAccountsByArchivedOption(accounts, opts?.includeArchived);
 
   const sheets = getSheetsClient(accessToken);
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Akun!A2:L",
+    range: "Akun!A2:M",
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
@@ -476,10 +482,11 @@ export async function getAccounts(
       tanggalJatuhTempo: row[9] ? Number(row[9]) : null,
       creditLimit: row[10] ? parseFloat(row[10]) || null : null,
       billingCycleDay: row[11] ? parseInt(row[11], 10) || null : null,
+      isActive: parseSheetAccountActive(row[12]),
     }));
 
   setCached(cacheKey, accounts);
-  return accounts;
+  return filterAccountsByArchivedOption(accounts, opts?.includeArchived);
 }
 
 export async function updateAccount(
@@ -495,7 +502,7 @@ export async function updateAccount(
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: `Akun!A${rowIndex}:L${rowIndex}`,
+    range: `Akun!A${rowIndex}:M${rowIndex}`,
     valueRenderOption: "UNFORMATTED_VALUE",
     dateTimeRenderOption: "FORMATTED_STRING",
   });
@@ -514,47 +521,16 @@ export async function updateAccount(
     data.tanggalJatuhTempo ?? current[9] ?? "",
     data.creditLimit ?? current[10] ?? "",
     data.billingCycleDay ?? current[11] ?? "",
+    data.isActive ?? parseSheetAccountActive(current[12]),
   ];
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetsId,
-    range: `Akun!A${rowIndex}:L${rowIndex}`,
+    range: `Akun!A${rowIndex}:M${rowIndex}`,
     valueInputOption: "RAW",
     requestBody: { values: [updated] },
   });
-}
-
-export async function deleteAccount(
-  sheetsId: string,
-  accessToken: string,
-  id: string
-): Promise<void> {
-  const sheets = getSheetsClient(accessToken);
-
-  const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetsId });
-  const sheet = meta.data.sheets?.find((s) => s.properties?.title === "Akun");
-  const sheetId = sheet?.properties?.sheetId ?? 2;
-
-  const rowIndex = await findRowByIdInSheet(sheets, sheetsId, "Akun", id);
-  if (rowIndex === -1) return;
-
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId: sheetsId,
-    requestBody: {
-      requests: [
-        {
-          deleteDimension: {
-            range: {
-              sheetId,
-              dimension: "ROWS",
-              startIndex: rowIndex - 1,
-              endIndex: rowIndex,
-            },
-          },
-        },
-      ],
-    },
-  });
+  sheetsCache.delete(`acc:${sheetsId}:${accessToken.slice(0, 20)}`);
 }
 
 // ─── MIGRATION ────────────────────────────────────────────────────────────────
@@ -582,13 +558,13 @@ export async function ensureAccountHeader(sheetsId: string, accessToken: string)
   const sheets = getSheetsClient(accessToken);
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetsId,
-    range: "Akun!A1:L1",
+    range: "Akun!A1:M1",
   });
   const header = res.data.values?.[0] ?? [];
-  if (header.length < 12) {
+  if (header.length < 13) {
     await sheets.spreadsheets.values.update({
       spreadsheetId: sheetsId,
-      range: "Akun!A1:L1",
+      range: "Akun!A1:M1",
       valueInputOption: "RAW",
       requestBody: {
         values: [[
@@ -604,6 +580,7 @@ export async function ensureAccountHeader(sheetsId: string, accessToken: string)
           "tanggalJatuhTempo",
           "creditLimit",
           "billingCycleDay",
+          "isActive",
         ]],
       },
     });
@@ -619,7 +596,7 @@ export async function clearBudgetInSheetData(sheetsId: string, accessToken: stri
   await sheets.spreadsheets.values.batchClear({
     spreadsheetId: sheetsId,
     requestBody: {
-      ranges: ["Transaksi!A2:N", "Budget!A2:C", "Akun!A2:L"],
+      ranges: ["Transaksi!A2:N", "Budget!A2:C", "Akun!A2:M"],
     },
   });
   sheetsCache.delete(`tx:${sheetsId}:${accessToken.slice(0, 20)}`);
@@ -666,10 +643,10 @@ export async function computeAccountBalances(
 export async function getAccountsWithBalance(
   sheetsId: string,
   accessToken: string,
-  opts?: { preloadedTransactions?: Transaction[] }
+  opts?: { preloadedTransactions?: Transaction[]; includeArchived?: boolean }
 ): Promise<AccountData[]> {
   const [accounts, transactions] = await Promise.all([
-    getAccounts(sheetsId, accessToken),
+    getAccounts(sheetsId, accessToken, { includeArchived: opts?.includeArchived }),
     opts?.preloadedTransactions ?? getTransactions(sheetsId, accessToken),
   ]);
   const computed = _computeBalances(accounts, transactions);

@@ -23,10 +23,13 @@ export type NetWorthSummary = {
   netWorth: Decimal;
 };
 
-export async function getAccountBalances(userId: string): Promise<AccountWithBalance[]> {
+export async function getAccountBalances(
+  userId: string,
+  isActive = true
+): Promise<AccountWithBalance[]> {
   const [accounts, aggregates] = await Promise.all([
     prisma.account.findMany({
-      where: { userId, isActive: true },
+      where: { userId, isActive },
       select: {
         id: true,
         name: true,

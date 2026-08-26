@@ -8,7 +8,7 @@ import {
   Plus, Loader2, Wallet, AlertCircle, Tags, Edit2, Trash2,
   ChevronDown, ChevronRight, RefreshCw, Eye, Landmark, Smartphone,
   TrendingUp, Bitcoin, House, Car, HandCoins, CreditCard, Ellipsis, Sparkles,
-  type LucideIcon
+  ArchiveRestore, type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -613,6 +613,7 @@ export default function AccountsPage() {
   const isDemo = session?.isDemo === true;
 
   const [accounts, setAccounts] = useState<AccountData[]>([]);
+  const [archivedAccounts, setArchivedAccounts] = useState<AccountData[]>([]);
   const [accountTypes, setAccountTypes] = useState<AccountType[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -634,8 +635,9 @@ export default function AccountsPage() {
       }
       try {
         const fetchOpts = { cache: "no-store" as const };
-        const [accRes, typeRes, recentRes] = await Promise.all([
+        const [accRes, archivedRes, typeRes, recentRes] = await Promise.all([
           fetch("/api/accounts", fetchOpts),
+          fetch("/api/accounts?status=archived", fetchOpts),
           fetch("/api/account-types", fetchOpts),
           fetch("/api/accounts/recent-transactions?limit=5", fetchOpts),
         ]);
@@ -650,6 +652,7 @@ export default function AccountsPage() {
           return;
         }
         const accData = await accRes.json();
+        const archivedData = archivedRes.ok ? await archivedRes.json() : { accounts: [] };
         const typeData = await typeRes.json();
         const recentData = recentRes.ok ? await recentRes.json() : { byAccount: {} };
         const recentMap: Record<string, RecentTransaction[]> = recentData.byAccount ?? {};
@@ -660,6 +663,7 @@ export default function AccountsPage() {
         setSummary(accData.summary ?? null);
         setAccountTypes(typeData.accountTypes ?? []);
         setAccounts(accs);
+        setArchivedAccounts(archivedData.accounts ?? []);
       } catch {
         if (!opts?.silent) setError("Gagal memuat data akun.");
       } finally {
@@ -701,6 +705,21 @@ export default function AccountsPage() {
       const d = await res.json();
       alert(d.error || "Gagal mengarsipkan.");
     }
+  }
+
+  async function handleRestore(account: AccountData) {
+    const res = await fetch(`/api/accounts/${account.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "restore" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.error || "Gagal memulihkan akun.");
+      return;
+    }
+    await fetchData({ noStore: true });
+    emitDataChanged(["accounts"]);
   }
 
   // Group by type, lalu pisahkan asset vs liability dan urutkan berdasarkan likuiditas.
@@ -898,6 +917,37 @@ export default function AccountsPage() {
             </section>
           )}
         </div>
+      )}
+
+      {!isDemo && archivedAccounts.length > 0 && (
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <button
+            type="button"
+            onClick={() => setShowArchived((value) => !value)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <ArchiveRestore className="size-4 text-muted-foreground" />
+              Akun Diarsipkan ({archivedAccounts.length})
+            </span>
+            <ChevronDown className={cn("size-4 transition-transform", showArchived && "rotate-180")} />
+          </button>
+          {showArchived && (
+            <div className="mt-4 space-y-2 border-t border-border pt-4">
+              {archivedAccounts.map((account) => (
+                <div key={account.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{account.name}</p>
+                    <p className="text-xs text-muted-foreground">{account.accountType.name}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => handleRestore(account)}>
+                    <ArchiveRestore className="size-3.5" /> Pulihkan
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* Settings link */}

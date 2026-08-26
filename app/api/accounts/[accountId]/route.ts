@@ -6,8 +6,8 @@ import { getSingleAccountBalance } from "@/utils/account-balance";
 import { getValidToken } from "@/utils/token";
 import {
   updateAccount as updateAccountSheets,
-  deleteAccount as deleteAccountSheets,
   getAccounts,
+  getAccountsWithBalance,
   ensureAccountHeader,
 } from "@/utils/sheets";
 import { blockDemoResponse } from "@/lib/demo-account";
@@ -59,6 +59,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Body JSON tidak valid." }, { status: 400 });
   }
   const { accountTypeId, accountTypeName, classification, name, color, icon, note, currency, tanggalSettlement, tanggalJatuhTempo, creditLimit, billingCycleDay } = body;
+  const restoring = body.action === "restore";
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -76,11 +77,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       await ensureAccountHeader(user.sheetsId, accessToken).catch(() => {});
 
       // Ambil data akun lama dari Sheets
-      const allAccounts = await getAccounts(user.sheetsId, accessToken);
+      const allAccounts = await getAccounts(user.sheetsId, accessToken, { includeArchived: true });
       const existingAccount = allAccounts.find((a) => a.id === accountId);
 
       if (!existingAccount) {
         return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
+      }
+
+      if (restoring) {
+        await updateAccountSheets(user.sheetsId, accessToken, accountId, { isActive: true });
+        invalidateDashboardCache(session.userId);
+        return NextResponse.json({ message: "Akun dipulihkan." });
       }
 
       // Update di Sheets
@@ -124,6 +131,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const existing = await prisma.account.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
   if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+
+  if (restoring) {
+    await prisma.account.update({ where: { id: accountId }, data: { isActive: true } });
+    invalidateDashboardCache(session.userId);
+    return NextResponse.json({ message: "Akun dipulihkan." });
+  }
 
   if (currency && currency !== existing.currency) {
     const txCount = await prisma.transaction.count({ where: { accountId } });
@@ -211,7 +224,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   return NextResponse.json({ account: updated });
 }
 
-export async function DELETE(req: NextRequest, { params }: Params) {
+export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   const demoBlock = await blockDemoResponse(session);
   if (demoBlock) return demoBlock;
@@ -221,44 +234,52 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (!rl.allowed) return rateLimitResponse(rl);
 
   const { accountId } = await params;
-  const { searchParams } = new URL(req.url);
-  const hard = searchParams.get("hard") === "true";
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
     select: { sheetsId: true },
   });
 
-  // Jika user Google Sheets, hapus dari Sheets saja
+  const recurringUsage = await prisma.recurringTransaction.count({
+    where: {
+      userId: session.userId,
+      isActive: true,
+      OR: [{ accountId }, { toAccountId: accountId }, { liabilityAccountId: accountId }],
+    },
+  });
+  if (recurringUsage > 0) {
+    return NextResponse.json(
+      { error: `Akun masih dipakai oleh ${recurringUsage} cicilan/transaksi berulang aktif. Nonaktifkan dulu.` },
+      { status: 409 }
+    );
+  }
+
+  // Google Sheets juga soft archive. Row dan histori transaksi tetap utuh.
   if (user?.sheetsId) {
     try {
       const accessToken = await getValidToken(session.userId);
-      await deleteAccountSheets(user.sheetsId, accessToken, accountId);
+      await ensureAccountHeader(user.sheetsId, accessToken);
+      const account = (await getAccountsWithBalance(user.sheetsId, accessToken, { includeArchived: true }))
+        .find((item) => item.id === accountId);
+      if (!account) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
+      if (account.balance !== 0) {
+        return NextResponse.json(
+          { error: `Saldo akun ini masih ${IDR_FORMAT.format(account.balance)}. Transfer atau sesuaikan saldo ke 0 sebelum mengarsipkan.` },
+          { status: 400 }
+        );
+      }
+      await updateAccountSheets(user.sheetsId, accessToken, accountId, { isActive: false });
       invalidateDashboardCache(session.userId);
-      return NextResponse.json({ message: "Akun dihapus." });
+      return NextResponse.json({ message: "Akun diarsipkan." });
     } catch (e) {
-      console.error("Failed to delete account from Sheets:", e);
-      return NextResponse.json({ error: "Gagal menghapus akun dari Google Sheets" }, { status: 500 });
+      console.error("Failed to archive account in Sheets:", e);
+      return NextResponse.json({ error: "Gagal mengarsipkan akun di Google Sheets" }, { status: 500 });
     }
   }
 
-  // User non-Google: hapus dari Prisma
   const existing = await prisma.account.findUnique({ where: { id: accountId } });
   if (!existing) return NextResponse.json({ error: "Akun tidak ditemukan." }, { status: 404 });
   if (existing.userId !== session.userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-
-  if (hard) {
-    const txCount = await prisma.transaction.count({ where: { accountId } });
-    if (txCount > 0) {
-      return NextResponse.json(
-        { error: `Akun ini memiliki ${txCount} transaksi. Hapus semua transaksi terlebih dahulu.` },
-        { status: 409 }
-      );
-    }
-    await prisma.account.delete({ where: { id: accountId } });
-    invalidateDashboardCache(session.userId);
-    return NextResponse.json({ message: "Akun dihapus permanen." });
-  }
 
   const currentBalance = await getSingleAccountBalance(session.userId, accountId);
   if (!currentBalance.isZero()) {
