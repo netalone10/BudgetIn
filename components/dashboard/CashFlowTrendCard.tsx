@@ -4,14 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3 } from "lucide-react";
 import type { Transaction } from "@/components/TransactionCard";
 import { isExpenseTransaction } from "@/lib/transaction-classification";
-import { formatCompactIDR } from "@/lib/format";
+import { formatCompactIDR, formatIDR } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-/**
- * Cash Flow Trend Card — 6-month bar chart showing income vs expense per month.
- * Fetches its own data independently (not tied to dashboard's "bulan ini" fetch).
- * Uses pure CSS bars (no recharts dependency) for minimal bundle size.
- */
 
 interface Props {
   className?: string;
@@ -47,7 +41,7 @@ function getDateRange6Months(): { from: string; to: string } {
 }
 
 function formatMonthLabel(ym: string): string {
-  const [y, m] = ym.split("-").map(Number);
+  const [, m] = ym.split("-").map(Number);
   return ID_MONTH_SHORT[m - 1];
 }
 
@@ -60,8 +54,8 @@ export default function CashFlowTrendCard({ className }: Props) {
   const months = useMemo(() => getLast6Months(), []);
   const currentMonth = useMemo(() => getMonthKey(new Date().toISOString()), []);
   const [allTx, setAllTx] = useState<Transaction[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
-  // Fetch 6 months of data independently
   useEffect(() => {
     const { from, to } = getDateRange6Months();
     fetch(`/api/record?period=custom:${from}:${to}`, {
@@ -76,17 +70,12 @@ export default function CashFlowTrendCard({ className }: Props) {
 
   const monthData = useMemo(() => {
     const data: Record<string, MonthData> = {};
-    for (const m of months) {
-      data[m] = { income: 0, expense: 0 };
-    }
+    for (const m of months) data[m] = { income: 0, expense: 0 };
     for (const tx of allTx) {
       const mk = getMonthKey(tx.date);
       if (!data[mk]) continue;
-      if (tx.type === "income") {
-        data[mk].income += Math.abs(tx.amount);
-      } else if (isExpenseTransaction(tx)) {
-        data[mk].expense += Math.abs(tx.amount);
-      }
+      if (tx.type === "income") data[mk].income += Math.abs(tx.amount);
+      else if (isExpenseTransaction(tx)) data[mk].expense += Math.abs(tx.amount);
     }
     return data;
   }, [allTx, months]);
@@ -95,6 +84,8 @@ export default function CashFlowTrendCard({ className }: Props) {
     1,
     ...months.flatMap((m) => [monthData[m].income, monthData[m].expense])
   );
+  const selected = monthData[selectedMonth] ?? { income: 0, expense: 0 };
+  const net = selected.income - selected.expense;
 
   return (
     <div
@@ -110,41 +101,56 @@ export default function CashFlowTrendCard({ className }: Props) {
         </p>
       </div>
 
-      {/* Bar chart */}
-      <div className="mb-3 flex h-[100px] items-end gap-1.5 px-0.5">
+      <div className="mb-3 flex h-[126px] items-end gap-1 px-0.5">
         {months.map((m) => {
           const d = monthData[m];
           const isCurrent = m === currentMonth;
+          const isSelected = m === selectedMonth;
           return (
-            <div key={m} className="flex flex-1 flex-col items-center gap-1">
-              <div className="flex h-[86px] w-full items-end justify-center gap-[2px]">
-                <Bar
-                  value={d.income}
-                  max={maxValue}
-                  tone="income"
-                  dim={!isCurrent}
-                />
-                <Bar
-                  value={d.expense}
-                  max={maxValue}
-                  tone="expense"
-                  dim={!isCurrent}
-                />
+            <button
+              key={m}
+              type="button"
+              onClick={() => setSelectedMonth(m)}
+              aria-label={`${formatMonthLabel(m)}: pemasukan ${formatIDR(d.income)}, pengeluaran ${formatIDR(d.expense)}`}
+              aria-pressed={isSelected}
+              className={cn(
+                "flex min-w-0 flex-1 flex-col items-center gap-1 rounded-md px-0.5 pt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isSelected && "bg-muted/50"
+              )}
+            >
+              <div className="grid w-full grid-cols-2 gap-px text-center text-[8px] font-medium tabular-nums sm:text-[9px]">
+                <span className="truncate text-emerald-600 dark:text-emerald-400">
+                  {formatCompactIDR(d.income).replace("Rp ", "")}
+                </span>
+                <span className="truncate text-destructive">
+                  {formatCompactIDR(d.expense).replace("Rp ", "")}
+                </span>
               </div>
-              <span
-                className={cn(
-                  "text-[9.5px] font-medium",
-                  isCurrent ? "text-foreground" : "text-muted-foreground"
-                )}
-              >
+              <div className="flex h-[86px] w-full items-end justify-center gap-[2px]">
+                <Bar value={d.income} max={maxValue} tone="income" dim={!isCurrent && !isSelected} />
+                <Bar value={d.expense} max={maxValue} tone="expense" dim={!isCurrent && !isSelected} />
+              </div>
+              <span className={cn("text-[9.5px] font-medium", isCurrent || isSelected ? "text-foreground" : "text-muted-foreground")}>
                 {formatMonthLabel(m)}
               </span>
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* Legend */}
+      <div className="mb-3 rounded-xl border border-border/60 bg-muted/25 p-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold">{formatMonthLabel(selectedMonth)} {selectedMonth.slice(0, 4)}</p>
+          <span className={cn("text-xs font-semibold tabular-nums", net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+            Selisih {net >= 0 ? "+" : "−"}{formatIDR(Math.abs(net))}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <DetailValue label="Pemasukan" value={selected.income} />
+          <DetailValue label="Pengeluaran" value={selected.expense} red />
+        </div>
+      </div>
+
       <div className="flex items-center justify-center gap-4 text-[10.5px]">
         <span className="flex items-center gap-1">
           <span className="inline-block size-2 rounded-sm bg-emerald-500" />
@@ -156,18 +162,28 @@ export default function CashFlowTrendCard({ className }: Props) {
         </span>
       </div>
 
-      {/* Summary */}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <SummaryItem
           label="Rata-rata income"
-          value={months.reduce((s, m) => s + monthData[m].income, 0) / months.length}
+          value={months.reduce((sum, m) => sum + monthData[m].income, 0) / months.length}
         />
         <SummaryItem
           label="Rata-rata expense"
-          value={months.reduce((s, m) => s + monthData[m].expense, 0) / months.length}
+          value={months.reduce((sum, m) => sum + monthData[m].expense, 0) / months.length}
           red
         />
       </div>
+    </div>
+  );
+}
+
+function DetailValue({ label, value, red = false }: { label: string; value: number; red?: boolean }) {
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className={cn("font-semibold tabular-nums", red ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
+        {formatIDR(value)}
+      </p>
     </div>
   );
 }

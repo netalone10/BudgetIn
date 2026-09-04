@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type WheelEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, ArrowDownCircle, ArrowUpCircle, ArrowLeftRight } from "lucide-react";
 import { toast } from "sonner";
@@ -311,6 +311,7 @@ export default function ManualTransactionForm({ accounts, categories, onSuccess,
             step="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            onWheel={(e: WheelEvent<HTMLInputElement>) => e.preventDefault()}
             placeholder="0"
             required
             className={cn(FORM_CONTROL_CLS, "text-base font-semibold tabular-nums")}
