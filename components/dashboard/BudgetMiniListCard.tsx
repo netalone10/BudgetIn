@@ -73,7 +73,7 @@ function emojiForCategory(name: string): string {
 function classifyBudget(spent: number, totalBudget: number): "safe" | "warn" | "over" {
   if (totalBudget <= 0) return "safe";
   const pct = (spent / totalBudget) * 100;
-  if (pct >= 100) return "over";
+  if (pct > 100) return "over";
   if (pct >= 80) return "warn";
   return "safe";
 }

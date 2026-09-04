@@ -251,6 +251,7 @@ export function EditModal({ transaction, categories, accounts, onClose, onSaved 
               step="1"
               value={editAmount}
               onChange={(e) => setEditAmount(e.target.value)}
+              onWheel={(e) => e.preventDefault()}
               required
               className={cn(INPUT_CLS, "font-semibold tabular-nums")}
             />

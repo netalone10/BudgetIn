@@ -137,6 +137,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState("");
+  const [editBudgetType, setEditBudgetType] = useState<BudgetType>("variable");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [newAmount, setNewAmount] = useState("");
@@ -187,25 +188,43 @@ export default function BudgetClient({ initialData, categories }: Props) {
     const amount = parseAmount(editAmount);
     if (!amount || amount <= 0) return;
 
-    // Optimistic: close inline editor & update amount immediately.
+    const previousType = item.budgetType;
+
+    // Optimistic: close inline editor & update amount and type immediately.
     setEditingId(null);
     setData(prev => ({
       ...prev,
-      budgets: prev.budgets.map(b => b.id === item.id ? { ...b, budget: amount } : b),
+      budgets: prev.budgets.map(b =>
+        b.id === item.id ? { ...b, budget: amount, budgetType: editBudgetType } : b
+      ),
     }));
 
     try {
-      const res = await fetch("/api/budget", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category: item.category, amount, month }),
-      });
-      if (!res.ok) {
-        toast.error("Gagal menyimpan budget.");
-        await loadMonth(month);
+      const requests: Promise<Response>[] = [
+        fetch("/api/budget", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category: item.category, amount, month }),
+        }),
+      ];
+
+      if (editBudgetType !== previousType) {
+        requests.push(fetch(`/api/categories/${item.categoryId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ budgetType: editBudgetType }),
+        }));
       }
+
+      const responses = await Promise.all(requests);
+      if (responses.some((response) => !response.ok)) {
+        await loadMonth(month);
+        toast.error("Sebagian perubahan gagal disimpan. Data terbaru sudah dimuat ulang.");
+        return;
+      }
+      toast.success("Budget berhasil diperbarui.");
     } catch {
-      toast.error("Terjadi kesalahan. Coba lagi.");
+      toast.error("Gagal menyimpan perubahan budget. Data dimuat ulang.");
       await loadMonth(month);
     }
   }
@@ -472,7 +491,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
               const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
               const remaining = prorated - item.spent;
               const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
-              const isOver = progress.allowancePct >= 100;
+              const isOver = progress.allowancePct > 100;
               const isNear = progress.allowancePct >= 80 && !isOver;
               const isEditing = editingId === item.id;
               const isConfirmDelete = deletingId === item.id;
@@ -524,16 +543,27 @@ export default function BudgetClient({ initialData, categories }: Props) {
                     <div className="min-w-0">
                       <p className="text-muted-foreground">Budget</p>
                       {isEditing ? (
-                        <Input
-                          type="number"
-                          value={editAmount}
-                          onChange={(e) => setEditAmount(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSave(item);
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                          className="mt-1 h-8 w-full text-xs"
-                        />
+                        <div className="mt-1 space-y-2">
+                          <Input
+                            type="number"
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSave(item);
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                            className="h-8 w-full text-xs"
+                          />
+                          <select
+                            value={editBudgetType}
+                            onChange={(e) => setEditBudgetType(e.target.value as BudgetType)}
+                            className="h-8 w-full rounded-md border border-input bg-background px-2 text-xs"
+                            aria-label={`Tipe budget ${item.category}`}
+                          >
+                            <option value="variable">Variable</option>
+                            <option value="fixed">Fixed</option>
+                          </select>
+                        </div>
                       ) : (
                         <p className="break-words font-medium tabular-nums">
                           {fmt(item.budget)}
@@ -595,6 +625,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                             onClick={() => {
                               setEditingId(item.id);
                               setEditAmount(item.budget.toString());
+                              setEditBudgetType(item.budgetType);
                               setDeletingId(null);
                             }}
                             disabled={saving}
@@ -656,7 +687,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                   const prorated = fixed ? effectiveBudget : Math.round((effectiveBudget * dayOfMonth) / totalDays);
                   const remaining = prorated - item.spent;
                   const progress = getBudgetProgress(item.spent, effectiveBudget, prorated);
-                  const isOver = progress.allowancePct >= 100;
+                  const isOver = progress.allowancePct > 100;
                   const isNear = progress.allowancePct >= 80 && !isOver;
                   const isEditing = editingId === item.id;
                   const isConfirmDelete = deletingId === item.id;
@@ -700,16 +731,27 @@ export default function BudgetClient({ initialData, categories }: Props) {
                       </td>
                       <td className="py-3 pr-3 text-right tabular-nums">
                         {isEditing ? (
-                          <Input
-                            type="number"
-                            value={editAmount}
-                            onChange={(e) => setEditAmount(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleSave(item);
-                              if (e.key === "Escape") setEditingId(null);
-                            }}
-                            className="ml-auto w-28 text-right text-xs"
-                          />
+                          <div className="ml-auto flex w-32 flex-col gap-1.5">
+                            <Input
+                              type="number"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleSave(item);
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              className="text-right text-xs"
+                            />
+                            <select
+                              value={editBudgetType}
+                              onChange={(e) => setEditBudgetType(e.target.value as BudgetType)}
+                              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                              aria-label={`Tipe budget ${item.category}`}
+                            >
+                              <option value="variable">Variable</option>
+                              <option value="fixed">Fixed</option>
+                            </select>
+                          </div>
                         ) : (
                           <div>
                             <span className="text-xs text-muted-foreground">{fmt(item.budget)}</span>
@@ -763,6 +805,7 @@ export default function BudgetClient({ initialData, categories }: Props) {
                               onClick={() => {
                                 setEditingId(item.id);
                                 setEditAmount(item.budget.toString());
+                                setEditBudgetType(item.budgetType);
                                 setDeletingId(null);
                               }}
                               disabled={saving}
